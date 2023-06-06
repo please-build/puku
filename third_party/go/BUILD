@@ -1,3 +1,10 @@
+subinclude("///go//build_defs:go")
+
+go_toolchain(
+    name = "toolchain",
+    version = "1.20",
+)
+
 go_repo(
     module = "golang.org/x/net",
     version = "v0.0.0-20220722155237-a158d28d115b",
@@ -5,12 +12,12 @@ go_repo(
 
 go_repo(
     module = "golang.org/x/sys",
-    version = "v0.0.0-20220722155257-8c9f86f7a55f",
+    version = "v0.5.0",
 )
 
 go_repo(
     module = "golang.org/x/term",
-    version = "v0.0.0-20210927222741-03fcf44c2211",
+    version = "v0.5.0",
 )
 
 go_repo(
@@ -166,4 +173,24 @@ go_repo(
 go_repo(
     module = "honnef.co/go/tools",
     version = "v0.0.0-20190523083050-ea95bdfd59fc",
+)
+
+go_repo(
+    module = "gopkg.in/op/go-logging.v1",
+    version = "v1.0.0-20160211212156-b2cb9fa56473",
+)
+
+go_repo(
+    module = "github.com/thought-machine/go-flags",
+    version = "v1.6.0",
+)
+
+go_repo(
+    module = "github.com/peterebden/go-cli-init/v5",
+    version = "v5.2.1",
+)
+
+go_repo(
+    module = "github.com/dustin/go-humanize",
+    version = "v1.0.0",
 )

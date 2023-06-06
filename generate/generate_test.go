@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUpdate(t *testing.T) {
+func TestAllocateSources(t *testing.T) {
 	rules := []*Rule{
 		{
 			name: "foo",
@@ -21,36 +21,37 @@ func TestUpdate(t *testing.T) {
 
 	files := map[string]*GoFile{
 		"bar.go": {
-			Name: "foo",
+			Name:     "foo",
+			FileName: "bar.go",
 		},
 		"bar_test.go": {
-			Name: "foo",
-			Test: true,
+			Name:     "foo",
+			FileName: "bar_test.go",
 		},
 		"external_test.go": {
-			Name: "foo_test",
-			Test: true,
+			Name:     "foo_test",
+			FileName: "external_test.go",
 		},
 		"foo.go": {
-			Name: "foo",
+			Name:     "foo",
+			FileName: "foo.go",
 		},
 		"foo_test.go": {
-			Name: "foo",
-			Test: true,
+			Name:     "foo",
+			FileName: "foo_test.go",
 		},
 	}
 
-	unallocated := []string{"bar.go", "bar_test.go", "external_test.go"}
-
-	newRules, err := allocateSources("foo", files, unallocated, rules)
+	u := new(Update)
+	newRules, err := u.allocateSources("foo", files, rules)
 	if err != nil {
 		panic(err)
 	}
 
 	assert.Len(t, newRules, 1)
-	assert.Equal(t, newRules[0].name, "foo_test")
-	assert.Equal(t, newRules[0].srcs, []string{"external_test.go"})
+	assert.Equal(t, "foo_test", newRules[0].name)
+	assert.Equal(t, []string{"external_test.go"}, newRules[0].srcs)
 
-	assert.Equal(t, rules[0].srcs, []string{"foo.go", "bar.go"})
-	assert.Equal(t, rules[1].srcs, []string{"foo_test.go", "bar_test.go"})
+	assert.Equal(t, []string{"foo.go", "bar.go"}, rules[0].srcs)
+	assert.Equal(t, []string{"foo_test.go", "bar_test.go"}, rules[1].srcs)
 }

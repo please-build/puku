@@ -4,3 +4,4 @@ preloadsubincludes = ///go//build_defs:go
 [Plugin "go"]
 Target = //plugins:go
 ImportPath = github.com/please-build/paku
+GoTool = //third_party/go:toolchain|go

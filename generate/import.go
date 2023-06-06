@@ -8,13 +8,12 @@ import (
 	"strings"
 )
 
+// GoFile represents a single Go file in a package
 type GoFile struct {
 	// Name is the name from the package clause of this file
-	Name string
+	Name, FileName string
 	// Imports are the imports of this file
 	Imports []string
-	// Cgo is whether this file import Cgo
-	Cgo, Test, Cmd bool
 }
 
 // ImportDir does _some_ of what the go/build ImportDir does but is more permissive.
@@ -50,22 +49,37 @@ func ImportFile(dir, src string) (*GoFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	isCgo := false
 	imports := make([]string, 0, len(f.Imports))
 	for _, i := range f.Imports {
 		path := i.Path.Value
-
 		path = path[1 : len(path)-1] // remove quotes
-		if path == "C" {
-			isCgo = true
-		}
 		imports = append(imports, path)
 	}
 	return &GoFile{
-		Name:    f.Name.Name,
-		Imports: imports,
-		Cgo:     isCgo,
-		Test:    strings.HasSuffix(src, "_test.go"),
-		Cmd:     f.Name.Name == "main",
+		Name:     f.Name.Name,
+		FileName: src,
+		Imports:  imports,
 	}, nil
+}
+
+func (f *GoFile) IsCgo() bool {
+	for _, i := range f.Imports {
+		if i == "C" {
+			return true
+		}
+	}
+	return false
+}
+
+// IsExternal returns whether the test is external
+func (f *GoFile) IsExternal(pkgName string) bool {
+	return f.Name == filepath.Base(pkgName)+"_test" && f.IsTest()
+}
+
+func (f *GoFile) IsTest() bool {
+	return strings.HasSuffix(f.FileName, "_test.go")
+}
+
+func (f *GoFile) IsCmd() bool {
+	return f.Name == "main"
 }

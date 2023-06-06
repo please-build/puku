@@ -3,15 +3,19 @@ package generate
 import (
 	"errors"
 	"fmt"
-	"github.com/please-build/paku/knownimports"
-	"github.com/please-build/paku/proxy"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/please-build/paku/knownimports"
+	"github.com/please-build/paku/proxy"
+
 	"github.com/bazelbuild/buildtools/build"
+	"github.com/peterebden/go-cli-init/v5/logging"
 )
+
+var log = logging.MustGetLogger()
 
 type Update struct {
 	plzPath, thirdPartyDir string
@@ -83,8 +87,6 @@ func (u *Update) getModules() ([]string, error) {
 
 // update loops through the provided paths, updating and creating any build rules it finds.
 func (u *Update) update(paths []string) error {
-	// TODO handle when the rule kind changes because we added some cgo sources
-
 	for _, path := range paths {
 		// Find all the files in the dir
 		sources, err := ImportDir(path)
@@ -102,7 +104,7 @@ func (u *Update) update(paths []string) error {
 		rules, calls := readRulesFromFile(file)
 
 		// Allocate the sources to the rules, creating new rules as necessary
-		newRules, err := allocateSources(path, sources, unallocatedSources(sources, rules), rules)
+		newRules, err := u.allocateSources(path, sources, rules)
 		if err != nil {
 			return err
 		}
@@ -110,18 +112,8 @@ func (u *Update) update(paths []string) error {
 		rules = append(rules, newRules...)
 
 		// Update the existing call expressions in the build file
-		if err := u.updateCalls(calls, rules, sources); err != nil {
+		if err := u.updateFile(file, calls, rules, sources); err != nil {
 			return err
-		}
-
-		// Create new call expressions for the new rules
-		for _, r := range newRules {
-			rule := newRuleExpr("", "")
-			if err := u.updateDeps(r, rules, sources); err != nil {
-				return err
-			}
-			populateRule(rule, r)
-			file.Stmt = append(file.Stmt, rule.Call)
 		}
 
 		// Save the file back
@@ -188,23 +180,36 @@ func (u *Update) updateDeps(rule *Rule, rules []*Rule, sources map[string]*GoFil
 			}
 			done[i] = struct{}{}
 
-			// TODO update visibility here? Maybe that should be done manually though?
-			t := depTarget(u.modules, u.importPath, i, u.thirdPartyDir)
+			// We must check this first before checking if this is an internal import as we might match a sub-module
+			t := depTarget(u.modules, i, u.thirdPartyDir)
 			if t != "" {
 				rule.deps = append(rule.deps, t)
 				continue
 			}
 
-			// Generate a new dep
+			// Check to see if the target exists in the current repo
+			if strings.HasPrefix(i, u.importPath) || u.importPath == "" {
+				t, err := u.localDep(i)
+				if err != nil {
+					return err
+				}
+
+				if t != "" {
+					rule.deps = append(rule.deps, t)
+					continue
+				}
+			}
+
+			// Otherwise try and resolve it to a new dep via the module proxy
 			mod, err := u.proxy.ResolveModuleForPackage(i)
 			if err != nil {
-				fmt.Println("error resolving dep for", rule.name, err.Error(), u.importPath)
+				log.Warningf("error resolving dep for import %v: %w", i, err.Error())
 				continue
 			}
 			u.newModules = append(u.newModules, mod)
 			u.modules = append(u.modules, mod.Module)
 
-			t = depTarget(u.modules, u.importPath, i, u.thirdPartyDir)
+			t = depTarget(u.modules, i, u.thirdPartyDir)
 			if t != "" {
 				rule.deps = append(rule.deps, t)
 				continue
@@ -256,32 +261,43 @@ func readRulesFromFile(file *build.File) ([]*Rule, map[string]*build.CallExpr) {
 	return rules, calls
 }
 
-// updateCalls updates the call expressions from the BUILD file
-func (u *Update) updateCalls(calls map[string]*build.CallExpr, rules []*Rule, sources map[string]*GoFile) error {
+// updateFile updates the existing rules and creates any new rules in the BUILD file
+func (u *Update) updateFile(file *build.File, calls map[string]*build.CallExpr, rules []*Rule, sources map[string]*GoFile) error {
 	for _, rule := range rules {
+		call := calls[rule.name]
+		var ruleExpr *build.Rule
+
+		// The rule might be a new rule in which case we don't have a call yet. Create one.
+		if call == nil {
+			ruleExpr = newRuleExpr(rule.kind, rule.name)
+			file.Stmt = append(file.Stmt, ruleExpr.Call)
+		} else {
+			ruleExpr = build.NewRule(call)
+		}
+
 		if err := u.updateDeps(rule, rules, sources); err != nil {
 			return err
 		}
-		call := calls[rule.name]
-		populateRule(build.NewRule(call), rule)
+		populateRule(ruleExpr, rule)
+
 	}
 	return nil
 }
 
 // allocateSources allocates sources to rules. If there's no existing rule, a new rule will be created and returned
 // from this function
-func allocateSources(pkgDir string, files map[string]*GoFile, unallocated []string, rules []*Rule) ([]*Rule, error) {
+func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rules []*Rule) ([]*Rule, error) {
 	var newRules []*Rule
-	for _, src := range unallocated {
-		importedFile := files[src]
+	for _, src := range unallocatedSources(sources, rules) {
+		importedFile := sources[src]
 		var rule *Rule
 		for _, r := range append(rules, newRules...) {
-			rulePkgName, err := rulePkg(files, r)
+			rulePkgName, err := rulePkg(sources, r)
 			if err != nil {
 				return nil, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.name, err)
 			}
 
-			if rulePkgName == importedFile.Name && r.test == importedFile.Test {
+			if rulePkgName == importedFile.Name && r.test == importedFile.IsTest() {
 				rule = r
 				break
 			}
@@ -289,22 +305,24 @@ func allocateSources(pkgDir string, files map[string]*GoFile, unallocated []stri
 		if rule == nil {
 			name := filepath.Base(pkgDir)
 			kind := "go_library"
-			if importedFile.Test {
+			if importedFile.IsTest() {
 				name = name + "_test"
 				kind = "go_test"
 			}
-			if importedFile.Cmd {
+			if importedFile.IsCmd() {
 				kind = "go_binary"
 				name = "main"
 			}
 			rule = &Rule{
-				name: name,
-				kind: kind,
+				name:     name,
+				kind:     kind,
+				test:     importedFile.IsTest(),
+				external: importedFile.IsExternal(filepath.Join(u.importPath, pkgDir)),
 			}
 			newRules = append(newRules, rule)
 		}
 
-		if importedFile.Cgo {
+		if importedFile.IsCgo() {
 			rule.cgoSrcs = append(rule.cgoSrcs, src)
 		} else {
 			rule.srcs = append(rule.srcs, src)

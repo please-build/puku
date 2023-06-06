@@ -18,7 +18,7 @@ type Rule struct {
 	hdrs          []string
 	deps          []string
 	embedPatterns []string
-	test          bool
+	test, external bool
 }
 
 func NewStringExpr(s string) *build.StringExpr {

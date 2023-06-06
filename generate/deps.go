@@ -6,15 +6,31 @@ import (
 	"strings"
 )
 
-func depTarget(modules []string, thisModule, importPath, thirdPartyFolder string) string {
-	module := moduleForPackage(append(modules, thisModule), importPath)
+func (u *Update) localDep(importPath string) (string, error) {
+	path := strings.Trim(strings.TrimPrefix(importPath, u.importPath), "/")
+	file, err := parseBuildFile(path, u.buildFileNames)
+	if err != nil {
+		return "", err
+	}
+	libTargets := file.Rules("go_library")
+	if len(libTargets) == 0 {
+		// TODO(#3): we should check if 1) the target package is in scope for us to visit it, and 2) that doing so would
+		// 	generate this library target. We can return the label that it would generate.
+		return "", nil
+	}
+
+	return "//" + path + ":" + libTargets[0].Name(), nil
+}
+
+func depTarget(modules []string, importPath, thirdPartyFolder string) string {
+	module := moduleForPackage(modules, importPath)
 	if module == "" {
 		// If we can't find this import, we can return nothing and the build rule will fail at build time reporting a
 		// sensible error. It may also be an import from the go SDK which is fine.
 		return ""
 	}
 
-	subrepoName := subrepoName(module, thisModule, thirdPartyFolder)
+	subrepoName := subrepoName(module, thirdPartyFolder)
 	packageName := strings.TrimPrefix(importPath, module)
 	packageName = strings.TrimPrefix(packageName, "/")
 	name := filepath.Base(packageName)
@@ -37,10 +53,7 @@ func moduleForPackage(modules []string, importPath string) string {
 	return module
 }
 
-func subrepoName(module, thisModule, thirdPartyFolder string) string {
-	if thisModule == module {
-		return ""
-	}
+func subrepoName(module, thirdPartyFolder string) string {
 	return filepath.Join(thirdPartyFolder, strings.ReplaceAll(module, "/", "_"))
 }
 
