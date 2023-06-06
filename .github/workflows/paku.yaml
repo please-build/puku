@@ -1,0 +1,21 @@
+name: Paku
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Run tests
+        run: ./pleasew test -p -v notice --log_file plz-out/log/test.log
+      - name: Run tests with coverage
+        run: ./pleasew cover -p -v notice --nocoverage_report --log_file plz-out/log/test.log
+      - name: Archive logs
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: logs
+          path: |
+            plz-out/log
+            
+
