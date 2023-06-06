@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/please-build/paku/knownimports"
-	"github.com/please-build/paku/proxy"
+	"github.com/please-build/puku/knownimports"
+	"github.com/please-build/puku/proxy"
 
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/peterebden/go-cli-init/v5/logging"

@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/please-build/paku/generate"
+	"github.com/please-build/puku/generate"
 )
 
 func main() {
