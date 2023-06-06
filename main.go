@@ -34,7 +34,7 @@ func main() {
 	}
 
 	flags.ParseFlagsOrDie("puku", &opts, nil)
-	g := generate.NewUpdate("plz", "third_party/go", []string{"BUILD", "BUILD.plz"})
+	g := generate.NewUpdate("plz", "third_party/go")
 	if err := g.Update(opts.Args.Paths); err != nil {
 		log.Fatalf("%v", err)
 	}

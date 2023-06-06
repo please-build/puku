@@ -2,6 +2,7 @@ package generate
 
 import (
 	"fmt"
+	"github.com/bazelbuild/buildtools/build"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,7 +29,13 @@ func (u *Update) localDep(importPath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to parse BUILD files in %v: %v", path, err)
 	}
-	libTargets := file.Rules("go_library")
+
+	var libTargets []*build.Rule
+	for kind, kindType := range u.kinds {
+		if kindType == KindType_Lib {
+			libTargets = append(libTargets, file.Rules(kind)...)
+		}
+	}
 
 	// If we can't find the lib target, and the target package is in scope for us to potentially generate it, check if
 	// we are going to generate it.

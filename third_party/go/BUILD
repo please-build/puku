@@ -196,7 +196,6 @@ go_repo(
 )
 
 go_repo(
-    name = "",
     module = "gopkg.in/yaml.v3",
     version = "v3.0.1",
 )

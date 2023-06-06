@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -19,6 +17,20 @@ import (
 
 var log = logging.MustGetLogger()
 
+type KindType int
+
+const (
+	KindType_Lib KindType = iota
+	KindType_Test
+	KindType_Bin
+)
+
+var defaultKinds = map[string]KindType{
+	"go_library": KindType_Lib,
+	"go_binary":  KindType_Bin,
+	"go_test":    KindType_Test,
+}
+
 type Update struct {
 	plzPath, thirdPartyDir string
 	buildFileNames         []string
@@ -27,15 +39,17 @@ type Update struct {
 	proxy                  *proxy.Proxy
 	paths                  []string
 
+	kinds map[string]KindType
+
 	newModules []*proxy.Module
 }
 
-func NewUpdate(plzPath, thirdPartyDir string, buildFileNames []string) *Update {
+func NewUpdate(plzPath, thirdPartyDir string) *Update {
 	return &Update{
-		plzPath:        plzPath,
-		thirdPartyDir:  thirdPartyDir,
-		buildFileNames: buildFileNames,
-		proxy:          proxy.New("https://proxy.golang.org"),
+		plzPath:       plzPath,
+		thirdPartyDir: thirdPartyDir,
+		proxy:         proxy.New("https://proxy.golang.org"),
+		kinds:         defaultKinds,
 	}
 }
 
@@ -52,33 +66,27 @@ func (u *Update) Update(paths []string) error {
 	}
 
 	u.importPath = c.ImportPath()
+	u.buildFileNames = c.BuildFileNames()
 
-	u.modules, err = u.getModules()
-	if err != nil {
-		return err
+	if err := u.readModules(); err != nil {
+		return fmt.Errorf("failed to read third party rules: %v", err)
 	}
 
 	return u.update()
 }
 
 // getModules returns the defined third party modules in this project
-func (u *Update) getModules() ([]string, error) {
-	cmd := exec.Command(u.plzPath, "query", "print", "--label=go_module:", fmt.Sprintf("//%v/...", u.thirdPartyDir))
-	cmd.Stderr = os.Stderr
-	out, err := cmd.Output() //TODO this is a naff
+func (u *Update) readModules() error {
+	f, err := parseBuildFile(u.thirdPartyDir, u.buildFileNames)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	modVerPairs := strings.Split(strings.TrimSpace(string(out)), "\n")
-
-	ret := make([]string, 0, len(modVerPairs))
-	for _, m := range modVerPairs {
-		parts := strings.Split(m, "@")
-		ret = append(ret, parts[0])
+	for _, repoRule := range f.Rules("go_repo") {
+		u.modules = append(u.modules, repoRule.AttrString("module"))
 	}
 
-	return ret, nil
+	return nil
 }
 
 // update loops through the provided paths, updating and creating any build rules it finds.
@@ -104,6 +112,9 @@ func (u *Update) updateAll(path string) error {
 			if d.Name() == "plz-out" {
 				return filepath.SkipDir
 			}
+			if d.Name() == ".git" {
+				return filepath.SkipDir
+			}
 			if err := u.updateOne(path); err != nil {
 				return err
 			}
@@ -119,6 +130,10 @@ func (u *Update) updateOne(path string) error {
 		return err
 	}
 
+	if len(sources) == 0 {
+		return nil
+	}
+
 	// Parse the build file
 	file, err := parseBuildFile(path, u.buildFileNames)
 	if err != nil {
@@ -126,7 +141,7 @@ func (u *Update) updateOne(path string) error {
 	}
 
 	// Read existing rules from file
-	rules, calls := readRulesFromFile(file)
+	rules, calls := u.readRulesFromFile(file)
 
 	// Allocate the sources to the rules, creating new rules as necessary
 	newRules, err := u.allocateSources(path, sources, rules)
@@ -262,43 +277,37 @@ func (u *Update) updateDeps(rule *Rule, rules []*Rule, sources map[string]*GoFil
 }
 
 // readRulesFromFile reads the existing build rules from the BUILD file
-func readRulesFromFile(file *build.File) ([]*Rule, map[string]*build.CallExpr) {
+func (u *Update) readRulesFromFile(file *build.File) ([]*Rule, map[string]*build.Rule) {
 	var rules []*Rule
-	calls := map[string]*build.CallExpr{}
+	calls := map[string]*build.Rule{}
 
-	for _, expr := range file.Stmt {
-		call, ok := expr.(*build.CallExpr)
-		if !ok {
+	for _, expr := range file.Rules("") {
+		if _, ok := u.kinds[expr.Kind()]; !ok {
 			continue
 		}
-
-		rule := callToRule(call)
+		rule := callToRule(expr)
 		rules = append(rules, rule)
-		calls[rule.name] = call
+		calls[rule.name] = expr
 	}
 
 	return rules, calls
 }
 
 // updateFile updates the existing rules and creates any new rules in the BUILD file
-func (u *Update) updateFile(file *build.File, calls map[string]*build.CallExpr, rules []*Rule, sources map[string]*GoFile) error {
+func (u *Update) updateFile(file *build.File, ruleExprs map[string]*build.Rule, rules []*Rule, sources map[string]*GoFile) error {
 	for _, rule := range rules {
-		call := calls[rule.name]
-		var ruleExpr *build.Rule
+		ruleExpr := ruleExprs[rule.name]
 
 		// The rule might be a new rule in which case we don't have a call yet. Create one.
-		if call == nil {
+		if ruleExpr == nil {
 			ruleExpr = newRuleExpr(rule.kind, rule.name)
 			file.Stmt = append(file.Stmt, ruleExpr.Call)
-		} else {
-			ruleExpr = build.NewRule(call)
 		}
 
 		if err := u.updateDeps(rule, rules, sources); err != nil {
 			return err
 		}
 		populateRule(ruleExpr, rule)
-
 	}
 	return nil
 }

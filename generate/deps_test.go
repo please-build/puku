@@ -26,6 +26,7 @@ func TestDepTarget(t *testing.T) {
 func TestLocalDeps(t *testing.T) {
 	u := &Update{
 		buildFileNames: buildFileNames,
+		kinds: defaultKinds,
 	}
 	trgt, err := u.localDep("generate/test_data/foo")
 	require.NoError(t, err)
