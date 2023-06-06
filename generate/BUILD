@@ -22,6 +22,7 @@ go_library(
         "import.go",
         "rule.go",
     ],
+    visibility = ["//:all"],
     deps = [
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "///third_party/go/github.com_bazelbuild_buildtools//edit",
