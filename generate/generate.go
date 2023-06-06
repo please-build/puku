@@ -3,6 +3,7 @@ package generate
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,6 +24,7 @@ type Update struct {
 	importPath             string
 	modules                []string
 	proxy                  *proxy.Proxy
+	paths                  []string
 
 	newModules []*proxy.Module
 }
@@ -39,6 +41,8 @@ func NewUpdate(plzPath, thirdPartyDir string, buildFileNames []string) *Update {
 // Update updates an existing Please project. It may create new BUILD files, however it tries to respect existing build
 // rules, updating them as appropriate.
 func (u *Update) Update(paths []string) error {
+	u.paths = paths
+
 	var err error
 
 	u.importPath, err = u.getImportPath()
@@ -51,7 +55,7 @@ func (u *Update) Update(paths []string) error {
 		return err
 	}
 
-	return u.update(paths)
+	return u.update()
 }
 
 // getImportPath returns the configured import path of this please project
@@ -86,44 +90,67 @@ func (u *Update) getModules() ([]string, error) {
 }
 
 // update loops through the provided paths, updating and creating any build rules it finds.
-func (u *Update) update(paths []string) error {
-	for _, path := range paths {
-		// Find all the files in the dir
-		sources, err := ImportDir(path)
-		if err != nil {
-			return err
-		}
-
-		// Parse the build file
-		file, err := parseBuildFile(path, u.buildFileNames)
-		if err != nil {
-			return err
-		}
-
-		// Read existing rules from file
-		rules, calls := readRulesFromFile(file)
-
-		// Allocate the sources to the rules, creating new rules as necessary
-		newRules, err := u.allocateSources(path, sources, rules)
-		if err != nil {
-			return err
-		}
-
-		rules = append(rules, newRules...)
-
-		// Update the existing call expressions in the build file
-		if err := u.updateFile(file, calls, rules, sources); err != nil {
-			return err
-		}
-
-		// Save the file back
-		if err := saveAndFormatBuildFile(file); err != nil {
-			return err
+func (u *Update) update() error {
+	for _, path := range u.paths {
+		if strings.HasSuffix(path, "...") {
+			p := filepath.Clean(strings.TrimSuffix(path, "..."))
+			if err := u.updateAll(p); err != nil {
+				return fmt.Errorf("failed to update %v: %v", path, err)
+			}
+		} else if err := u.updateOne(path); err != nil {
+			return fmt.Errorf("failed to update %v: %v", path, err)
 		}
 	}
 
 	// Save any new modules we needed back to the third party file
 	return u.addNewModules()
+}
+
+func (u *Update) updateAll(path string) error {
+	return filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			if d.Name() == "plz-out" {
+				return filepath.SkipDir
+			}
+			if err := u.updateOne(path); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (u *Update) updateOne(path string) error {
+	// Find all the files in the dir
+	sources, err := ImportDir(path)
+	if err != nil {
+		return err
+	}
+
+	// Parse the build file
+	file, err := parseBuildFile(path, u.buildFileNames)
+	if err != nil {
+		return err
+	}
+
+	// Read existing rules from file
+	rules, calls := readRulesFromFile(file)
+
+	// Allocate the sources to the rules, creating new rules as necessary
+	newRules, err := u.allocateSources(path, sources, rules)
+	if err != nil {
+		return err
+	}
+
+	rules = append(rules, newRules...)
+
+	// Update the existing call expressions in the build file
+	if err := u.updateFile(file, calls, rules, sources); err != nil {
+		return err
+	}
+
+	// Save the file back
+	return saveAndFormatBuildFile(file)
 }
 
 func (u *Update) addNewModules() error {
@@ -180,7 +207,7 @@ func (u *Update) updateDeps(rule *Rule, rules []*Rule, sources map[string]*GoFil
 			}
 			done[i] = struct{}{}
 
-			// We must check this first before checking if this is an internal import as we might match a sub-module
+			// We must check this first before checking if this is an internal import as we might match a submodule
 			t := depTarget(u.modules, i, u.thirdPartyDir)
 			if t != "" {
 				rule.deps = append(rule.deps, t)
@@ -203,7 +230,7 @@ func (u *Update) updateDeps(rule *Rule, rules []*Rule, sources map[string]*GoFil
 			// Otherwise try and resolve it to a new dep via the module proxy
 			mod, err := u.proxy.ResolveModuleForPackage(i)
 			if err != nil {
-				log.Warningf("error resolving dep for import %v: %w", i, err.Error())
+				log.Warningf("error resolving dep for import %v: %v", i, err.Error())
 				continue
 			}
 			u.newModules = append(u.newModules, mod)

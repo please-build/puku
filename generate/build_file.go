@@ -9,6 +9,10 @@ import (
 )
 
 func saveAndFormatBuildFile(buildFile *build.File) error {
+	if len(buildFile.Stmt) == 0 {
+		return nil
+	}
+
 	f, err := os.Create(buildFile.Path)
 	if err != nil {
 		return err

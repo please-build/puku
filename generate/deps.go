@@ -2,20 +2,51 @@ package generate
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
+
+func (u *Update) isInScope(path string) bool {
+	for _, p := range u.paths {
+		if p == path {
+			return true
+		}
+		if strings.HasSuffix(p, "...") {
+			p = filepath.Clean(strings.TrimSuffix(p, "..."))
+			if strings.HasPrefix(path, p) || p == "." {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 func (u *Update) localDep(importPath string) (string, error) {
 	path := strings.Trim(strings.TrimPrefix(importPath, u.importPath), "/")
 	file, err := parseBuildFile(path, u.buildFileNames)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to parse BUILD files in %v: %v", path, err)
 	}
 	libTargets := file.Rules("go_library")
-	if len(libTargets) == 0 {
-		// TODO(#3): we should check if 1) the target package is in scope for us to visit it, and 2) that doing so would
-		// 	generate this library target. We can return the label that it would generate.
+
+	// If we can't find the lib target, and the target package is in scope for us to potentially generate it, check if
+	// we are going to generate it.
+	if len(libTargets) == 0 && u.isInScope(path) {
+		files, err := ImportDir(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return "", nil
+			}
+			return "", fmt.Errorf("failed to import %v: %v", path, err)
+		}
+
+		// If there are any non-test sources, then we will generate a go_library here later on. Return that target name.
+		for _, f := range files {
+			if !f.IsTest() {
+				return fmt.Sprintf("//%v:%v", path, filepath.Base(importPath)), nil
+			}
+		}
 		return "", nil
 	}
 
