@@ -1,4 +1,4 @@
-module github.com/please-build/paku
+module github.com/please-build/puku
 
 go 1.19
 
