@@ -12,6 +12,7 @@ go_library(
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "///third_party/go/github.com_bazelbuild_buildtools//edit",
         "///third_party/go/github.com_peterebden_go-cli-init_v5//logging",
+        "//config",
         "//knownimports",
         "//proxy",
     ],
@@ -24,11 +25,10 @@ go_test(
         "deps_test.go",
         "generate_test.go",
     ],
+    data = ["test_data"],
     deps = [
         ":generate",
         "///third_party/go/github.com_stretchr_testify//assert",
         "///third_party/go/github.com_stretchr_testify//require",
     ],
-    data = ["test_data"],
 )
-

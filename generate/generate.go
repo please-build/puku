@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/knownimports"
 	"github.com/please-build/puku/proxy"
 
@@ -45,10 +46,12 @@ func (u *Update) Update(paths []string) error {
 
 	var err error
 
-	u.importPath, err = u.getImportPath()
+	c, err := config.QueryConfig(u.plzPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to query config: %w", err)
 	}
+
+	u.importPath = c.ImportPath()
 
 	u.modules, err = u.getModules()
 	if err != nil {
@@ -56,17 +59,6 @@ func (u *Update) Update(paths []string) error {
 	}
 
 	return u.update()
-}
-
-// getImportPath returns the configured import path of this please project
-func (u *Update) getImportPath() (string, error) {
-	cmd := exec.Command(u.plzPath, "query", "config", "plugin.go.importpath")
-	cmd.Stderr = os.Stderr
-	importPath, err := cmd.Output() //TODO this is a naff
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(importPath)), nil
 }
 
 // getModules returns the defined third party modules in this project
