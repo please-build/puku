@@ -3,12 +3,13 @@ package generate
 import (
 	"errors"
 	"fmt"
-	"github.com/please-build/paku/knownimports"
-	"github.com/please-build/paku/proxy"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/please-build/puku/knownimports"
+	"github.com/please-build/puku/proxy"
 
 	"github.com/bazelbuild/buildtools/build"
 )
