@@ -37,11 +37,7 @@ func (r *rule) allSources() ([]string, error) {
 	return r.AttrStrings("srcs"), nil
 }
 
-func evalGlob(dir string, call *build.CallExpr) ([]string, error) {
-	if i, ok := call.X.(*build.Ident); !ok || i.Name != "glob" {
-		return nil, nil
-	}
-
+func parseGlob(call *build.CallExpr) ([]string, []string) {
 	var include, exclude []string
 	positionalPos := 0
 	for _, expr := range call.List {
@@ -53,12 +49,11 @@ func evalGlob(dir string, call *build.CallExpr) ([]string, error) {
 			}
 			if ident.Name == "include" {
 				include = build.Strings(assign.RHS)
-				continue
 			}
 			if ident.Name == "exclude" {
 				exclude = build.Strings(assign.RHS)
-				continue
 			}
+			continue // ignore other args. We don't care about include_symlinks etc.
 		}
 
 		if positionalPos == 0 {
@@ -69,6 +64,14 @@ func evalGlob(dir string, call *build.CallExpr) ([]string, error) {
 		}
 		positionalPos++
 	}
+	return include, exclude
+}
+
+func evalGlob(dir string, call *build.CallExpr) ([]string, error) {
+	if i, ok := call.X.(*build.Ident); !ok || i.Name != "glob" {
+		return nil, nil
+	}
+	include, exclude := parseGlob(call)
 	return glob.Glob(dir, include, exclude)
 }
 
