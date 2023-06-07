@@ -1,1 +1,5 @@
-package test_data
+package main
+
+func main() {
+
+}

@@ -33,7 +33,7 @@ func ImportDir(dir string) (map[string]*GoFile, error) {
 			continue
 		}
 
-		f, err := ImportFile(dir, info.Name())
+		f, err := importFile(dir, info.Name())
 		if err != nil {
 			return nil, err
 		}
@@ -44,7 +44,7 @@ func ImportDir(dir string) (map[string]*GoFile, error) {
 	return ret, nil
 }
 
-func ImportFile(dir, src string) (*GoFile, error) {
+func importFile(dir, src string) (*GoFile, error) {
 	f, err := parser.ParseFile(token.NewFileSet(), filepath.Join(dir, src), nil, parser.ImportsOnly)
 	if err != nil {
 		return nil, err
@@ -60,15 +60,6 @@ func ImportFile(dir, src string) (*GoFile, error) {
 		FileName: src,
 		Imports:  imports,
 	}, nil
-}
-
-func (f *GoFile) IsCgo() bool {
-	for _, i := range f.Imports {
-		if i == "C" {
-			return true
-		}
-	}
-	return false
 }
 
 // IsExternal returns whether the test is external
