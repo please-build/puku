@@ -1,7 +1,6 @@
 package generate
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"path/filepath"
@@ -141,7 +140,7 @@ func (u *Update) updateOne(path string) error {
 	}
 
 	// Read existing rules from file
-	rules, calls := u.readRulesFromFile(file)
+	rules, calls := u.readRulesFromFile(file, path)
 
 	// Allocate the sources to the rules, creating new rules as necessary
 	newRules, err := u.allocateSources(path, sources, rules)
@@ -169,7 +168,6 @@ func (u *Update) addNewModules() error {
 	var mods []*proxy.Module
 	existingRules := make(map[string]*build.Rule)
 	for _, rule := range file.Rules("go_repo") {
-		// TODO handle when the version is specified by a download rule
 		mod, ver := rule.AttrString("module"), rule.AttrString("version")
 		existingRules[rule.AttrString("module")] = rule
 		mods = append(mods, &proxy.Module{Module: mod, Version: ver})
@@ -182,7 +180,10 @@ func (u *Update) addNewModules() error {
 
 	for _, mod := range allMods {
 		if rule, ok := existingRules[mod.Module]; ok {
-			rule.SetAttr("version", NewStringExpr(mod.Version))
+			// Modules might be using go_mod_download, which we don't handle.
+			if rule.Attr("version") != nil {
+				rule.SetAttr("version", newStringExpr(mod.Version))
+			}
 			continue
 		}
 
@@ -190,19 +191,22 @@ func (u *Update) addNewModules() error {
 			X:    &build.Ident{Name: "go_repo"},
 			List: []build.Expr{},
 		})
-		rule.SetAttr("module", NewStringExpr(mod.Module))
-		rule.SetAttr("version", NewStringExpr(mod.Version))
+		rule.SetAttr("module", newStringExpr(mod.Module))
+		rule.SetAttr("version", newStringExpr(mod.Version))
 		file.Stmt = append(file.Stmt, rule.Call)
 	}
 	return saveAndFormatBuildFile(file)
 }
 
 // updateDeps updates the dependencies of a build rule based on the imports of its sources
-func (u *Update) updateDeps(rule *Rule, rules []*Rule, sources map[string]*GoFile) error {
-	srcs := append(rule.srcs, rule.cgoSrcs...)
-
+func (u *Update) updateDeps(rule *rule, rules []*rule, sources map[string]*GoFile) error {
 	done := map[string]struct{}{}
-	rule.deps = nil
+	srcs, err := rule.allSources()
+	if err != nil {
+		return err
+	}
+
+	var deps []string
 	for _, src := range srcs {
 		f := sources[src]
 		for _, i := range f.Imports {
@@ -217,7 +221,7 @@ func (u *Update) updateDeps(rule *Rule, rules []*Rule, sources map[string]*GoFil
 			// We must check this first before checking if this is an internal import as we might match a submodule
 			t := depTarget(u.modules, i, u.thirdPartyDir)
 			if t != "" {
-				rule.deps = append(rule.deps, t)
+				deps = append(deps, t)
 				continue
 			}
 
@@ -229,7 +233,7 @@ func (u *Update) updateDeps(rule *Rule, rules []*Rule, sources map[string]*GoFil
 				}
 
 				if t != "" {
-					rule.deps = append(rule.deps, t)
+					deps = append(deps, t)
 					continue
 				}
 			}
@@ -245,21 +249,21 @@ func (u *Update) updateDeps(rule *Rule, rules []*Rule, sources map[string]*GoFil
 
 			t = depTarget(u.modules, i, u.thirdPartyDir)
 			if t != "" {
-				rule.deps = append(rule.deps, t)
+				deps = append(deps, t)
 				continue
 			}
 		}
 	}
 
 	// Add any libraries for the same package as us
-	if rule.test {
+	if rule.kindType == KindType_Test {
 		pkgName, err := rulePkg(sources, rule)
 		if err != nil {
 			return err
 		}
 
 		for _, libRule := range rules {
-			if libRule.test {
+			if libRule.kindType == KindType_Test {
 				continue
 			}
 			libPkgName, err := rulePkg(sources, libRule)
@@ -268,64 +272,73 @@ func (u *Update) updateDeps(rule *Rule, rules []*Rule, sources map[string]*GoFil
 			}
 
 			if libPkgName == pkgName {
-				rule.deps = append(rule.deps, fmt.Sprintf(":%v", libRule.name))
+				deps = append(deps, fmt.Sprintf(":%v", libRule.Name()))
 			}
 		}
 	}
+
+	rule.setOrDeleteAttr("deps", deps)
 
 	return nil
 }
 
 // readRulesFromFile reads the existing build rules from the BUILD file
-func (u *Update) readRulesFromFile(file *build.File) ([]*Rule, map[string]*build.Rule) {
-	var rules []*Rule
+func (u *Update) readRulesFromFile(file *build.File, pkgDir string) ([]*rule, map[string]*build.Rule) {
+	var rules []*rule
 	calls := map[string]*build.Rule{}
 
 	for _, expr := range file.Rules("") {
-		if _, ok := u.kinds[expr.Kind()]; !ok {
+		kindType, ok := u.kinds[expr.Kind()]
+		if !ok {
 			continue
 		}
-		rule := callToRule(expr)
+		rule := newRule(expr, kindType, pkgDir)
 		rules = append(rules, rule)
-		calls[rule.name] = expr
+		calls[rule.Name()] = expr
 	}
 
 	return rules, calls
 }
 
 // updateFile updates the existing rules and creates any new rules in the BUILD file
-func (u *Update) updateFile(file *build.File, ruleExprs map[string]*build.Rule, rules []*Rule, sources map[string]*GoFile) error {
+func (u *Update) updateFile(file *build.File, ruleExprs map[string]*build.Rule, rules []*rule, sources map[string]*GoFile) error {
 	for _, rule := range rules {
-		ruleExpr := ruleExprs[rule.name]
-
-		// The rule might be a new rule in which case we don't have a call yet. Create one.
-		if ruleExpr == nil {
-			ruleExpr = newRuleExpr(rule.kind, rule.name)
-			file.Stmt = append(file.Stmt, ruleExpr.Call)
+		if _, ok := ruleExprs[rule.Name()]; !ok {
+			file.Stmt = append(file.Stmt, rule.Call)
 		}
-
 		if err := u.updateDeps(rule, rules, sources); err != nil {
 			return err
 		}
-		populateRule(ruleExpr, rule)
 	}
 	return nil
 }
 
 // allocateSources allocates sources to rules. If there's no existing rule, a new rule will be created and returned
 // from this function
-func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rules []*Rule) ([]*Rule, error) {
-	var newRules []*Rule
-	for _, src := range unallocatedSources(sources, rules) {
+func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rules []*rule) ([]*rule, error) {
+	unallocated, err := unallocatedSources(sources, rules)
+	if err != nil {
+		return nil, err
+	}
+
+	var newRules []*rule
+	for _, src := range unallocated {
 		importedFile := sources[src]
-		var rule *Rule
+		var rule *rule
 		for _, r := range append(rules, newRules...) {
-			rulePkgName, err := rulePkg(sources, r)
-			if err != nil {
-				return nil, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.name, err)
+			if r.kindType != importedFile.kindType() {
+				continue
 			}
 
-			if rulePkgName == importedFile.Name && r.test == importedFile.IsTest() {
+			rulePkgName, err := rulePkg(sources, r)
+			if err != nil {
+				return nil, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.Name(), err)
+			}
+
+			// Find a rule that's for thhe same package and of the same kind (i.e. bin, lib, test)
+			// NB: we return when we find the first one so if there are multiple options, we will pick on essentially at
+			//     random.
+			if rulePkgName == "" || rulePkgName == importedFile.Name {
 				rule = r
 				break
 			}
@@ -341,42 +354,39 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 				kind = "go_binary"
 				name = "main"
 			}
-			rule = &Rule{
-				name:     name,
-				kind:     kind,
-				test:     importedFile.IsTest(),
-				external: importedFile.IsExternal(filepath.Join(u.importPath, pkgDir)),
+			rule = newRule(newRuleExpr(kind, name), importedFile.kindType(), pkgDir)
+			if importedFile.IsExternal(filepath.Join(u.importPath, pkgDir)) {
+				rule.setExternal()
 			}
 			newRules = append(newRules, rule)
 		}
 
-		if importedFile.IsCgo() {
-			rule.cgoSrcs = append(rule.cgoSrcs, src)
-		} else {
-			rule.srcs = append(rule.srcs, src)
-		}
+		rule.addSrc(src)
+
 	}
 	return newRules, nil
 }
 
 // rulePkg checks the first source it finds for a rule and returns the name from the "package name" directive at the top
 // of the file
-func rulePkg(srcs map[string]*GoFile, rule *Rule) (string, error) {
+func rulePkg(srcs map[string]*GoFile, rule *rule) (string, error) {
 	var src string
 
-	if len(rule.srcs) > 0 {
-		src = rule.srcs[0]
-	} else if len(rule.cgoSrcs) > 0 {
-		src = rule.cgoSrcs[0]
+	s, err := rule.allSources()
+	if err != nil {
+		return "", err
+	}
+	if len(s) > 0 {
+		src = s[0]
 	} else {
-		return "", errors.New("no source files found")
+		return "", nil
 	}
 
 	return srcs[src].Name, nil
 }
 
 // unallocatedSources returns all the sources that don't already belong to a rule
-func unallocatedSources(srcs map[string]*GoFile, rules []*Rule) []string {
+func unallocatedSources(srcs map[string]*GoFile, rules []*rule) ([]string, error) {
 	var ret []string
 	for src := range srcs {
 		found := false
@@ -384,7 +394,12 @@ func unallocatedSources(srcs map[string]*GoFile, rules []*Rule) []string {
 			if found {
 				break
 			}
-			for _, s := range rule.srcs {
+
+			ruleSrcs, err := rule.allSources()
+			if err != nil {
+				return nil, err
+			}
+			for _, s := range ruleSrcs {
 				if s == src {
 					found = true
 					break
@@ -395,5 +410,5 @@ func unallocatedSources(srcs map[string]*GoFile, rules []*Rule) []string {
 			ret = append(ret, src)
 		}
 	}
-	return ret
+	return ret, nil
 }

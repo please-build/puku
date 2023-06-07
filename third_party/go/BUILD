@@ -140,9 +140,15 @@ go_repo(
     version = "v1.8.4",
 )
 
+go_mod_download(
+    name = "build_tools_dl",
+    module = "github.com/peterebden/buildtools",
+    version = "ce40803f44fb09c5cf60b5554fe5819d02df23fc",
+)
+
 go_repo(
+    download = ":build_tools_dl",
     module = "github.com/bazelbuild/buildtools",
-    version = "v0.0.0-20230510134650-37bd1811516d",
 )
 
 go_repo(

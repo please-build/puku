@@ -83,3 +83,13 @@ func (f *GoFile) IsTest() bool {
 func (f *GoFile) IsCmd() bool {
 	return f.Name == "main"
 }
+
+func (f *GoFile) kindType() KindType {
+	if f.IsTest() {
+		return KindType_Test
+	}
+	if f.IsCmd() {
+		return KindType_Bin
+	}
+	return KindType_Lib
+}
