@@ -3,16 +3,33 @@ package generate
 import (
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
+	"io/fs"
 	"path/filepath"
 	"strings"
 
+	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/knownimports"
 	"github.com/please-build/puku/proxy"
 
 	"github.com/bazelbuild/buildtools/build"
+	"github.com/peterebden/go-cli-init/v5/logging"
 )
+
+var log = logging.MustGetLogger()
+
+type KindType int
+
+const (
+	KindType_Lib KindType = iota
+	KindType_Test
+	KindType_Bin
+)
+
+var defaultKinds = map[string]KindType{
+	"go_library": KindType_Lib,
+	"go_binary":  KindType_Bin,
+	"go_test":    KindType_Test,
+}
 
 type Update struct {
 	plzPath, thirdPartyDir string
@@ -20,119 +37,127 @@ type Update struct {
 	importPath             string
 	modules                []string
 	proxy                  *proxy.Proxy
+	paths                  []string
+
+	kinds map[string]KindType
 
 	newModules []*proxy.Module
 }
 
-func NewUpdate(plzPath, thirdPartyDir string, buildFileNames []string) *Update {
+func NewUpdate(plzPath, thirdPartyDir string) *Update {
 	return &Update{
-		plzPath:        plzPath,
-		thirdPartyDir:  thirdPartyDir,
-		buildFileNames: buildFileNames,
-		proxy:          proxy.New("https://proxy.golang.org"),
+		plzPath:       plzPath,
+		thirdPartyDir: thirdPartyDir,
+		proxy:         proxy.New("https://proxy.golang.org"),
+		kinds:         defaultKinds,
 	}
 }
 
 // Update updates an existing Please project. It may create new BUILD files, however it tries to respect existing build
 // rules, updating them as appropriate.
 func (u *Update) Update(paths []string) error {
+	u.paths = paths
+
 	var err error
 
-	u.importPath, err = u.getImportPath()
+	c, err := config.QueryConfig(u.plzPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to query config: %w", err)
 	}
 
-	u.modules, err = u.getModules()
-	if err != nil {
-		return err
+	u.importPath = c.ImportPath()
+	u.buildFileNames = c.BuildFileNames()
+
+	if err := u.readModules(); err != nil {
+		return fmt.Errorf("failed to read third party rules: %v", err)
 	}
 
-	return u.update(paths)
-}
-
-// getImportPath returns the configured import path of this please project
-func (u *Update) getImportPath() (string, error) {
-	cmd := exec.Command(u.plzPath, "query", "config", "plugin.go.importpath")
-	cmd.Stderr = os.Stderr
-	importPath, err := cmd.Output() //TODO this is a naff
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(importPath)), nil
+	return u.update()
 }
 
 // getModules returns the defined third party modules in this project
-func (u *Update) getModules() ([]string, error) {
-	cmd := exec.Command(u.plzPath, "query", "print", "--label=go_module:", fmt.Sprintf("//%v/...", u.thirdPartyDir))
-	cmd.Stderr = os.Stderr
-	out, err := cmd.Output() //TODO this is a naff
+func (u *Update) readModules() error {
+	f, err := parseBuildFile(u.thirdPartyDir, u.buildFileNames)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	modVerPairs := strings.Split(strings.TrimSpace(string(out)), "\n")
-
-	ret := make([]string, 0, len(modVerPairs))
-	for _, m := range modVerPairs {
-		parts := strings.Split(m, "@")
-		ret = append(ret, parts[0])
+	for _, repoRule := range f.Rules("go_repo") {
+		u.modules = append(u.modules, repoRule.AttrString("module"))
 	}
 
-	return ret, nil
+	return nil
 }
 
 // update loops through the provided paths, updating and creating any build rules it finds.
-func (u *Update) update(paths []string) error {
-	// TODO handle when the rule kind changes because we added some cgo sources
-
-	for _, path := range paths {
-		// Find all the files in the dir
-		sources, err := ImportDir(path)
-		if err != nil {
-			return err
-		}
-
-		// Parse the build file
-		file, err := parseBuildFile(path, u.buildFileNames)
-		if err != nil {
-			return err
-		}
-
-		// Read existing rules from file
-		rules, calls := readRulesFromFile(file)
-
-		// Allocate the sources to the rules, creating new rules as necessary
-		newRules, err := allocateSources(path, sources, unallocatedSources(sources, rules), rules)
-		if err != nil {
-			return err
-		}
-
-		rules = append(rules, newRules...)
-
-		// Update the existing call expressions in the build file
-		if err := u.updateCalls(calls, rules, sources); err != nil {
-			return err
-		}
-
-		// Create new call expressions for the new rules
-		for _, r := range newRules {
-			rule := newRuleExpr("", "")
-			if err := u.updateDeps(r, rules, sources); err != nil {
-				return err
+func (u *Update) update() error {
+	for _, path := range u.paths {
+		if strings.HasSuffix(path, "...") {
+			p := filepath.Clean(strings.TrimSuffix(path, "..."))
+			if err := u.updateAll(p); err != nil {
+				return fmt.Errorf("failed to update %v: %v", path, err)
 			}
-			populateRule(rule, r)
-			file.Stmt = append(file.Stmt, rule.Call)
-		}
-
-		// Save the file back
-		if err := saveAndFormatBuildFile(file); err != nil {
-			return err
+		} else if err := u.updateOne(path); err != nil {
+			return fmt.Errorf("failed to update %v: %v", path, err)
 		}
 	}
 
 	// Save any new modules we needed back to the third party file
 	return u.addNewModules()
+}
+
+func (u *Update) updateAll(path string) error {
+	return filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			if d.Name() == "plz-out" {
+				return filepath.SkipDir
+			}
+			if d.Name() == ".git" {
+				return filepath.SkipDir
+			}
+			if err := u.updateOne(path); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (u *Update) updateOne(path string) error {
+	// Find all the files in the dir
+	sources, err := ImportDir(path)
+	if err != nil {
+		return err
+	}
+
+	if len(sources) == 0 {
+		return nil
+	}
+
+	// Parse the build file
+	file, err := parseBuildFile(path, u.buildFileNames)
+	if err != nil {
+		return err
+	}
+
+	// Read existing rules from file
+	rules, calls := u.readRulesFromFile(file)
+
+	// Allocate the sources to the rules, creating new rules as necessary
+	newRules, err := u.allocateSources(path, sources, rules)
+	if err != nil {
+		return err
+	}
+
+	rules = append(rules, newRules...)
+
+	// Update the existing call expressions in the build file
+	if err := u.updateFile(file, calls, rules, sources); err != nil {
+		return err
+	}
+
+	// Save the file back
+	return saveAndFormatBuildFile(file)
 }
 
 func (u *Update) addNewModules() error {
@@ -189,23 +214,36 @@ func (u *Update) updateDeps(rule *Rule, rules []*Rule, sources map[string]*GoFil
 			}
 			done[i] = struct{}{}
 
-			// TODO update visibility here? Maybe that should be done manually though?
-			t := depTarget(u.modules, u.importPath, i, u.thirdPartyDir)
+			// We must check this first before checking if this is an internal import as we might match a submodule
+			t := depTarget(u.modules, i, u.thirdPartyDir)
 			if t != "" {
 				rule.deps = append(rule.deps, t)
 				continue
 			}
 
-			// Generate a new dep
+			// Check to see if the target exists in the current repo
+			if strings.HasPrefix(i, u.importPath) || u.importPath == "" {
+				t, err := u.localDep(i)
+				if err != nil {
+					return err
+				}
+
+				if t != "" {
+					rule.deps = append(rule.deps, t)
+					continue
+				}
+			}
+
+			// Otherwise try and resolve it to a new dep via the module proxy
 			mod, err := u.proxy.ResolveModuleForPackage(i)
 			if err != nil {
-				fmt.Println("error resolving dep for", rule.name, err.Error(), u.importPath)
+				log.Warningf("error resolving dep for import %v: %v", i, err.Error())
 				continue
 			}
 			u.newModules = append(u.newModules, mod)
 			u.modules = append(u.modules, mod.Module)
 
-			t = depTarget(u.modules, u.importPath, i, u.thirdPartyDir)
+			t = depTarget(u.modules, i, u.thirdPartyDir)
 			if t != "" {
 				rule.deps = append(rule.deps, t)
 				continue
@@ -239,50 +277,55 @@ func (u *Update) updateDeps(rule *Rule, rules []*Rule, sources map[string]*GoFil
 }
 
 // readRulesFromFile reads the existing build rules from the BUILD file
-func readRulesFromFile(file *build.File) ([]*Rule, map[string]*build.CallExpr) {
+func (u *Update) readRulesFromFile(file *build.File) ([]*Rule, map[string]*build.Rule) {
 	var rules []*Rule
-	calls := map[string]*build.CallExpr{}
+	calls := map[string]*build.Rule{}
 
-	for _, expr := range file.Stmt {
-		call, ok := expr.(*build.CallExpr)
-		if !ok {
+	for _, expr := range file.Rules("") {
+		if _, ok := u.kinds[expr.Kind()]; !ok {
 			continue
 		}
-
-		rule := callToRule(call)
+		rule := callToRule(expr)
 		rules = append(rules, rule)
-		calls[rule.name] = call
+		calls[rule.name] = expr
 	}
 
 	return rules, calls
 }
 
-// updateCalls updates the call expressions from the BUILD file
-func (u *Update) updateCalls(calls map[string]*build.CallExpr, rules []*Rule, sources map[string]*GoFile) error {
+// updateFile updates the existing rules and creates any new rules in the BUILD file
+func (u *Update) updateFile(file *build.File, ruleExprs map[string]*build.Rule, rules []*Rule, sources map[string]*GoFile) error {
 	for _, rule := range rules {
+		ruleExpr := ruleExprs[rule.name]
+
+		// The rule might be a new rule in which case we don't have a call yet. Create one.
+		if ruleExpr == nil {
+			ruleExpr = newRuleExpr(rule.kind, rule.name)
+			file.Stmt = append(file.Stmt, ruleExpr.Call)
+		}
+
 		if err := u.updateDeps(rule, rules, sources); err != nil {
 			return err
 		}
-		call := calls[rule.name]
-		populateRule(build.NewRule(call), rule)
+		populateRule(ruleExpr, rule)
 	}
 	return nil
 }
 
 // allocateSources allocates sources to rules. If there's no existing rule, a new rule will be created and returned
 // from this function
-func allocateSources(pkgDir string, files map[string]*GoFile, unallocated []string, rules []*Rule) ([]*Rule, error) {
+func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rules []*Rule) ([]*Rule, error) {
 	var newRules []*Rule
-	for _, src := range unallocated {
-		importedFile := files[src]
+	for _, src := range unallocatedSources(sources, rules) {
+		importedFile := sources[src]
 		var rule *Rule
 		for _, r := range append(rules, newRules...) {
-			rulePkgName, err := rulePkg(files, r)
+			rulePkgName, err := rulePkg(sources, r)
 			if err != nil {
 				return nil, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.name, err)
 			}
 
-			if rulePkgName == importedFile.Name && r.test == importedFile.Test {
+			if rulePkgName == importedFile.Name && r.test == importedFile.IsTest() {
 				rule = r
 				break
 			}
@@ -290,22 +333,24 @@ func allocateSources(pkgDir string, files map[string]*GoFile, unallocated []stri
 		if rule == nil {
 			name := filepath.Base(pkgDir)
 			kind := "go_library"
-			if importedFile.Test {
+			if importedFile.IsTest() {
 				name = name + "_test"
 				kind = "go_test"
 			}
-			if importedFile.Cmd {
+			if importedFile.IsCmd() {
 				kind = "go_binary"
 				name = "main"
 			}
 			rule = &Rule{
-				name: name,
-				kind: kind,
+				name:     name,
+				kind:     kind,
+				test:     importedFile.IsTest(),
+				external: importedFile.IsExternal(filepath.Join(u.importPath, pkgDir)),
 			}
 			newRules = append(newRules, rule)
 		}
 
-		if importedFile.Cgo {
+		if importedFile.IsCgo() {
 			rule.cgoSrcs = append(rule.cgoSrcs, src)
 		} else {
 			rule.srcs = append(rule.srcs, src)

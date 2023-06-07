@@ -11,6 +11,8 @@ go_library(
     deps = [
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "///third_party/go/github.com_bazelbuild_buildtools//edit",
+        "///third_party/go/github.com_peterebden_go-cli-init_v5//logging",
+        "//config",
         "//knownimports",
         "//proxy",
     ],
@@ -18,9 +20,15 @@ go_library(
 
 go_test(
     name = "generate_test",
-    srcs = ["generate_test.go"],
+    srcs = [
+        "build_file_test.go",
+        "deps_test.go",
+        "generate_test.go",
+    ],
+    data = ["test_data"],
     deps = [
         ":generate",
         "///third_party/go/github.com_stretchr_testify//assert",
+        "///third_party/go/github.com_stretchr_testify//require",
     ],
 )

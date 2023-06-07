@@ -18,7 +18,7 @@ type Rule struct {
 	hdrs          []string
 	deps          []string
 	embedPatterns []string
-	test          bool
+	test, external bool
 }
 
 func NewStringExpr(s string) *build.StringExpr {
@@ -71,8 +71,7 @@ func populateRule(r *build.Rule, targetState *Rule) {
 	}
 }
 
-func callToRule(call *build.CallExpr) *Rule {
-	rule := build.NewRule(call)
+func callToRule(rule *build.Rule) *Rule {
 	ret := &Rule{name: rule.Name(), kind: rule.Kind()}
 	cgo := strings.HasPrefix(rule.Kind(), "cgo_")
 	ret.test = strings.HasSuffix(rule.Kind(), "_test")

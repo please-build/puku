@@ -9,6 +9,10 @@ import (
 )
 
 func saveAndFormatBuildFile(buildFile *build.File) error {
+	if len(buildFile.Stmt) == 0 {
+		return nil
+	}
+
 	f, err := os.Create(buildFile.Path)
 	if err != nil {
 		return err
@@ -19,22 +23,32 @@ func saveAndFormatBuildFile(buildFile *build.File) error {
 	return err
 }
 
-// parseBuildFile loops through the available build file names to create a new build file or open the existing
-// one.
+// parseBuildFile tries to find and parse a build file in a directory. If it finds one, it will return true and the
+// parsed build file. If it doesn't find one, it returns false, and an empty build file.
 func parseBuildFile(path string, fileNames []string) (*build.File, error) {
+	validFilename := ""
 	for _, name := range fileNames {
 		filePath := filepath.Join(path, name)
 		if f, err := os.Lstat(filePath); os.IsNotExist(err) {
-			return build.ParseBuild(filePath, nil)
-		} else if !f.IsDir() {
+			// This file name is available. Use the first one we find in the list.
+			if validFilename == "" {
+				validFilename = filePath
+			}
+		} else if !f.IsDir() { // this is a common issue on macos where paths are case insensitive...
 			bs, err := os.ReadFile(filePath)
 			if err != nil {
 				return nil, err
 			}
-			return build.ParseBuild(filePath, bs)
+			file, err := build.ParseBuild(filePath, bs)
+			return file, err
 		}
 	}
-	return nil, fmt.Errorf("folders exist with the build file names in directory %v %v", path, fileNames)
+	if validFilename == "" {
+		return nil, fmt.Errorf("folders exist with the build file names in directory %v %v", path, fileNames)
+	}
+
+	// Otherwise returns a new empty file. We didn't find one.
+	return build.ParseBuild(validFilename, nil)
 }
 
 func newRuleExpr(kind, name string) *build.Rule {
