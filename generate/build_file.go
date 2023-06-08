@@ -57,7 +57,7 @@ func newRuleExpr(kind, name string) *build.Rule {
 		List: []build.Expr{},
 	}, kind)
 
-	rule.SetAttr("name", NewStringExpr(name))
+	rule.SetAttr("name", newStringExpr(name))
 
 	return rule
 }

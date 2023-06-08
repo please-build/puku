@@ -1,93 +1,105 @@
 package generate
 
 import (
-	"strings"
-
+	"fmt"
 	"github.com/bazelbuild/buildtools/build"
+	"github.com/please-build/puku/glob"
 )
 
-type Rule struct {
-	name          string
-	kind          string
-	srcs          []string
-	cgoSrcs       []string
-	compilerFlags []string
-	linkerFlags   []string
-	pkgConfigs    []string
-	asmFiles      []string
-	hdrs          []string
-	deps          []string
-	embedPatterns []string
-	test, external bool
-}
-
-func NewStringExpr(s string) *build.StringExpr {
+func newStringExpr(s string) *build.StringExpr {
 	return &build.StringExpr{Value: s}
 }
 
-func NewStringList(ss []string) *build.ListExpr {
+func newStringList(ss []string) *build.ListExpr {
 	l := new(build.ListExpr)
 	for _, s := range ss {
-		l.List = append(l.List, NewStringExpr(s))
+		l.List = append(l.List, newStringExpr(s))
 	}
 	return l
 }
 
-func SetOrDeleteAttr(r *build.Rule, name string, values []string) {
+type rule struct {
+	dir      string
+	kindType KindType
+	*build.Rule
+}
+
+func (r *rule) allSources() ([]string, error) {
+	if call, ok := r.Attr("srcs").(*build.CallExpr); ok {
+		srcs, err := evalGlob(r.dir, call)
+		if err != nil {
+			return nil, fmt.Errorf("failed to eval glob in %v: %v", r.dir, err)
+		}
+
+		return srcs, nil
+	}
+
+	return r.AttrStrings("srcs"), nil
+}
+
+func parseGlob(call *build.CallExpr) ([]string, []string) {
+	var include, exclude []string
+	positionalPos := 0
+	for _, expr := range call.List {
+		assign, ok := expr.(*build.AssignExpr)
+		if ok {
+			ident := assign.LHS.(*build.Ident)
+			if !ok {
+				return nil, nil
+			}
+			if ident.Name == "include" {
+				include = build.Strings(assign.RHS)
+			}
+			if ident.Name == "exclude" {
+				exclude = build.Strings(assign.RHS)
+			}
+			continue // ignore other args. We don't care about include_symlinks etc.
+		}
+
+		if positionalPos == 0 {
+			include = build.Strings(expr)
+		}
+		if positionalPos == 1 {
+			exclude = build.Strings(expr)
+		}
+		positionalPos++
+	}
+	return include, exclude
+}
+
+func evalGlob(dir string, call *build.CallExpr) ([]string, error) {
+	if i, ok := call.X.(*build.Ident); !ok || i.Name != "glob" {
+		return nil, nil
+	}
+	include, exclude := parseGlob(call)
+	return glob.Glob(dir, include, exclude)
+}
+
+func (r *rule) setOrDeleteAttr(name string, values []string) {
 	if len(values) == 0 {
 		r.DelAttr(name)
 		return
 	}
-	r.SetAttr(name, NewStringList(values))
+	r.SetAttr(name, newStringList(values))
 }
 
-func populateRule(r *build.Rule, targetState *Rule) {
-	r.SetKind(targetState.kind)
-	r.SetAttr("name", NewStringExpr(targetState.name))
-
-	if len(targetState.cgoSrcs) > 0 {
-		SetOrDeleteAttr(r, "srcs", targetState.cgoSrcs)
-		SetOrDeleteAttr(r, "go_srcs", targetState.srcs)
-	} else {
-		SetOrDeleteAttr(r, "srcs", targetState.srcs)
-	}
-
-	SetOrDeleteAttr(r, "deps", targetState.deps)
-	SetOrDeleteAttr(r, "pkg_config", targetState.pkgConfigs)
-	SetOrDeleteAttr(r, "compiler_flags", targetState.compilerFlags)
-	SetOrDeleteAttr(r, "linker_flags", targetState.linkerFlags)
-	SetOrDeleteAttr(r, "hdrs", targetState.hdrs)
-	SetOrDeleteAttr(r, "asm_srcs", targetState.asmFiles)
-
-	if len(targetState.embedPatterns) > 0 {
-		r.SetAttr("resources", &build.CallExpr{
-			X: &build.Ident{Name: "glob"},
-			List: []build.Expr{
-				NewStringList(targetState.embedPatterns),
-			},
-		})
-	} else {
-		r.DelAttr("resources")
-	}
+func (r *rule) isTest() bool {
+	return r.kindType == KindType_Test
 }
 
-func callToRule(rule *build.Rule) *Rule {
-	ret := &Rule{name: rule.Name(), kind: rule.Kind()}
-	cgo := strings.HasPrefix(rule.Kind(), "cgo_")
-	ret.test = strings.HasSuffix(rule.Kind(), "_test")
+func (r *rule) addSrc(src string) {
+	srcs := r.AttrStrings("srcs")
+	r.setOrDeleteAttr("srcs", append(srcs, src))
+}
 
-	if cgo {
-		ret.srcs = rule.AttrStrings("go_srcs")
-		ret.cgoSrcs = rule.AttrStrings("srcs")
-	} else {
-		ret.srcs = rule.AttrStrings("srcs")
+func (r *rule) setExternal() {
+	r.SetAttr("external", &build.Ident{Name: "True"})
+}
+
+func newRule(r *build.Rule, kindType KindType, pkgDir string) *rule {
+	return &rule{
+		dir:      pkgDir,
+		kindType: kindType,
+		Rule:     r,
 	}
-
-	ret.deps = rule.AttrStrings("deps")
-	ret.deps = rule.AttrStrings("pkg_config")
-	ret.deps = rule.AttrStrings("compiler_flags")
-	ret.deps = rule.AttrStrings("linker_flags")
-	ret.deps = rule.AttrStrings("hdrs")
-	ret.deps = rule.AttrStrings("asm_srcs")
-	return ret
 }

@@ -1,18 +1,16 @@
 go_library(
     name = "generate",
-    srcs = [
-        "build_file.go",
-        "deps.go",
-        "generate.go",
-        "import.go",
-        "rule.go",
-    ],
+    srcs = glob(
+        ["*.go"],
+        exclude = ["*_test.go"],
+    ),
     visibility = ["//:all"],
     deps = [
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "///third_party/go/github.com_bazelbuild_buildtools//edit",
         "///third_party/go/github.com_peterebden_go-cli-init_v5//logging",
         "//config",
+        "//glob",
         "//knownimports",
         "//proxy",
     ],
@@ -20,11 +18,7 @@ go_library(
 
 go_test(
     name = "generate_test",
-    srcs = [
-        "build_file_test.go",
-        "deps_test.go",
-        "generate_test.go",
-    ],
+    srcs = glob(include = ["*_test.go"]),
     data = ["test_data"],
     deps = [
         ":generate",

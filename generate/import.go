@@ -33,7 +33,7 @@ func ImportDir(dir string) (map[string]*GoFile, error) {
 			continue
 		}
 
-		f, err := ImportFile(dir, info.Name())
+		f, err := importFile(dir, info.Name())
 		if err != nil {
 			return nil, err
 		}
@@ -44,7 +44,7 @@ func ImportDir(dir string) (map[string]*GoFile, error) {
 	return ret, nil
 }
 
-func ImportFile(dir, src string) (*GoFile, error) {
+func importFile(dir, src string) (*GoFile, error) {
 	f, err := parser.ParseFile(token.NewFileSet(), filepath.Join(dir, src), nil, parser.ImportsOnly)
 	if err != nil {
 		return nil, err
@@ -62,15 +62,6 @@ func ImportFile(dir, src string) (*GoFile, error) {
 	}, nil
 }
 
-func (f *GoFile) IsCgo() bool {
-	for _, i := range f.Imports {
-		if i == "C" {
-			return true
-		}
-	}
-	return false
-}
-
 // IsExternal returns whether the test is external
 func (f *GoFile) IsExternal(pkgName string) bool {
 	return f.Name == filepath.Base(pkgName)+"_test" && f.IsTest()
@@ -82,4 +73,14 @@ func (f *GoFile) IsTest() bool {
 
 func (f *GoFile) IsCmd() bool {
 	return f.Name == "main"
+}
+
+func (f *GoFile) kindType() KindType {
+	if f.IsTest() {
+		return KindType_Test
+	}
+	if f.IsCmd() {
+		return KindType_Bin
+	}
+	return KindType_Lib
 }
