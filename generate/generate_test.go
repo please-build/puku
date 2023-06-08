@@ -1,6 +1,7 @@
 package generate
 
 import (
+	"github.com/please-build/puku/trie"
 	"github.com/stretchr/testify/require"
 	"testing"
 
@@ -65,6 +66,8 @@ func TestUpdateDeps(t *testing.T) {
 		modules:       []string{"github.com/example/module"},
 		importPath:    "github.com/this/module",
 		thirdPartyDir: "third_party/go",
+		installs:      trie.New(),
+		knownImports:  map[string]string{},
 	}
 
 	files := map[string]*GoFile{
