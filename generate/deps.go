@@ -2,11 +2,69 @@ package generate
 
 import (
 	"fmt"
-	"github.com/bazelbuild/buildtools/build"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/bazelbuild/buildtools/build"
+
+	"github.com/please-build/puku/knownimports"
 )
+
+func (u *Update) resolveImport(i string) (string, error) {
+	if t, ok := u.knownImports[i]; ok {
+		return t, nil
+	}
+
+	t, err := u.reallyResolveImport(i)
+	if err == nil {
+		u.knownImports[i] = t
+	}
+	return t, err
+}
+
+func (u *Update) reallyResolveImport(i string) (string, error) {
+	if knownimports.IsInGoRoot(i) {
+		return "", nil
+	}
+
+	if t := u.installs.Get(i); t != "" {
+		return t, nil
+	}
+
+	// Check to see if the target exists in the current repo
+	if strings.HasPrefix(i, u.importPath) || u.importPath == "" {
+		t, err := u.localDep(i)
+		if err != nil {
+			return "", err
+		}
+
+		if t != "" {
+			return t, nil
+		}
+	}
+
+	t := depTarget(u.modules, i, u.thirdPartyDir)
+	if t != "" {
+		return t, nil
+	}
+
+	// Otherwise try and resolve it to a new dep via the module proxy. We assume the module will contain the package.
+	// Please will error out in a reasonable way if it doesn't.
+	// TODO it would be more correct to download the module and check it actually contains the package
+	mod, err := u.proxy.ResolveModuleForPackage(i)
+	if err != nil {
+		return "", err
+	}
+	u.newModules = append(u.newModules, mod)
+	u.modules = append(u.modules, mod.Module)
+
+	t = depTarget(u.modules, i, u.thirdPartyDir)
+	if t != "" {
+		return t, nil
+	}
+	return "", fmt.Errorf("module not found")
+}
 
 func (u *Update) isInScope(path string) bool {
 	for _, p := range u.paths {
@@ -32,7 +90,7 @@ func (u *Update) localDep(importPath string) (string, error) {
 
 	var libTargets []*build.Rule
 	for kind, kindType := range u.kinds {
-		if kindType == KindType_Lib {
+		if kindType == KindTypeLib {
 			libTargets = append(libTargets, file.Rules(kind)...)
 		}
 	}
@@ -104,4 +162,8 @@ func buildTarget(name, pkg, subrepo string) string {
 		return fmt.Sprintf("//%v", target)
 	}
 	return fmt.Sprintf("///%v//%v", subrepo, target)
+}
+
+func localTarget(name string) string {
+	return ":" + name
 }
