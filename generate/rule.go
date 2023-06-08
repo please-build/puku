@@ -84,7 +84,7 @@ func (r *rule) setOrDeleteAttr(name string, values []string) {
 }
 
 func (r *rule) isTest() bool {
-	return r.kindType == KindType_Test
+	return r.kindType == KindTypeTest
 }
 
 func (r *rule) addSrc(src string) {
@@ -94,6 +94,14 @@ func (r *rule) addSrc(src string) {
 
 func (r *rule) setExternal() {
 	r.SetAttr("external", &build.Ident{Name: "True"})
+}
+
+func (r *rule) localLabel() string {
+	return ":" + r.Name()
+}
+
+func (r *rule) label() string {
+	return buildTarget(r.Name(), r.dir, "")
 }
 
 func newRule(r *build.Rule, kindType KindType, pkgDir string) *rule {

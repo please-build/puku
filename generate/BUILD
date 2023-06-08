@@ -13,6 +13,7 @@ go_library(
         "//glob",
         "//knownimports",
         "//proxy",
+        "//trie",
     ],
 )
 
@@ -22,7 +23,7 @@ go_test(
     data = ["test_data"],
     deps = [
         ":generate",
-        "///third_party/go/github.com_stretchr_testify//assert",
-        "///third_party/go/github.com_stretchr_testify//require",
+        "///third_party/go/github.com_bazelbuild_buildtools//build",
+        "//third_party/go:testify",
     ],
 )

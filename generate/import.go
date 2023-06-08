@@ -77,10 +77,10 @@ func (f *GoFile) IsCmd() bool {
 
 func (f *GoFile) kindType() KindType {
 	if f.IsTest() {
-		return KindType_Test
+		return KindTypeTest
 	}
 	if f.IsCmd() {
-		return KindType_Bin
+		return KindTypeBin
 	}
-	return KindType_Lib
+	return KindTypeLib
 }

@@ -136,6 +136,8 @@ go_repo(
 )
 
 go_repo(
+    name = "testify",
+    install = ["..."],
     module = "github.com/stretchr/testify",
     version = "v1.8.4",
 )

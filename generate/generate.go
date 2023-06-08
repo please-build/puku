@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/please-build/puku/config"
-	"github.com/please-build/puku/knownimports"
 	"github.com/please-build/puku/proxy"
+	"github.com/please-build/puku/trie"
 
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/peterebden/go-cli-init/v5/logging"
@@ -19,28 +19,32 @@ var log = logging.MustGetLogger()
 type KindType int
 
 const (
-	KindType_Lib KindType = iota
-	KindType_Test
-	KindType_Bin
+	KindTypeLib KindType = iota
+	KindTypeTest
+	KindTypeBin
 )
 
 var defaultKinds = map[string]KindType{
-	"go_library": KindType_Lib,
-	"go_binary":  KindType_Bin,
-	"go_test":    KindType_Test,
+	"go_library": KindTypeLib,
+	"go_binary":  KindTypeBin,
+	"go_test":    KindTypeTest,
 }
 
 type Update struct {
 	plzPath, thirdPartyDir string
 	buildFileNames         []string
-	importPath             string
-	modules                []string
-	proxy                  *proxy.Proxy
-	paths                  []string
+	kinds                  map[string]KindType
 
-	kinds map[string]KindType
+	importPath    string
+	newModules    []*proxy.Module
+	modules       []string
+	knownImports  map[string]string
+	installs      *trie.Trie
+	usingGoModule bool
 
-	newModules []*proxy.Module
+	paths []string
+
+	proxy *proxy.Proxy
 }
 
 func NewUpdate(plzPath, thirdPartyDir string) *Update {
@@ -49,6 +53,8 @@ func NewUpdate(plzPath, thirdPartyDir string) *Update {
 		thirdPartyDir: thirdPartyDir,
 		proxy:         proxy.New("https://proxy.golang.org"),
 		kinds:         defaultKinds,
+		installs:      trie.New(),
+		knownImports:  map[string]string{},
 	}
 }
 
@@ -76,13 +82,37 @@ func (u *Update) Update(paths []string) error {
 
 // getModules returns the defined third party modules in this project
 func (u *Update) readModules() error {
+	// TODO we probably want to support multiple third party dirs mostly just for our setup in core3
 	f, err := parseBuildFile(u.thirdPartyDir, u.buildFileNames)
 	if err != nil {
 		return err
 	}
 
+	addInstalls := func(targetName, modName string, installs []string) {
+		for _, install := range installs {
+			path := filepath.Join(modName, install)
+			target := buildTarget(targetName, u.thirdPartyDir, "")
+			u.installs.Add(path, target)
+		}
+	}
+
 	for _, repoRule := range f.Rules("go_repo") {
-		u.modules = append(u.modules, repoRule.AttrString("module"))
+		module := repoRule.AttrString("module")
+		u.modules = append(u.modules, module)
+
+		installs := repoRule.AttrStrings("install")
+		if len(installs) > 0 {
+			addInstalls(repoRule.Name(), module, installs)
+		}
+	}
+
+	goMods := f.Rules("go_module")
+	u.usingGoModule = len(goMods) > 0
+
+	for _, mod := range goMods {
+		module := mod.AttrString("module")
+		installs := mod.AttrStrings("install")
+		addInstalls(mod.Name(), module, installs)
 	}
 
 	return nil
@@ -210,60 +240,31 @@ func (u *Update) updateDeps(rule *rule, rules []*rule, sources map[string]*GoFil
 	for _, src := range srcs {
 		f := sources[src]
 		for _, i := range f.Imports {
-			if knownimports.IsInGoRoot(i) {
-				continue
-			}
 			if _, ok := done[i]; ok {
 				continue
 			}
 			done[i] = struct{}{}
 
-			// We must check this first before checking if this is an internal import as we might match a submodule
-			t := depTarget(u.modules, i, u.thirdPartyDir)
-			if t != "" {
-				deps = append(deps, t)
-				continue
-			}
-
-			// Check to see if the target exists in the current repo
-			if strings.HasPrefix(i, u.importPath) || u.importPath == "" {
-				t, err := u.localDep(i)
-				if err != nil {
-					return err
-				}
-
-				if t != "" {
-					deps = append(deps, t)
-					continue
-				}
-			}
-
-			// Otherwise try and resolve it to a new dep via the module proxy
-			mod, err := u.proxy.ResolveModuleForPackage(i)
+			dep, err := u.resolveImport(i)
 			if err != nil {
-				log.Warningf("error resolving dep for import %v: %v", i, err.Error())
+				log.Warningf("couldn't resolve %q for %v: %v", i, rule.label(), err)
 				continue
 			}
-			u.newModules = append(u.newModules, mod)
-			u.modules = append(u.modules, mod.Module)
-
-			t = depTarget(u.modules, i, u.thirdPartyDir)
-			if t != "" {
-				deps = append(deps, t)
-				continue
+			if dep != "" {
+				deps = append(deps, dep)
 			}
 		}
 	}
 
 	// Add any libraries for the same package as us
-	if rule.kindType == KindType_Test {
+	if rule.kindType == KindTypeTest {
 		pkgName, err := rulePkg(sources, rule)
 		if err != nil {
 			return err
 		}
 
 		for _, libRule := range rules {
-			if libRule.kindType == KindType_Test {
+			if libRule.kindType == KindTypeTest {
 				continue
 			}
 			libPkgName, err := rulePkg(sources, libRule)
@@ -272,7 +273,7 @@ func (u *Update) updateDeps(rule *rule, rules []*rule, sources map[string]*GoFil
 			}
 
 			if libPkgName == pkgName {
-				deps = append(deps, fmt.Sprintf(":%v", libRule.Name()))
+				deps = append(deps, libRule.localLabel())
 			}
 		}
 	}

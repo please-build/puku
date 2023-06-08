@@ -1,6 +1,7 @@
 package generate
 
 import (
+	"github.com/please-build/puku/trie"
 	"github.com/stretchr/testify/require"
 	"testing"
 
@@ -8,8 +9,8 @@ import (
 )
 
 func TestAllocateSources(t *testing.T) {
-	foo := newRule(newRuleExpr("go_library", "foo"), KindType_Lib, "")
-	fooTest := newRule(newRuleExpr("go_test", "foo_test"), KindType_Test, "")
+	foo := newRule(newRuleExpr("go_library", "foo"), KindTypeLib, "")
+	fooTest := newRule(newRuleExpr("go_test", "foo_test"), KindTypeTest, "")
 
 	foo.addSrc("foo.go")
 	fooTest.addSrc("foo_test.go")
@@ -54,17 +55,19 @@ func TestAllocateSources(t *testing.T) {
 }
 
 func TestUpdateDeps(t *testing.T) {
-	foo := newRule(newRuleExpr("go_library", "foo"), KindType_Lib, "")
+	foo := newRule(newRuleExpr("go_library", "foo"), KindTypeLib, "")
 	foo.addSrc("foo.go")
 	foo.addSrc("bar.go")
 
-	fooTest := newRule(newRuleExpr("go_test", "foo"), KindType_Test, "")
+	fooTest := newRule(newRuleExpr("go_test", "foo"), KindTypeTest, "")
 	fooTest.addSrc("foo_test.go")
 
 	u := &Update{
 		modules:       []string{"github.com/example/module"},
 		importPath:    "github.com/this/module",
 		thirdPartyDir: "third_party/go",
+		installs:      trie.New(),
+		knownImports:  map[string]string{},
 	}
 
 	files := map[string]*GoFile{
