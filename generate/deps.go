@@ -33,7 +33,7 @@ func (u *Update) reallyResolveImport(i string) (string, error) {
 	}
 
 	// Check to see if the target exists in the current repo
-	if strings.HasPrefix(i, u.importPath) || u.importPath == "" {
+	if isInModule(u.importPath, i) || u.importPath == "" {
 		t, err := u.localDep(i)
 		if err != nil {
 			return "", err
@@ -97,7 +97,11 @@ func (u *Update) localDep(importPath string) (string, error) {
 
 	// If we can't find the lib target, and the target package is in scope for us to potentially generate it, check if
 	// we are going to generate it.
-	if len(libTargets) == 0 && u.isInScope(path) {
+	if len(libTargets) == 0 {
+		if !u.isInScope(importPath) {
+			return "", nil
+		}
+
 		files, err := ImportDir(path)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -127,8 +131,7 @@ func depTarget(modules []string, importPath, thirdPartyFolder string) string {
 	}
 
 	subrepoName := subrepoName(module, thirdPartyFolder)
-	packageName := strings.TrimPrefix(importPath, module)
-	packageName = strings.TrimPrefix(packageName, "/")
+	packageName := strings.TrimPrefix(strings.TrimPrefix(importPath, module), "/")
 	name := filepath.Base(packageName)
 	if packageName == "" {
 		name = filepath.Base(module)
@@ -137,13 +140,29 @@ func depTarget(modules []string, importPath, thirdPartyFolder string) string {
 	return buildTarget(name, packageName, subrepoName)
 }
 
+// isInModule checks to see if the given import path is in the provided module. This check is based entirely off the
+// paths, so doesn't actually check if the package exists.
+func isInModule(module, path string) bool {
+	pathParts := strings.Split(path, "/")
+	moduleParts := strings.Split(module, "/")
+	if len(moduleParts) > len(pathParts) {
+		return false
+	}
+
+	for i := range moduleParts {
+		if pathParts[i] != moduleParts[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func moduleForPackage(modules []string, importPath string) string {
 	module := ""
 	for _, mod := range modules {
-		if strings.HasPrefix(importPath, mod) {
-			if len(module) < len(mod) {
-				module = mod
-			}
+		ok := isInModule(mod, importPath)
+		if ok && len(mod) > len(module) {
+			module = mod
 		}
 	}
 	return module
