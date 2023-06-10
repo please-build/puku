@@ -25,5 +25,6 @@ go_test(
         ":generate",
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "//third_party/go:testify",
+        "//trie",
     ],
 )

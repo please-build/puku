@@ -35,12 +35,12 @@ type Update struct {
 	buildFileNames         []string
 	kinds                  map[string]KindType
 
-	importPath    string
-	newModules    []*proxy.Module
-	modules       []string
-	knownImports  map[string]string
-	installs      *trie.Trie
-	usingGoModule bool
+	importPath                   string
+	newModules                   []*proxy.Module
+	modules                      []string
+	knownImports                 map[string]string
+	installs                     *trie.Trie
+	usingGoModule, goIsPreloaded bool
 
 	paths []string
 
@@ -72,6 +72,7 @@ func (u *Update) Update(paths []string) error {
 
 	u.importPath = c.ImportPath()
 	u.buildFileNames = c.BuildFileNames()
+	u.goIsPreloaded = c.GoIsPreloaded()
 
 	if err := u.readModules(); err != nil {
 		return fmt.Errorf("failed to read third party rules: %v", err)
@@ -169,6 +170,10 @@ func (u *Update) updateOne(path string) error {
 		return err
 	}
 
+	if !u.goIsPreloaded {
+		ensureSubinclude(file)
+	}
+
 	// Read existing rules from file
 	rules, calls := u.readRulesFromFile(file, path)
 
@@ -194,6 +199,8 @@ func (u *Update) addNewModules() error {
 	if err != nil {
 		return err
 	}
+
+	ensureSubinclude(file)
 
 	var mods []*proxy.Module
 	existingRules := make(map[string]*build.Rule)
