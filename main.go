@@ -11,8 +11,9 @@ import (
 )
 
 var opts = struct {
-	Usage string
-	Args  struct {
+	Usage    string
+	LintOnly bool `long:"nowrite" description:"Prints corrections to stdout instead of formatting the files"`
+	Args     struct {
 		Paths []string `positional-arg-name:"packages" description:"The packages to process"`
 	} `positional-args:"true"`
 }{
@@ -34,7 +35,7 @@ func main() {
 	}
 
 	flags.ParseFlagsOrDie("puku", &opts, nil)
-	g := generate.NewUpdate("plz", "third_party/go")
+	g := generate.NewUpdate("plz", "third_party/go", !opts.LintOnly)
 	if err := g.Update(opts.Args.Paths); err != nil {
 		log.Fatalf("%v", err)
 	}

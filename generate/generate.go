@@ -34,26 +34,28 @@ type Update struct {
 	plzPath, thirdPartyDir string
 	buildFileNames         []string
 	kinds                  map[string]KindType
+	importPath             string
+	usingGoModule          bool
+	write                  bool
 
-	importPath    string
-	newModules    []*proxy.Module
-	modules       []string
-	knownImports  map[string]string
-	installs      *trie.Trie
-	usingGoModule bool
+	newModules   []*proxy.Module
+	modules      []string
+	knownImports map[string]string
+	installs     *trie.Trie
 
 	paths []string
 
 	proxy *proxy.Proxy
 }
 
-func NewUpdate(plzPath, thirdPartyDir string) *Update {
+func NewUpdate(plzPath, thirdPartyDir string, write bool) *Update {
 	return &Update{
 		plzPath:       plzPath,
 		thirdPartyDir: thirdPartyDir,
 		proxy:         proxy.New("https://proxy.golang.org"),
 		kinds:         defaultKinds,
 		installs:      trie.New(),
+		write:         write,
 		knownImports:  map[string]string{},
 	}
 }
@@ -173,7 +175,7 @@ func (u *Update) updateOne(path string) error {
 	rules, calls := u.readRulesFromFile(file, path)
 
 	// Allocate the sources to the rules, creating new rules as necessary
-	newRules, err := u.allocateSources(path, sources, rules)
+	newRules, srcsWereModded, err := u.allocateSources(path, sources, rules)
 	if err != nil {
 		return err
 	}
@@ -181,12 +183,17 @@ func (u *Update) updateOne(path string) error {
 	rules = append(rules, newRules...)
 
 	// Update the existing call expressions in the build file
-	if err := u.updateFile(file, calls, rules, sources); err != nil {
+	depsWereModded, err := u.updateDeps(file, calls, rules, sources)
+	if err != nil {
 		return err
 	}
 
-	// Save the file back
-	return saveAndFormatBuildFile(file)
+	// If we modified anything, we should format the file
+	if srcsWereModded || depsWereModded {
+		// Save the file back
+		return saveAndFormatBuildFile(file, u.write)
+	}
+	return nil
 }
 
 func (u *Update) addNewModules() error {
@@ -194,6 +201,8 @@ func (u *Update) addNewModules() error {
 	if err != nil {
 		return err
 	}
+
+	modified := false
 
 	var mods []*proxy.Module
 	existingRules := make(map[string]*build.Rule)
@@ -224,19 +233,30 @@ func (u *Update) addNewModules() error {
 		rule.SetAttr("module", newStringExpr(mod.Module))
 		rule.SetAttr("version", newStringExpr(mod.Version))
 		file.Stmt = append(file.Stmt, rule.Call)
+		modified = true
 	}
-	return saveAndFormatBuildFile(file)
+	if modified {
+		return saveAndFormatBuildFile(file, u.write)
+	}
+	return nil
 }
 
-// updateDeps updates the dependencies of a build rule based on the imports of its sources
-func (u *Update) updateDeps(rule *rule, rules []*rule, sources map[string]*GoFile) error {
+// updateRuleDeps updates the dependencies of a build rule based on the imports of its sources
+func (u *Update) updateRuleDeps(rule *rule, rules []*rule, sources map[string]*GoFile) (bool, error) {
 	done := map[string]struct{}{}
 	srcs, err := rule.allSources()
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	var deps []string
+	depsBefore := rule.AttrStrings("deps")
+	deps := make(map[string]struct{}, len(depsBefore))
+
+	for _, dep := range depsBefore {
+		deps[dep] = struct{}{}
+	}
+
+	modified := false
 	for _, src := range srcs {
 		f := sources[src]
 		for _, i := range f.Imports {
@@ -250,8 +270,12 @@ func (u *Update) updateDeps(rule *rule, rules []*rule, sources map[string]*GoFil
 				log.Warningf("couldn't resolve %q for %v: %v", i, rule.label(), err)
 				continue
 			}
-			if dep != "" {
-				deps = append(deps, dep)
+			if dep == "" {
+				continue
+			}
+			if _, ok := deps[dep]; !ok {
+				modified = true
+				deps[dep] = struct{}{}
 			}
 		}
 	}
@@ -260,7 +284,7 @@ func (u *Update) updateDeps(rule *rule, rules []*rule, sources map[string]*GoFil
 	if rule.kindType == KindTypeTest {
 		pkgName, err := rulePkg(sources, rule)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		for _, libRule := range rules {
@@ -269,18 +293,29 @@ func (u *Update) updateDeps(rule *rule, rules []*rule, sources map[string]*GoFil
 			}
 			libPkgName, err := rulePkg(sources, libRule)
 			if err != nil {
-				return err
+				return false, err
 			}
 
-			if libPkgName == pkgName {
-				deps = append(deps, libRule.localLabel())
+			if libPkgName != pkgName {
+				continue
+			}
+
+			t := libRule.localLabel()
+			if _, ok := deps[t]; !ok {
+				modified = true
+				deps[t] = struct{}{}
 			}
 		}
 	}
 
-	rule.setOrDeleteAttr("deps", deps)
+	depSlice := make([]string, 0, len(deps))
+	for dep := range deps {
+		depSlice = append(depSlice, dep)
+	}
 
-	return nil
+	rule.setOrDeleteAttr("deps", depSlice)
+
+	return modified, nil
 }
 
 // readRulesFromFile reads the existing build rules from the BUILD file
@@ -301,25 +336,28 @@ func (u *Update) readRulesFromFile(file *build.File, pkgDir string) ([]*rule, ma
 	return rules, calls
 }
 
-// updateFile updates the existing rules and creates any new rules in the BUILD file
-func (u *Update) updateFile(file *build.File, ruleExprs map[string]*build.Rule, rules []*rule, sources map[string]*GoFile) error {
+// updateDeps updates the existing rules and creates any new rules in the BUILD file
+func (u *Update) updateDeps(file *build.File, ruleExprs map[string]*build.Rule, rules []*rule, sources map[string]*GoFile) (bool, error) {
+	modified := false
 	for _, rule := range rules {
 		if _, ok := ruleExprs[rule.Name()]; !ok {
 			file.Stmt = append(file.Stmt, rule.Call)
 		}
-		if err := u.updateDeps(rule, rules, sources); err != nil {
-			return err
+		modded, err := u.updateRuleDeps(rule, rules, sources)
+		if err != nil {
+			return false, err
 		}
+		modified = modded || modified
 	}
-	return nil
+	return modified, nil
 }
 
 // allocateSources allocates sources to rules. If there's no existing rule, a new rule will be created and returned
 // from this function
-func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rules []*rule) ([]*rule, error) {
+func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rules []*rule) ([]*rule, bool, error) {
 	unallocated, err := unallocatedSources(sources, rules)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	var newRules []*rule
@@ -333,7 +371,7 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 
 			rulePkgName, err := rulePkg(sources, r)
 			if err != nil {
-				return nil, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.Name(), err)
+				return nil, false, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.Name(), err)
 			}
 
 			// Find a rule that's for thhe same package and of the same kind (i.e. bin, lib, test)
@@ -363,9 +401,8 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 		}
 
 		rule.addSrc(src)
-
 	}
-	return newRules, nil
+	return newRules, len(unallocated) > 0, nil
 }
 
 // rulePkg checks the first source it finds for a rule and returns the name from the "package name" directive at the top

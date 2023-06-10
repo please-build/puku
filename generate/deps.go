@@ -114,8 +114,7 @@ func (u *Update) localDep(importPath string) (string, error) {
 		}
 		return "", nil
 	}
-
-	return "//" + path + ":" + libTargets[0].Name(), nil
+	return buildTarget(libTargets[0].Name(), path, ""), nil
 }
 
 func depTarget(modules []string, importPath, thirdPartyFolder string) string {
@@ -154,14 +153,26 @@ func subrepoName(module, thirdPartyFolder string) string {
 }
 
 func buildTarget(name, pkg, subrepo string) string {
-	if name == "" {
-		name = filepath.Base(pkg)
+	bs := new(strings.Builder)
+	if subrepo != "" {
+		bs.WriteString("///")
+		bs.WriteString(subrepo)
 	}
-	target := fmt.Sprintf("%v:%v", pkg, name)
-	if subrepo == "" {
-		return fmt.Sprintf("//%v", target)
+	if pkg != "" || subrepo != "" {
+		bs.WriteString("//")
 	}
-	return fmt.Sprintf("///%v//%v", subrepo, target)
+
+	if pkg != "" {
+		bs.WriteString(pkg)
+		if filepath.Base(pkg) != name {
+			bs.WriteString(":")
+			bs.WriteString(name)
+		}
+	} else {
+		bs.WriteString(":")
+		bs.WriteString(name)
+	}
+	return bs.String()
 }
 
 func localTarget(name string) string {

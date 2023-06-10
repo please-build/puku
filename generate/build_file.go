@@ -8,18 +8,21 @@ import (
 	"path/filepath"
 )
 
-func saveAndFormatBuildFile(buildFile *build.File) error {
+func saveAndFormatBuildFile(buildFile *build.File, write bool) error {
 	if len(buildFile.Stmt) == 0 {
 		return nil
 	}
 
-	f, err := os.Create(buildFile.Path)
-	if err != nil {
+	if write {
+		f, err := os.Create(buildFile.Path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		_, err = f.Write(build.Format(buildFile))
 		return err
 	}
-	defer f.Close()
-
-	_, err = f.Write(build.Format(buildFile))
+	_, err := os.Stdout.Write(build.Format(buildFile))
 	return err
 }
 
