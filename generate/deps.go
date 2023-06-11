@@ -42,6 +42,8 @@ func (u *Update) reallyResolveImport(i string) (string, error) {
 		if t != "" {
 			return t, nil
 		}
+		// The above isInModule check only checks the import path. Modules can have import paths that contain the
+		// current module, so we should carry on here in case we can resolve this to a third party module
 	}
 
 	t := depTarget(u.modules, i, u.thirdPartyDir)
@@ -56,6 +58,13 @@ func (u *Update) reallyResolveImport(i string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	// If the package belongs to this module, we should have found this package when resolving local imports above. We
+	// don't want to resolve this like a third party module, so we should return an error here.
+	if mod.Module == u.importPath {
+		return "", fmt.Errorf("can't find import %q", i)
+	}
+
 	u.newModules = append(u.newModules, mod)
 	u.modules = append(u.modules, mod.Module)
 
@@ -63,6 +72,7 @@ func (u *Update) reallyResolveImport(i string) (string, error) {
 	if t != "" {
 		return t, nil
 	}
+
 	return "", fmt.Errorf("module not found")
 }
 
