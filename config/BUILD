@@ -1,8 +1,6 @@
 go_library(
     name = "config",
-    srcs = ["query_config.go"],
-    visibility = [
-        "//:all",
-        "//generate:all",
-    ],
+    srcs = ["config.go"],
+    deps = ["//kinds"],
+    visibility=["//generate:all"]
 )

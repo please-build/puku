@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/please-build/puku/kinds"
 )
 
 // GoFile represents a single Go file in a package
@@ -75,12 +77,12 @@ func (f *GoFile) IsCmd() bool {
 	return f.Name == "main"
 }
 
-func (f *GoFile) kindType() KindType {
+func (f *GoFile) kindType() kinds.Type {
 	if f.IsTest() {
-		return KindTypeTest
+		return kinds.Test
 	}
 	if f.IsCmd() {
-		return KindTypeBin
+		return kinds.Bin
 	}
-	return KindTypeLib
+	return kinds.Lib
 }

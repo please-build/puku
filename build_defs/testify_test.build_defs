@@ -1,0 +1,9 @@
+subinclude("///go//build_defs:go")
+
+def testify_test(name: str, srcs:list, deps:list=None, data:list=None):
+    return go_test(
+        name = name,
+        srcs = srcs,
+        deps = deps + ["//third_party/go:testify"],
+        data = data,
+    )

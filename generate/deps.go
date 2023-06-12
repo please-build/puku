@@ -2,6 +2,8 @@ package generate
 
 import (
 	"fmt"
+	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/kinds"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,19 +13,24 @@ import (
 	"github.com/please-build/puku/knownimports"
 )
 
-func (u *Update) resolveImport(i string) (string, error) {
+// resolveImport resolves an import path to a build target. It will return an empty string if the import is for a pkg in
+// the go sdk. Otherwise, it will return the build target for that dependency, or an error if it can't be resolved. If
+// the target can be resolved to a module that isn't currently added to this project, it will return the build target,
+// and record the new module in `u.newModules`. These should later be written to the build graph.
+func (u *Update) resolveImport(conf *config.Config, i string) (string, error) {
 	if t, ok := u.knownImports[i]; ok {
 		return t, nil
 	}
 
-	t, err := u.reallyResolveImport(i)
+	t, err := u.reallyResolveImport(conf, i)
 	if err == nil {
 		u.knownImports[i] = t
 	}
 	return t, err
 }
 
-func (u *Update) reallyResolveImport(i string) (string, error) {
+// reallyResolveImport actually does the resolution of an import path to a build target.
+func (u *Update) reallyResolveImport(conf *config.Config, i string) (string, error) {
 	if knownimports.IsInGoRoot(i) {
 		return "", nil
 	}
@@ -32,9 +39,11 @@ func (u *Update) reallyResolveImport(i string) (string, error) {
 		return t, nil
 	}
 
+	thirdPartyDir := conf.GetThirdPartyDir()
+
 	// Check to see if the target exists in the current repo
 	if strings.HasPrefix(i, u.importPath) || u.importPath == "" {
-		t, err := u.localDep(i)
+		t, err := u.localDep(conf, i)
 		if err != nil {
 			return "", err
 		}
@@ -44,9 +53,14 @@ func (u *Update) reallyResolveImport(i string) (string, error) {
 		}
 	}
 
-	t := depTarget(u.modules, i, u.thirdPartyDir)
+	t := depTarget(u.modules, i, thirdPartyDir)
 	if t != "" {
 		return t, nil
+	}
+
+	// If we're using go_module, we can't automatically add new modules to the graph so we should give up here.
+	if u.usingGoModule {
+		return "", fmt.Errorf("module not found")
 	}
 
 	// Otherwise try and resolve it to a new dep via the module proxy. We assume the module will contain the package.
@@ -59,13 +73,16 @@ func (u *Update) reallyResolveImport(i string) (string, error) {
 	u.newModules = append(u.newModules, mod)
 	u.modules = append(u.modules, mod.Module)
 
-	t = depTarget(u.modules, i, u.thirdPartyDir)
+	// TODO we can probably shortcut this and assume the target is in the above module
+	t = depTarget(u.modules, i, thirdPartyDir)
 	if t != "" {
 		return t, nil
 	}
 	return "", fmt.Errorf("module not found")
 }
 
+// isInScope returns true when the given path is in scope of the current run i.e. if we are going to format the BUILD
+// file there.
 func (u *Update) isInScope(path string) bool {
 	for _, p := range u.paths {
 		if p == path {
@@ -81,7 +98,9 @@ func (u *Update) isInScope(path string) bool {
 	return false
 }
 
-func (u *Update) localDep(importPath string) (string, error) {
+// localDep finds a dependency local to this repository, checking the BUILD file for a go_library target. Returns an
+// empty string when no target is found.
+func (u *Update) localDep(conf *config.Config, importPath string) (string, error) {
 	path := strings.Trim(strings.TrimPrefix(importPath, u.importPath), "/")
 	file, err := parseBuildFile(path, u.buildFileNames)
 	if err != nil {
@@ -89,9 +108,10 @@ func (u *Update) localDep(importPath string) (string, error) {
 	}
 
 	var libTargets []*build.Rule
-	for kind, kindType := range u.kinds {
-		if kindType == KindTypeLib {
-			libTargets = append(libTargets, file.Rules(kind)...)
+	for _, rule := range file.Rules("") {
+		kind := conf.GetKind(rule.Kind())
+		if kind.Type == kinds.Lib {
+			libTargets = append(libTargets, rule)
 		}
 	}
 
@@ -109,13 +129,13 @@ func (u *Update) localDep(importPath string) (string, error) {
 		// If there are any non-test sources, then we will generate a go_library here later on. Return that target name.
 		for _, f := range files {
 			if !f.IsTest() {
-				return fmt.Sprintf("//%v:%v", path, filepath.Base(importPath)), nil
+				return buildTarget(filepath.Base(importPath), path, ""), nil
 			}
 		}
 		return "", nil
 	}
 
-	return "//" + path + ":" + libTargets[0].Name(), nil
+	return buildTarget(libTargets[0].Name(), path, ""), nil
 }
 
 func depTarget(modules []string, importPath, thirdPartyFolder string) string {
@@ -162,8 +182,4 @@ func buildTarget(name, pkg, subrepo string) string {
 		return fmt.Sprintf("//%v", target)
 	}
 	return fmt.Sprintf("///%v//%v", subrepo, target)
-}
-
-func localTarget(name string) string {
-	return ":" + name
 }
