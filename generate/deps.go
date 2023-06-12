@@ -33,7 +33,7 @@ func (u *Update) reallyResolveImport(i string) (string, error) {
 	}
 
 	// Check to see if the target exists in the current repo
-	if strings.HasPrefix(i, u.importPath) || u.importPath == "" {
+	if isInModule(u.importPath, i) || u.importPath == "" {
 		t, err := u.localDep(i)
 		if err != nil {
 			return "", err
@@ -42,6 +42,8 @@ func (u *Update) reallyResolveImport(i string) (string, error) {
 		if t != "" {
 			return t, nil
 		}
+		// The above isInModule check only checks the import path. Modules can have import paths that contain the
+		// current module, so we should carry on here in case we can resolve this to a third party module
 	}
 
 	t := depTarget(u.modules, i, u.thirdPartyDir)
@@ -56,6 +58,13 @@ func (u *Update) reallyResolveImport(i string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	// If the package belongs to this module, we should have found this package when resolving local imports above. We
+	// don't want to resolve this like a third party module, so we should return an error here.
+	if mod.Module == u.importPath {
+		return "", fmt.Errorf("can't find import %q", i)
+	}
+
 	u.newModules = append(u.newModules, mod)
 	u.modules = append(u.modules, mod.Module)
 
@@ -63,6 +72,7 @@ func (u *Update) reallyResolveImport(i string) (string, error) {
 	if t != "" {
 		return t, nil
 	}
+
 	return "", fmt.Errorf("module not found")
 }
 
@@ -97,25 +107,28 @@ func (u *Update) localDep(importPath string) (string, error) {
 
 	// If we can't find the lib target, and the target package is in scope for us to potentially generate it, check if
 	// we are going to generate it.
-	if len(libTargets) == 0 && u.isInScope(path) {
-		files, err := ImportDir(path)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return "", nil
-			}
-			return "", fmt.Errorf("failed to import %v: %v", path, err)
-		}
-
-		// If there are any non-test sources, then we will generate a go_library here later on. Return that target name.
-		for _, f := range files {
-			if !f.IsTest() {
-				return fmt.Sprintf("//%v:%v", path, filepath.Base(importPath)), nil
-			}
-		}
+	if len(libTargets) != 0 {
+		return "//" + path + ":" + libTargets[0].Name(), nil
+	}
+	if !u.isInScope(importPath) {
 		return "", nil
 	}
 
-	return "//" + path + ":" + libTargets[0].Name(), nil
+	files, err := ImportDir(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", fmt.Errorf("failed to import %v: %v", path, err)
+	}
+
+	// If there are any non-test sources, then we will generate a go_library here later on. Return that target name.
+	for _, f := range files {
+		if !f.IsTest() {
+			return fmt.Sprintf("//%v:%v", path, filepath.Base(importPath)), nil
+		}
+	}
+	return "", nil
 }
 
 func depTarget(modules []string, importPath, thirdPartyFolder string) string {
@@ -127,8 +140,7 @@ func depTarget(modules []string, importPath, thirdPartyFolder string) string {
 	}
 
 	subrepoName := subrepoName(module, thirdPartyFolder)
-	packageName := strings.TrimPrefix(importPath, module)
-	packageName = strings.TrimPrefix(packageName, "/")
+	packageName := strings.TrimPrefix(strings.TrimPrefix(importPath, module), "/")
 	name := filepath.Base(packageName)
 	if packageName == "" {
 		name = filepath.Base(module)
@@ -137,13 +149,29 @@ func depTarget(modules []string, importPath, thirdPartyFolder string) string {
 	return buildTarget(name, packageName, subrepoName)
 }
 
+// isInModule checks to see if the given import path is in the provided module. This check is based entirely off the
+// paths, so doesn't actually check if the package exists.
+func isInModule(module, path string) bool {
+	pathParts := strings.Split(path, "/")
+	moduleParts := strings.Split(module, "/")
+	if len(moduleParts) > len(pathParts) {
+		return false
+	}
+
+	for i := range moduleParts {
+		if pathParts[i] != moduleParts[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func moduleForPackage(modules []string, importPath string) string {
 	module := ""
 	for _, mod := range modules {
-		if strings.HasPrefix(importPath, mod) {
-			if len(module) < len(mod) {
-				module = mod
-			}
+		ok := isInModule(mod, importPath)
+		if ok && len(mod) > len(module) {
+			module = mod
 		}
 	}
 	return module
