@@ -110,8 +110,9 @@ func (u *Update) localDep(importPath string) (string, error) {
 	if len(libTargets) != 0 {
 		return "//" + path + ":" + libTargets[0].Name(), nil
 	}
+
 	if !u.isInScope(importPath) {
-		return "", nil
+		return "", fmt.Errorf("resolved %v to a local package, but no library target was found and it's not in scope to generate the target", importPath)
 	}
 
 	files, err := ImportDir(path)
