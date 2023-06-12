@@ -112,7 +112,7 @@ func (u *Update) localDep(importPath string) (string, error) {
 	}
 
 	if !u.isInScope(importPath) {
-		return "", fmt.Errorf("resolved %v to a local directory but directory is not included for puku to generate targets in", importPath)
+		return "", fmt.Errorf("resolved %v to a local package, but no library target was found and it's not in scope to generate the target", importPath)
 	}
 
 	files, err := ImportDir(path)
