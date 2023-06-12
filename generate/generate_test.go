@@ -116,8 +116,8 @@ func TestUpdateDeps(t *testing.T) {
 	testCases := []struct {
 		name         string
 		srcs         []*GoFile
-		rules        map[string]*ruleKind
-		expectedDeps map[string][]string
+		rule         *ruleKind
+		expectedDeps []string
 		modules      []string
 		installs     map[string]string
 		conf         *config.Config
@@ -133,15 +133,58 @@ func TestUpdateDeps(t *testing.T) {
 				},
 			},
 			modules: []string{"github.com/example/module"},
-			rules: map[string]*ruleKind{
-				"foo": {
-					srcs: []string{"foo.go"},
-					kind: kinds.DefaultKinds["go_library"],
+			rule: &ruleKind{
+				srcs: []string{"foo.go"},
+				kind: kinds.DefaultKinds["go_library"],
+			},
+			expectedDeps: []string{"///third_party/go/github.com_example_module//foo:foo"},
+		},
+		{
+			name: "handles installs",
+			srcs: []*GoFile{
+				{
+					FileName: "foo.go",
+					Imports: []string{
+						"github.com/example/module1/foo",
+						"github.com/example/module2/foo/bar/baz",
+					},
+					Name: "foo",
 				},
 			},
-			expectedDeps: map[string][]string{
-				"foo": {"///third_party/go/github.com_example_module//foo:foo"},
+			modules: []string{},
+			installs: map[string]string{
+				"github.com/example/module1/foo": "//third_party/go:module1",
+				"github.com/example/module2/...": "//third_party/go:module2",
 			},
+			rule: &ruleKind{
+				srcs: []string{"foo.go"},
+				kind: kinds.DefaultKinds["go_library"],
+			},
+
+			expectedDeps: []string{"//third_party/go:module1", "//third_party/go:module2"},
+		},
+		{
+			name: "handles custom kinds",
+			srcs: []*GoFile{
+				{
+					FileName: "foo.go",
+					Imports: []string{
+						"github.com/example/module/foo",
+						"github.com/example/module/bar",
+					},
+					Name: "foo",
+				},
+			},
+			modules: []string{"github.com/example/module"},
+			rule: &ruleKind{
+				srcs: []string{"foo.go"},
+				kind: &kinds.Kind{
+					Name:         "example_library",
+					Type:         kinds.Lib,
+					ProvidedDeps: []string{"///third_party/go/github.com_example_module//foo:foo"},
+				},
+			},
+			expectedDeps: []string{"///third_party/go/github.com_example_module//bar:bar"},
 		},
 	}
 
@@ -164,15 +207,9 @@ func TestUpdateDeps(t *testing.T) {
 				conf = new(config.Config)
 			}
 
-			rules := make([]*rule, 0, len(tc.rules))
-			ruleMap := make(map[string]*rule, len(tc.rules))
-			for name, r := range tc.rules {
-				newRule := newRule(newRuleExpr(r.kind.Name, name), r.kind, "")
-				for _, src := range r.srcs {
-					newRule.addSrc(src)
-				}
-				rules = append(rules, newRule)
-				ruleMap[name] = newRule
+			r := newRule(newRuleExpr(tc.rule.kind.Name, "rule"), tc.rule.kind, "")
+			for _, src := range tc.rule.srcs {
+				r.addSrc(src)
 			}
 
 			files := make(map[string]*GoFile, len(tc.srcs))
@@ -180,15 +217,12 @@ func TestUpdateDeps(t *testing.T) {
 				files[f.FileName] = f
 			}
 
-			for name, deps := range tc.expectedDeps {
-				rule := ruleMap[name]
-				err := u.updateDeps(conf, rule, rules, files)
-				require.NoError(t, err)
-				assert.Equal(t, deps, rule.AttrStrings("deps"))
-			}
+			err := u.updateDeps(conf, r, []*rule{}, files)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedDeps, r.AttrStrings("deps"))
+
 		})
 	}
-
 }
 
 func mustGetSources(t *testing.T, rule *rule) []string {

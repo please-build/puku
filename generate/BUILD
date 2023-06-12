@@ -31,5 +31,6 @@ testify_test(
         "//config",
         "//kinds",
         "//trie",
+        "//trie",
     ],
 )

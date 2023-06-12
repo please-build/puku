@@ -32,10 +32,15 @@ func main() {
 	if err := os.Chdir(root); err != nil {
 		log.Fatalf("failed to set working dir to repo root: %v", err)
 	}
-
 	flags.ParseFlagsOrDie("puku", &opts, nil)
 	g := generate.NewUpdate()
-	if err := g.Update(opts.Args.Paths); err != nil {
+
+	paths := opts.Args.Paths
+	if len(opts.Args.Paths) == 0 {
+		paths = []string{"..."}
+	}
+
+	if err := g.Update(paths); err != nil {
 		log.Fatalf("%v", err)
 	}
 }

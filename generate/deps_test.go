@@ -1,11 +1,12 @@
 package generate
 
 import (
+	"path/filepath"
+	"testing"
+
 	"github.com/please-build/puku/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"path/filepath"
-	"testing"
 )
 
 func TestDepTarget(t *testing.T) {
@@ -20,6 +21,11 @@ func TestDepTarget(t *testing.T) {
 	t.Run("returns root package", func(t *testing.T) {
 		label := depTarget(modules, exampleModule, "third_party/go")
 		assert.Equal(t, "///third_party/go/github.com_example_module//:module", label)
+	})
+
+	t.Run("handles when module is prefixed but not a submodule", func(t *testing.T) {
+		label := depTarget(modules, exampleModule+"-foo", "third_party/go")
+		assert.Equal(t, "", label)
 	})
 }
 
