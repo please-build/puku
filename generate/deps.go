@@ -107,29 +107,28 @@ func (u *Update) localDep(importPath string) (string, error) {
 
 	// If we can't find the lib target, and the target package is in scope for us to potentially generate it, check if
 	// we are going to generate it.
-	if len(libTargets) == 0 {
-		if !u.isInScope(importPath) {
-			return "", nil
-		}
-
-		files, err := ImportDir(path)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return "", nil
-			}
-			return "", fmt.Errorf("failed to import %v: %v", path, err)
-		}
-
-		// If there are any non-test sources, then we will generate a go_library here later on. Return that target name.
-		for _, f := range files {
-			if !f.IsTest() {
-				return fmt.Sprintf("//%v:%v", path, filepath.Base(importPath)), nil
-			}
-		}
+	if len(libTargets) != 0 {
+		return "//" + path + ":" + libTargets[0].Name(), nil
+	}
+	if !u.isInScope(importPath) {
 		return "", nil
 	}
 
-	return "//" + path + ":" + libTargets[0].Name(), nil
+	files, err := ImportDir(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", fmt.Errorf("failed to import %v: %v", path, err)
+	}
+
+	// If there are any non-test sources, then we will generate a go_library here later on. Return that target name.
+	for _, f := range files {
+		if !f.IsTest() {
+			return fmt.Sprintf("//%v:%v", path, filepath.Base(importPath)), nil
+		}
+	}
+	return "", nil
 }
 
 func depTarget(modules []string, importPath, thirdPartyFolder string) string {
