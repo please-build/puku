@@ -21,7 +21,7 @@ func TestDepTarget(t *testing.T) {
 		assert.Equal(t, "///third_party/go/github.com_example_module//:module", label)
 	})
 
-	t.Run("handles", func(t *testing.T) {
+	t.Run("handles when module is prefixed but not a submodule", func(t *testing.T) {
 		label := depTarget(modules, exampleModule+"-foo", "third_party/go")
 		assert.Equal(t, "", label)
 	})
