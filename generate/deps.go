@@ -42,7 +42,7 @@ func (u *Update) reallyResolveImport(conf *config.Config, i string) (string, err
 	thirdPartyDir := conf.GetThirdPartyDir()
 
 	// Check to see if the target exists in the current repo
-	if isInModule(u.importPath, i) || u.importPath == "" {
+	if isInModule(u.conf.ImportPath(), i) || u.conf.ImportPath() == "" {
 		t, err := u.localDep(conf, i)
 		if err != nil {
 			return "", err
@@ -75,7 +75,7 @@ func (u *Update) reallyResolveImport(conf *config.Config, i string) (string, err
 
 	// If the package belongs to this module, we should have found this package when resolving local imports above. We
 	// don't want to resolve this like a third party module, so we should return an error here.
-	if mod.Module == u.importPath {
+	if mod.Module == u.conf.ImportPath() {
 		return "", fmt.Errorf("can't find import %q", i)
 	}
 
@@ -98,12 +98,6 @@ func (u *Update) isInScope(path string) bool {
 		if p == path {
 			return true
 		}
-		if strings.HasSuffix(p, "...") {
-			p = filepath.Clean(strings.TrimSuffix(p, "..."))
-			if strings.HasPrefix(path, p) || p == "." {
-				return true
-			}
-		}
 	}
 	return false
 }
@@ -111,8 +105,8 @@ func (u *Update) isInScope(path string) bool {
 // localDep finds a dependency local to this repository, checking the BUILD file for a go_library target. Returns an
 // empty string when no target is found.
 func (u *Update) localDep(conf *config.Config, importPath string) (string, error) {
-	path := strings.Trim(strings.TrimPrefix(importPath, u.importPath), "/")
-	file, err := parseBuildFile(path, u.buildFileNames)
+	path := strings.Trim(strings.TrimPrefix(importPath, u.conf.ImportPath()), "/")
+	file, err := parseBuildFile(path, u.conf.BuildFileNames())
 	if err != nil {
 		return "", fmt.Errorf("failed to parse BUILD files in %v: %v", path, err)
 	}

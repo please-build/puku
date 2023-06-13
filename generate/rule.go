@@ -2,6 +2,7 @@ package generate
 
 import (
 	"fmt"
+
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/please-build/puku/glob"
 	"github.com/please-build/puku/kinds"
@@ -91,6 +92,17 @@ func (r *rule) isTest() bool {
 func (r *rule) addSrc(src string) {
 	srcs := r.AttrStrings("srcs")
 	r.setOrDeleteAttr("srcs", append(srcs, src))
+}
+
+func (r *rule) removeSrc(rem string) {
+	srcs := r.AttrStrings("srcs")
+	set := make([]string, 0, len(srcs))
+	for _, src := range srcs {
+		if src != rem {
+			set = append(set, src)
+		}
+	}
+	r.setOrDeleteAttr("srcs", set)
 }
 
 func (r *rule) setExternal() {
