@@ -52,7 +52,7 @@ func importFile(dir, src string) (*GoFile, error) {
 	imports := make([]string, 0, len(f.Imports))
 	for _, i := range f.Imports {
 		path := i.Path.Value
-		path = strings.Trim(path, `"`)
+		path = path[1 : len(path)-1] // remove quotes
 		imports = append(imports, path)
 	}
 	return &GoFile{
