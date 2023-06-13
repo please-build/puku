@@ -14,6 +14,7 @@ go_library(
         "//knownimports",
         "//proxy",
         "//trie",
+        "//workspace",
     ],
 )
 

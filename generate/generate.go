@@ -9,6 +9,7 @@ import (
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/proxy"
 	"github.com/please-build/puku/trie"
+	"github.com/please-build/puku/workspace"
 
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/peterebden/go-cli-init/v5/logging"
@@ -60,7 +61,7 @@ func NewUpdate(plzPath, thirdPartyDir string) *Update {
 
 // Update updates an existing Please project. It may create new BUILD files, however it tries to respect existing build
 // rules, updating them as appropriate.
-func (u *Update) Update(paths []string) error {
+func (u *Update) Update(paths ...string) error {
 	u.paths = paths
 
 	var err error
@@ -136,20 +137,29 @@ func (u *Update) update() error {
 }
 
 func (u *Update) updateAll(path string) error {
-	return filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
-		if d.IsDir() {
-			if d.Name() == "plz-out" {
-				return filepath.SkipDir
-			}
-			if d.Name() == ".git" {
-				return filepath.SkipDir
-			}
-			if err := u.updateOne(path); err != nil {
-				return err
-			}
+	return workspace.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+		if !d.IsDir() {
+			return nil
+		}
+		if err := u.updateOne(path); err != nil {
+			return err
 		}
 		return nil
 	})
+	// return filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+	// 	if !d.IsDir() {
+	// 		return nil
+	// 	}
+	// 	if d.Name() == "plz-out" {
+	// 		return filepath.SkipDir
+	// 	}
+	// 	if d.Name() == ".git" {
+	// 		return filepath.SkipDir
+	// 	}
+	// 	if err := u.updateOne(path); err != nil {
+	// 		return err
+	// 	}
+	// })
 }
 
 func (u *Update) updateOne(path string) error {
@@ -337,7 +347,7 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 			}
 
 			// Find a rule that's for thhe same package and of the same kind (i.e. bin, lib, test)
-			// NB: we return when we find the first one so if there are multiple options, we will pick on essentially at
+			// NB: we return when we find the first one so if there are multiple options, we will pick one essentially at
 			//     random.
 			if rulePkgName == "" || rulePkgName == importedFile.Name {
 				rule = r
@@ -371,19 +381,15 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 // rulePkg checks the first source it finds for a rule and returns the name from the "package name" directive at the top
 // of the file
 func rulePkg(srcs map[string]*GoFile, rule *rule) (string, error) {
-	var src string
-
 	s, err := rule.allSources()
 	if err != nil {
 		return "", err
 	}
-	if len(s) > 0 {
-		src = s[0]
-	} else {
+	if len(s) <= 0 { // there is a rule with no sources yet we can't determine the package
 		return "", nil
 	}
 
-	return srcs[src].Name, nil
+	return srcs[s[0]].Name, nil
 }
 
 // unallocatedSources returns all the sources that don't already belong to a rule
