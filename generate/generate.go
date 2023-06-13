@@ -2,12 +2,13 @@ package generate
 
 import (
 	"fmt"
-	"github.com/please-build/puku/config"
-	"github.com/please-build/puku/kinds"
-	"github.com/please-build/puku/please"
 	"io/fs"
 	"path/filepath"
 	"strings"
+
+	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/kinds"
+	"github.com/please-build/puku/please"
 
 	"github.com/please-build/puku/proxy"
 	"github.com/please-build/puku/trie"
@@ -288,6 +289,10 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 	modified := false
 	for _, src := range srcs {
 		f := sources[src]
+		if f == nil {
+			rule.removeSrc(src) // The src doesn't exist so remove it from the list of srcs
+			continue
+		}
 		for _, i := range f.Imports {
 			if _, ok := done[i]; ok {
 				continue
@@ -397,6 +402,9 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 	var newRules []*rule
 	for _, src := range unallocated {
 		importedFile := sources[src]
+		if importedFile == nil {
+			continue // Something went wrong and we haven't imported the file don't try to allocate it
+		}
 		var rule *rule
 		for _, r := range append(rules, newRules...) {
 			if r.kind.Type != importedFile.kindType() {
