@@ -1,6 +1,7 @@
 package generate
 
 import (
+	"github.com/please-build/puku/please"
 	"testing"
 
 	"github.com/please-build/puku/config"
@@ -43,7 +44,8 @@ func TestAllocateSources(t *testing.T) {
 		},
 	}
 
-	u := new(Update)
+	u := &Update{conf: new(please.Config)}
+
 	newRules, _, err := u.allocateSources("foo", files, rules)
 	if err != nil {
 		panic(err)
@@ -190,9 +192,11 @@ func TestUpdateDeps(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			plzConf := new(please.Config)
+			plzConf.Plugin.Go.ImportPath = []string{"github.com/this/module"}
 			u := &Update{
 				modules:      tc.modules,
-				importPath:   "github.com/this/module",
+				conf:         plzConf,
 				installs:     trie.New(),
 				knownImports: map[string]string{},
 				proxy:        tc.proxy,
