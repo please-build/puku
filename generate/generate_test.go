@@ -45,11 +45,9 @@ func TestAllocateSources(t *testing.T) {
 
 	u := new(Update)
 	newRules, _, err := u.allocateSources("foo", files, rules)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
-	assert.Len(t, newRules, 1)
+	require.Len(t, newRules, 1)
 	assert.Equal(t, "foo_test", newRules[0].Name())
 	assert.ElementsMatch(t, []string{"external_test.go"}, mustGetSources(t, newRules[0]))
 
@@ -97,9 +95,7 @@ func TestAllocateSourcesToCustomKind(t *testing.T) {
 
 	u := new(Update)
 	newRules, _, err := u.allocateSources("foo", files, rules)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	assert.Len(t, newRules, 0)
 
@@ -186,6 +182,20 @@ func TestUpdateDeps(t *testing.T) {
 			},
 			expectedDeps: []string{"///third_party/go/github.com_example_module//bar"},
 		},
+		{
+			name:    "handles missing src",
+			srcs:    []*GoFile{},
+			modules: []string{"github.com/example/module"},
+			rule: &ruleKind{
+				srcs: []string{"foo.go"},
+				kind: &kinds.Kind{
+					Name:         "example_library",
+					Type:         kinds.Lib,
+					ProvidedDeps: []string{"///third_party/go/github.com_example_module//foo"},
+				},
+			},
+			expectedDeps: []string{},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -213,13 +223,16 @@ func TestUpdateDeps(t *testing.T) {
 			}
 
 			files := make(map[string]*GoFile, len(tc.srcs))
+			srcNames := make([]string, 0, len(tc.srcs))
 			for _, f := range tc.srcs {
 				files[f.FileName] = f
+				srcNames = append(srcNames, f.FileName)
 			}
 
 			_, err := u.updateRuleDeps(conf, r, []*rule{}, files)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, tc.expectedDeps, r.AttrStrings("deps"))
+			assert.ElementsMatch(t, srcNames, r.AttrStrings("srcs"))
 
 		})
 	}
