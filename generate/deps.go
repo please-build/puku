@@ -120,6 +120,10 @@ func (u *Update) localDep(conf *config.Config, importPath string) (string, error
 	var libTargets []*build.Rule
 	for _, rule := range file.Rules("") {
 		kind := conf.GetKind(rule.Kind())
+		if kind == nil {
+			continue
+		}
+
 		if kind.Type == kinds.Lib {
 			libTargets = append(libTargets, rule)
 		}
@@ -151,7 +155,6 @@ func (u *Update) localDep(conf *config.Config, importPath string) (string, error
 	}
 	return "", nil
 }
-
 
 func depTarget(modules []string, importPath, thirdPartyFolder string) string {
 	module := moduleForPackage(modules, importPath)
