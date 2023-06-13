@@ -1,15 +1,11 @@
 package watch
 
 import (
-	"io/fs"
-	"path/filepath"
-	"strings"
-
 	"github.com/fsnotify/fsnotify"
 	"github.com/peterebden/go-cli-init/v5/logging"
+	"path/filepath"
 
 	"github.com/please-build/puku/generate"
-	"github.com/please-build/puku/work"
 )
 
 var log = logging.MustGetLogger()
@@ -60,32 +56,12 @@ func Watch(u *generate.Update, paths ...string) error {
 
 func add(watcher *fsnotify.Watcher, paths ...string) error {
 	for _, path := range paths {
-		walkSubdirs := false
-		if strings.HasSuffix(path, "...") {
-			path = strings.TrimSuffix(path, "...")
-			walkSubdirs = true
-		}
 		if path == "" {
 			path = "."
 		}
-		if walkSubdirs {
-			err := work.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
-				if !d.IsDir() {
-					return nil
-				}
-				if err := watcher.Add(path); err != nil {
-					return err
-				}
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		} else {
-			err := watcher.Add(path)
-			if err != nil {
-				return err
-			}
+		err := watcher.Add(path)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
