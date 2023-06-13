@@ -98,12 +98,6 @@ func (u *Update) isInScope(path string) bool {
 		if p == path {
 			return true
 		}
-		if strings.HasSuffix(p, "...") {
-			p = filepath.Clean(strings.TrimSuffix(p, "..."))
-			if strings.HasPrefix(path, p) || p == "." {
-				return true
-			}
-		}
 	}
 	return false
 }

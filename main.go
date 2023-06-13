@@ -4,6 +4,7 @@ import (
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/please"
 	"os"
+	"path/filepath"
 
 	"github.com/peterebden/go-cli-init/v5/flags"
 	"github.com/peterebden/go-cli-init/v5/logging"
@@ -29,9 +30,19 @@ puku is a tool used to generate and update Go targets in build files
 var log = logging.MustGetLogger()
 
 func main() {
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("failed to get wd: %v", err)
+	}
+
 	root, err := work.FindRoot()
 	if err != nil {
 		log.Fatalf("%v", err)
+	}
+
+	wd, err = filepath.Rel(root, wd)
+	if err != nil {
+		log.Fatalf("failed to get wd: %v", err)
 	}
 
 	if err := os.Chdir(root); err != nil {
@@ -56,9 +67,9 @@ func main() {
 
 	u := generate.NewUpdate(!opts.LintOnly, plzConf)
 
-	paths := opts.Args.Paths
+	paths, err := work.ExpandPaths(wd, opts.Args.Paths)
 	if len(opts.Args.Paths) == 0 {
-		paths = []string{"..."}
+		paths, err = work.ExpandPaths(wd, []string{"..."})
 	}
 	if opts.Watch {
 		err := watch.Watch(u, paths...)

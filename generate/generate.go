@@ -9,13 +9,8 @@ import (
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/kinds"
 	"github.com/please-build/puku/please"
-
 	"github.com/please-build/puku/proxy"
 	"github.com/please-build/puku/trie"
-	"github.com/please-build/puku/work"
-
-	"github.com/bazelbuild/buildtools/build"
-	"github.com/peterebden/go-cli-init/v5/logging"
 )
 
 var log = logging.MustGetLogger()
@@ -106,14 +101,6 @@ func (u *Update) readModules(conf *config.Config) error {
 // update loops through the provided paths, updating and creating any build rules it finds.
 func (u *Update) update(conf *config.Config) error {
 	for _, path := range u.paths {
-		if strings.HasSuffix(path, "...") {
-			p := filepath.Clean(strings.TrimSuffix(path, "..."))
-			if err := u.updateAll(p); err != nil {
-				return fmt.Errorf("failed to update %v: %v", path, err)
-			}
-			return nil
-		}
-
 		conf, err := config.ReadConfig(path)
 		if err != nil {
 			return err
@@ -130,29 +117,6 @@ func (u *Update) update(conf *config.Config) error {
 
 	// Save any new modules we needed back to the third party file
 	return u.addNewModules(conf)
-}
-
-func (u *Update) updateAll(path string) error {
-	return work.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
-		if !d.IsDir() {
-			return nil
-		}
-
-		// TODO move all this out into work.ExpandPaths, and have that handle skipping over dirs
-		conf, err := config.ReadConfig(path)
-		if err != nil {
-			return err
-		}
-
-		if conf.Stop {
-			return filepath.SkipDir
-		}
-
-		if err := u.updateOne(conf, path); err != nil {
-			return err
-		}
-		return nil
-	})
 }
 
 func (u *Update) updateOne(conf *config.Config, path string) error {

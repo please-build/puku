@@ -2,25 +2,55 @@ package work
 
 import (
 	"errors"
+	"github.com/please-build/puku/config"
 	"io/fs"
 	"os"
 	"path/filepath"
 )
 
-// WalkDir behaves like filepath.WalkDir but it skips directories we always want to ignore
-func WalkDir(path string, f fs.WalkDirFunc) error {
-	return filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
-		if d.Name() == "plz-out" {
-			return filepath.SkipDir
+func ExpandPaths(origWD string, paths []string) ([]string, error) {
+	ret := make([]string, 0, len(paths))
+	for _, path := range paths {
+		// Join the path with the original working directory. We would have cd'ed to the root of the plz repo by this
+		// point
+		path = filepath.Join(origWD, path)
+
+		if filepath.Base(path) != "..." {
+			ret = append(ret, path)
 		}
-		if d.Name() == ".git" {
-			return filepath.SkipDir
+
+		path = filepath.Dir(path)
+		err := filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if !d.IsDir() {
+				return nil
+			}
+			if d.Name() == "plz-out" {
+				return filepath.SkipDir
+			}
+			if d.Name() == ".git" {
+				return filepath.SkipDir
+			}
+			conf, err := config.ReadConfig(path)
+			if err != nil {
+				return err
+			}
+
+			if conf.GetStop() {
+				return filepath.SkipDir
+			}
+			ret = append(ret, path)
+			return nil
+		})
+
+		if err != nil {
+			return nil, err
 		}
-		if err := f(path, d, err); err != nil {
-			return err
-		}
-		return nil
-	})
+	}
+	return ret, nil
 }
 
 // FindRoot finds the root of the workspace

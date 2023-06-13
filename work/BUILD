@@ -6,4 +6,5 @@ go_library(
         "//generate",
         "//watch",
     ],
+    deps = ["//config"],
 )
