@@ -6,9 +6,9 @@ import (
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/kinds"
 	"github.com/please-build/puku/trie"
-	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAllocateSources(t *testing.T) {
@@ -44,7 +44,7 @@ func TestAllocateSources(t *testing.T) {
 	}
 
 	u := new(Update)
-	newRules, err := u.allocateSources("foo", files, rules)
+	newRules, _, err := u.allocateSources("foo", files, rules)
 	if err != nil {
 		panic(err)
 	}
@@ -96,7 +96,7 @@ func TestAllocateSourcesToCustomKind(t *testing.T) {
 	}
 
 	u := new(Update)
-	newRules, err := u.allocateSources("foo", files, rules)
+	newRules, _, err := u.allocateSources("foo", files, rules)
 	if err != nil {
 		panic(err)
 	}
@@ -137,7 +137,7 @@ func TestUpdateDeps(t *testing.T) {
 				srcs: []string{"foo.go"},
 				kind: kinds.DefaultKinds["go_library"],
 			},
-			expectedDeps: []string{"///third_party/go/github.com_example_module//foo:foo"},
+			expectedDeps: []string{"///third_party/go/github.com_example_module//foo"},
 		},
 		{
 			name: "handles installs",
@@ -181,10 +181,10 @@ func TestUpdateDeps(t *testing.T) {
 				kind: &kinds.Kind{
 					Name:         "example_library",
 					Type:         kinds.Lib,
-					ProvidedDeps: []string{"///third_party/go/github.com_example_module//foo:foo"},
+					ProvidedDeps: []string{"///third_party/go/github.com_example_module//foo"},
 				},
 			},
-			expectedDeps: []string{"///third_party/go/github.com_example_module//bar:bar"},
+			expectedDeps: []string{"///third_party/go/github.com_example_module//bar"},
 		},
 	}
 
@@ -217,7 +217,7 @@ func TestUpdateDeps(t *testing.T) {
 				files[f.FileName] = f
 			}
 
-			err := u.updateDeps(conf, r, []*rule{}, files)
+			_, err := u.updateRuleDeps(conf, r, []*rule{}, files)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedDeps, r.AttrStrings("deps"))
 

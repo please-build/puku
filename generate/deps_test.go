@@ -15,7 +15,7 @@ func TestDepTarget(t *testing.T) {
 
 	t.Run("returns longest match", func(t *testing.T) {
 		label := depTarget(modules, filepath.Join(exampleModule, "foo", "bar"), "third_party/go")
-		assert.Equal(t, "///third_party/go/github.com_example_module_foo//bar:bar", label)
+		assert.Equal(t, "///third_party/go/github.com_example_module_foo//bar", label)
 	})
 
 	t.Run("returns root package", func(t *testing.T) {
@@ -30,9 +30,10 @@ func TestDepTarget(t *testing.T) {
 }
 
 func TestLocalDeps(t *testing.T) {
-	u := &Update{
-		buildFileNames: buildFileNames,
-	}
+	u := new(Update)
+
+	u.buildFileNames = []string{"BUILD_FILE", "BUILD_FILE.plz"}
+
 	trgt, err := u.localDep(new(config.Config), "generate/test_data/foo")
 	require.NoError(t, err)
 	assert.Equal(t, "//generate/test_data/foo:bar", trgt)

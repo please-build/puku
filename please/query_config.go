@@ -3,11 +3,8 @@ package please
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 )
 
 type Config struct {
@@ -57,32 +54,4 @@ func QueryConfig(plzTool string) (*Config, error) {
 		return nil, err
 	}
 	return c, nil
-}
-
-func FindRepoRoot() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	return findRepoRoot(dir)
-}
-
-func findRepoRoot(path string) (string, error) {
-	if path == "." {
-		return "", errors.New("failed to locate please repo root: no .plzconfig found")
-	}
-	info, err := os.ReadDir(path)
-	if err != nil {
-		return "", err
-	}
-
-	for _, i := range info {
-		if i.IsDir() {
-			continue
-		}
-		if i.Name() == ".plzconfig" {
-			return path, nil
-		}
-	}
-	return findRepoRoot(filepath.Dir(path))
 }

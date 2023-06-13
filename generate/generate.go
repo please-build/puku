@@ -11,6 +11,7 @@ import (
 
 	"github.com/please-build/puku/proxy"
 	"github.com/please-build/puku/trie"
+	"github.com/please-build/puku/work"
 
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/peterebden/go-cli-init/v5/logging"
@@ -25,11 +26,14 @@ type Proxy interface {
 
 type Update struct {
 	importPath    string
-	newModules    []*proxy.Module
-	modules       []string
-	knownImports  map[string]string
-	installs      *trie.Trie
 	usingGoModule bool
+	goIsPreloaded bool
+	write         bool
+
+	newModules   []*proxy.Module
+	modules      []string
+	knownImports map[string]string
+	installs     *trie.Trie
 
 	paths []string
 
@@ -37,17 +41,18 @@ type Update struct {
 	buildFileNames []string
 }
 
-func NewUpdate() *Update {
+func NewUpdate(write bool) *Update {
 	return &Update{
 		proxy:        proxy.New("https://proxy.golang.org"),
 		installs:     trie.New(),
+		write:        write,
 		knownImports: map[string]string{},
 	}
 }
 
 // Update updates an existing Please project. It may create new BUILD files, however it tries to respect existing build
 // rules, updating them as appropriate.
-func (u *Update) Update(paths []string) error {
+func (u *Update) Update(paths ...string) error {
 	conf, err := config.ReadConfig(".")
 	if err != nil {
 		return err
@@ -61,6 +66,7 @@ func (u *Update) Update(paths []string) error {
 
 	u.importPath = plzConf.ImportPath()
 	u.buildFileNames = plzConf.BuildFileNames()
+	u.goIsPreloaded = plzConf.GoIsPreloaded()
 
 	if err := u.readModules(conf); err != nil {
 		return fmt.Errorf("failed to read third party rules: %v", err)
@@ -115,7 +121,19 @@ func (u *Update) update(conf *config.Config) error {
 			if err := u.updateAll(p); err != nil {
 				return fmt.Errorf("failed to update %v: %v", path, err)
 			}
-		} else if _, err := u.updateOne(path); err != nil {
+			return nil
+		}
+
+		conf, err := config.ReadConfig(path)
+		if err != nil {
+			return err
+		}
+
+		if conf.Stop {
+			return nil
+		}
+
+		if err := u.updateOne(conf, path); err != nil {
 			return fmt.Errorf("failed to update %v: %v", path, err)
 		}
 	}
@@ -125,68 +143,72 @@ func (u *Update) update(conf *config.Config) error {
 }
 
 func (u *Update) updateAll(path string) error {
-	return filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
-		if d.IsDir() {
-			if d.Name() == "plz-out" {
-				return filepath.SkipDir
-			}
-			if d.Name() == ".git" {
-				return filepath.SkipDir
-			}
-			if cont, err := u.updateOne(path); err != nil {
-				return err
-			} else if !cont {
-				return filepath.SkipDir
-			}
+	return work.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+		if !d.IsDir() {
+			return nil
+		}
+
+		// TODO move all this out into work.ExpandPaths, and have that handle skipping over dirs
+		conf, err := config.ReadConfig(path)
+		if err != nil {
+			return err
+		}
+
+		if conf.Stop {
+			return filepath.SkipDir
+		}
+
+		if err := u.updateOne(conf, path); err != nil {
+			return err
 		}
 		return nil
 	})
 }
 
-func (u *Update) updateOne(path string) (cont bool, err error) {
-	conf, err := config.ReadConfig(path)
-	if err != nil {
-		return false, nil
-	}
-
-	if conf.Stop {
-		return false, nil
-	}
-
+func (u *Update) updateOne(conf *config.Config, path string) error {
 	// Find all the files in the dir
 	sources, err := ImportDir(path)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	if len(sources) == 0 {
-		return true, nil
+		return nil
 	}
 
 	// Parse the build file
 	file, err := parseBuildFile(path, u.buildFileNames)
 	if err != nil {
-		return false, err
+		return err
+	}
+
+	if !u.goIsPreloaded {
+		ensureSubinclude(file)
 	}
 
 	// Read existing rules from file
 	rules, calls := u.readRulesFromFile(conf, file, path)
 
 	// Allocate the sources to the rules, creating new rules as necessary
-	newRules, err := u.allocateSources(path, sources, rules)
+	newRules, srcsWereModded, err := u.allocateSources(path, sources, rules)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	rules = append(rules, newRules...)
 
 	// Update the existing call expressions in the build file
-	if err := u.updateFile(conf, file, calls, rules, sources); err != nil {
-		return false, err
+	depsWereModded, err := u.updateDeps(conf, file, calls, rules, sources)
+	if err != nil {
+		return err
 	}
 
-	// Save the file back
-	return true, saveAndFormatBuildFile(file)
+	// If we modified anything, we should format the file
+	if srcsWereModded || depsWereModded {
+		// Save the file back
+		return saveAndFormatBuildFile(file, u.write)
+	}
+	return nil
 }
 
 func (u *Update) addNewModules(conf *config.Config) error {
@@ -194,6 +216,15 @@ func (u *Update) addNewModules(conf *config.Config) error {
 	if err != nil {
 		return err
 	}
+
+	// This is a workaround for a bug in Please. It seems we queue up the third party build file for subinclude in order
+	// to get at the go_repo rules. This means the go rules aren't preloaded. I don't think this should be the case.
+	//
+	// TODO figure out why Please needs this subinclude and check for u.goIsPreloaded before calling this once that's
+	// 	fixed
+	ensureSubinclude(file)
+
+	modified := false
 
 	var mods []*proxy.Module
 	existingRules := make(map[string]*build.Rule)
@@ -224,26 +255,37 @@ func (u *Update) addNewModules(conf *config.Config) error {
 		rule.SetAttr("module", newStringExpr(mod.Module))
 		rule.SetAttr("version", newStringExpr(mod.Version))
 		file.Stmt = append(file.Stmt, rule.Call)
+		modified = true
 	}
-	return saveAndFormatBuildFile(file)
+	if modified {
+		return saveAndFormatBuildFile(file, u.write)
+	}
+	return nil
 }
 
-// updateDeps updates the dependencies of a build rule based on the imports of its sources
-func (u *Update) updateDeps(conf *config.Config, rule *rule, rules []*rule, sources map[string]*GoFile) error {
+// updateRuleDeps updates the dependencies of a build rule based on the imports of its sources
+func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, sources map[string]*GoFile) (bool, error) {
 	done := map[string]struct{}{}
 
 	// If the rule operates on non-go sources (e.g. .proto sources for proto_library) then we should skip updating
 	// its deps.
 	if rule.kind.NonGoSources {
-		return nil
+		return false, nil
 	}
 
 	srcs, err := rule.allSources()
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	var deps []string
+	depsBefore := rule.AttrStrings("deps")
+	deps := make(map[string]struct{}, len(depsBefore))
+
+	for _, dep := range depsBefore {
+		deps[dep] = struct{}{}
+	}
+
+	modified := false
 	for _, src := range srcs {
 		f := sources[src]
 		for _, i := range f.Imports {
@@ -259,11 +301,15 @@ func (u *Update) updateDeps(conf *config.Config, rule *rule, rules []*rule, sour
 				log.Warningf("couldn't resolve %q for %v: %v", i, rule.label(), err)
 				continue
 			}
-			if dep != "" {
-				if rule.kind.IsProvided(dep) {
-					continue
-				}
-				deps = append(deps, dep)
+			if dep == "" {
+				continue
+			}
+			if rule.kind.IsProvided(dep) {
+				continue
+			}
+			if _, ok := deps[dep]; !ok {
+				modified = true
+				deps[dep] = struct{}{}
 			}
 		}
 	}
@@ -272,7 +318,7 @@ func (u *Update) updateDeps(conf *config.Config, rule *rule, rules []*rule, sour
 	if rule.kind.Type == kinds.Test {
 		pkgName, err := rulePkg(sources, rule)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		for _, libRule := range rules {
@@ -281,18 +327,29 @@ func (u *Update) updateDeps(conf *config.Config, rule *rule, rules []*rule, sour
 			}
 			libPkgName, err := rulePkg(sources, libRule)
 			if err != nil {
-				return err
+				return false, err
 			}
 
-			if libPkgName == pkgName {
-				deps = append(deps, libRule.localLabel())
+			if libPkgName != pkgName {
+				continue
+			}
+
+			t := libRule.localLabel()
+			if _, ok := deps[t]; !ok {
+				modified = true
+				deps[t] = struct{}{}
 			}
 		}
 	}
 
-	rule.setOrDeleteAttr("deps", deps)
+	depSlice := make([]string, 0, len(deps))
+	for dep := range deps {
+		depSlice = append(depSlice, dep)
+	}
 
-	return nil
+	rule.setOrDeleteAttr("deps", depSlice)
+
+	return modified, nil
 }
 
 // readRulesFromFile reads the existing build rules from the BUILD file
@@ -313,25 +370,28 @@ func (u *Update) readRulesFromFile(conf *config.Config, file *build.File, pkgDir
 	return rules, calls
 }
 
-// updateFile updates the existing rules and creates any new rules in the BUILD file
-func (u *Update) updateFile(conf *config.Config, file *build.File, ruleExprs map[string]*build.Rule, rules []*rule, sources map[string]*GoFile) error {
+// updateDeps updates the existing rules and creates any new rules in the BUILD file
+func (u *Update) updateDeps(conf *config.Config, file *build.File, ruleExprs map[string]*build.Rule, rules []*rule, sources map[string]*GoFile) (bool, error) {
+	modified := false
 	for _, rule := range rules {
 		if _, ok := ruleExprs[rule.Name()]; !ok {
 			file.Stmt = append(file.Stmt, rule.Call)
 		}
-		if err := u.updateDeps(conf, rule, rules, sources); err != nil {
-			return err
+		modded, err := u.updateRuleDeps(conf, rule, rules, sources)
+		if err != nil {
+			return false, err
 		}
+		modified = modded || modified
 	}
-	return nil
+	return modified, nil
 }
 
 // allocateSources allocates sources to rules. If there's no existing rule, a new rule will be created and returned
 // from this function
-func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rules []*rule) ([]*rule, error) {
+func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rules []*rule) ([]*rule, bool, error) {
 	unallocated, err := unallocatedSources(sources, rules)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	var newRules []*rule
@@ -345,11 +405,11 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 
 			rulePkgName, err := rulePkg(sources, r)
 			if err != nil {
-				return nil, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.Name(), err)
+				return nil, false, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.Name(), err)
 			}
 
 			// Find a rule that's for thhe same package and of the same kind (i.e. bin, lib, test)
-			// NB: we return when we find the first one so if there are multiple options, we will pick on essentially at
+			// NB: we return when we find the first one so if there are multiple options, we will pick one essentially at
 			//     random.
 			if rulePkgName == "" || rulePkgName == importedFile.Name {
 				rule = r
@@ -375,16 +435,13 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 		}
 
 		rule.addSrc(src)
-
 	}
-	return newRules, nil
+	return newRules, len(unallocated) > 0, nil
 }
 
 // rulePkg checks the first source it finds for a rule and returns the name from the "package name" directive at the top
 // of the file
 func rulePkg(srcs map[string]*GoFile, rule *rule) (string, error) {
-	var src string
-
 	// This is a safe bet if we can't use the source files to figure this out.
 	if rule.kind.NonGoSources {
 		return rule.Name(), nil
@@ -394,13 +451,11 @@ func rulePkg(srcs map[string]*GoFile, rule *rule) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(s) > 0 {
-		src = s[0]
-	} else {
+	if len(s) <= 0 { // there is a rule with no sources yet we can't determine the package
 		return "", nil
 	}
 
-	return srcs[src].Name, nil
+	return srcs[s[0]].Name, nil
 }
 
 // unallocatedSources returns all the sources that don't already belong to a rule
