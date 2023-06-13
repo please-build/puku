@@ -1,9 +1,10 @@
 package watch
 
 import (
+	"path/filepath"
+
 	"github.com/fsnotify/fsnotify"
 	"github.com/peterebden/go-cli-init/v5/logging"
-	"path/filepath"
 
 	"github.com/please-build/puku/generate"
 )

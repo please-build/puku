@@ -57,6 +57,7 @@ func importFile(dir, src string) (*GoFile, error) {
 		path = strings.Trim(path, `"`)
 		imports = append(imports, path)
 	}
+
 	return &GoFile{
 		Name:     f.Name.Name,
 		FileName: src,
