@@ -108,7 +108,7 @@ func (u *Update) localDep(importPath string) (string, error) {
 	// If we can't find the lib target, and the target package is in scope for us to potentially generate it, check if
 	// we are going to generate it.
 	if len(libTargets) != 0 {
-		return "//" + path + ":" + libTargets[0].Name(), nil
+		return buildTarget(libTargets[0].Name(), path, ""), nil
 	}
 
 	if !u.isInScope(importPath) {
@@ -126,7 +126,7 @@ func (u *Update) localDep(importPath string) (string, error) {
 	// If there are any non-test sources, then we will generate a go_library here later on. Return that target name.
 	for _, f := range files {
 		if !f.IsTest() {
-			return fmt.Sprintf("//%v:%v", path, filepath.Base(importPath)), nil
+			return buildTarget(filepath.Base(importPath), path, ""), nil
 		}
 	}
 	return "", nil
@@ -183,14 +183,26 @@ func subrepoName(module, thirdPartyFolder string) string {
 }
 
 func buildTarget(name, pkg, subrepo string) string {
-	if name == "" {
-		name = filepath.Base(pkg)
+	bs := new(strings.Builder)
+	if subrepo != "" {
+		bs.WriteString("///")
+		bs.WriteString(subrepo)
 	}
-	target := fmt.Sprintf("%v:%v", pkg, name)
-	if subrepo == "" {
-		return fmt.Sprintf("//%v", target)
+	if pkg != "" || subrepo != "" {
+		bs.WriteString("//")
 	}
-	return fmt.Sprintf("///%v//%v", subrepo, target)
+
+	if pkg != "" {
+		bs.WriteString(pkg)
+		if filepath.Base(pkg) != name {
+			bs.WriteString(":")
+			bs.WriteString(name)
+		}
+	} else {
+		bs.WriteString(":")
+		bs.WriteString(name)
+	}
+	return bs.String()
 }
 
 func localTarget(name string) string {

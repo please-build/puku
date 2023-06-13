@@ -12,7 +12,8 @@ import (
 )
 
 var opts = struct {
-	Usage string
+	Usage    string
+	LintOnly bool `long:"nowrite" description:"Prints corrections to stdout instead of formatting the files"`
 	Watch bool `long:"watch" description:"Watch the directory"`
 	Args  struct {
 		Paths []string `positional-arg-name:"packages" description:"The packages to process"`
@@ -35,7 +36,12 @@ func main() {
 		log.Fatalf("failed to set working dir to repo root: %v", err)
 	}
 	flags.ParseFlagsOrDie("puku", &opts, nil)
-	u := generate.NewUpdate("plz", "third_party/go")
+
+	if opts.LintOnly && opts.Watch {
+		log.Fatalf("Watch mode doesn't support --nowrite")
+	}
+
+	u := generate.NewUpdate("plz", "third_party/go", !opts.LintOnly)
 
 	paths := opts.Args.Paths
 	if len(opts.Args.Paths) == 0 {

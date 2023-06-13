@@ -14,7 +14,7 @@ func TestDepTarget(t *testing.T) {
 
 	t.Run("returns longest match", func(t *testing.T) {
 		label := depTarget(modules, filepath.Join(exampleModule, "foo", "bar"), "third_party/go")
-		assert.Equal(t, "///third_party/go/github.com_example_module_foo//bar:bar", label)
+		assert.Equal(t, "///third_party/go/github.com_example_module_foo//bar", label)
 	})
 
 	t.Run("returns root package", func(t *testing.T) {

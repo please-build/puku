@@ -42,7 +42,7 @@ func TestAllocateSources(t *testing.T) {
 	}
 
 	u := new(Update)
-	newRules, err := u.allocateSources("foo", files, rules)
+	newRules, _, err := u.allocateSources("foo", files, rules)
 	if err != nil {
 		panic(err)
 	}
@@ -91,15 +91,15 @@ func TestUpdateDeps(t *testing.T) {
 
 	rules := []*rule{foo, fooTest}
 
-	err := u.updateDeps(foo, rules, files)
+	_, err := u.updateRuleDeps(foo, rules, files)
 	require.NoError(t, err)
 
 	deps := foo.AttrStrings("deps")
 	require.Len(t, deps, 2)
-	assert.Contains(t, deps, "///third_party/go/github.com_example_module//pkg:pkg")
+	assert.Contains(t, deps, "///third_party/go/github.com_example_module//pkg")
 	assert.Contains(t, deps, "///third_party/go/github.com_example_module//:module")
 
-	err = u.updateDeps(fooTest, rules, files)
+	_, err = u.updateRuleDeps(fooTest, rules, files)
 	require.NoError(t, err)
 
 	deps = fooTest.AttrStrings("deps")
