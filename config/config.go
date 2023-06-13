@@ -9,6 +9,10 @@ import (
 )
 
 type KindConfig struct {
+	// NonGoSources indicates that this rule operates on non-go sources and we shouldn't attempt to parse them to
+	// generate the deps list. This is the case for rules like proto_library that still output a go package, but we
+	// shouldn't try to update their deps based on their sources.
+	NonGoSources bool     `json:"nonGoSources"`
 	ProvidedDeps []string `json:"providedDeps"`
 }
 

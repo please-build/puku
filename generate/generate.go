@@ -231,6 +231,13 @@ func (u *Update) addNewModules(conf *config.Config) error {
 // updateDeps updates the dependencies of a build rule based on the imports of its sources
 func (u *Update) updateDeps(conf *config.Config, rule *rule, rules []*rule, sources map[string]*GoFile) error {
 	done := map[string]struct{}{}
+
+	// If the rule operates on non-go sources (e.g. .proto sources for proto_library) then we should skip updating
+	// its deps.
+	if rule.kind.NonGoSources {
+		return nil
+	}
+
 	srcs, err := rule.allSources()
 	if err != nil {
 		return err
@@ -377,6 +384,11 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 // of the file
 func rulePkg(srcs map[string]*GoFile, rule *rule) (string, error) {
 	var src string
+
+	// This is a safe bet if we can't use the source files to figure this out.
+	if rule.kind.NonGoSources {
+		return rule.Name(), nil
+	}
 
 	s, err := rule.allSources()
 	if err != nil {
