@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/please"
 	"os"
 	"path/filepath"
 
@@ -46,13 +48,24 @@ func main() {
 	if err := os.Chdir(root); err != nil {
 		log.Fatalf("failed to set working dir to repo root: %v", err)
 	}
+
 	flags.ParseFlagsOrDie("puku", &opts, nil)
 
 	if opts.LintOnly && opts.Watch {
-		log.Fatalf("Watch mode doesn't support --nowrite")
+		log.Fatalf("watch mode doesn't support --nowrite")
 	}
 
-	u := generate.NewUpdate(!opts.LintOnly)
+	conf, err := config.ReadConfig(".")
+	if err != nil {
+		log.Fatalf("failed to read config: %v", err)
+	}
+
+	plzConf, err := please.QueryConfig(conf.GetPlzPath())
+	if err != nil {
+		log.Fatalf("failed to query config: %w", err)
+	}
+
+	u := generate.NewUpdate(!opts.LintOnly, plzConf)
 
 	paths, err := work.ExpandPaths(wd, opts.Args.Paths)
 	if len(opts.Args.Paths) == 0 {
