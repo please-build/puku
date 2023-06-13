@@ -105,6 +105,24 @@ func (r *rule) label() string {
 	return buildTarget(r.Name(), r.dir, "")
 }
 
+func (r *rule) isExternal() bool {
+	if !r.isTest() {
+		return false
+	}
+
+	external := r.Attr("external")
+	if external == nil {
+		return false
+	}
+
+	ident, ok := external.(*build.Ident)
+	if !ok {
+		return false
+	}
+
+	return ident.Name == "True"
+}
+
 func newRule(r *build.Rule, kindType *kinds.Kind, pkgDir string) *rule {
 	return &rule{
 		dir:  pkgDir,
