@@ -1,0 +1,7 @@
+{
+  "testKinds": {
+    "testify_test": {
+      "providedDeps": ["//third_party/go:testify"]
+    }
+  }
+}

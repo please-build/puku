@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/please-build/puku/glob"
+	"github.com/please-build/puku/kinds"
 )
 
 func newStringExpr(s string) *build.StringExpr {
@@ -19,8 +20,8 @@ func newStringList(ss []string) *build.ListExpr {
 }
 
 type rule struct {
-	dir      string
-	kindType KindType
+	dir  string
+	kind *kinds.Kind
 	*build.Rule
 }
 
@@ -84,7 +85,7 @@ func (r *rule) setOrDeleteAttr(name string, values []string) {
 }
 
 func (r *rule) isTest() bool {
-	return r.kindType == KindTypeTest
+	return r.kind.Type == kinds.Test
 }
 
 func (r *rule) addSrc(src string) {
@@ -104,10 +105,10 @@ func (r *rule) label() string {
 	return buildTarget(r.Name(), r.dir, "")
 }
 
-func newRule(r *build.Rule, kindType KindType, pkgDir string) *rule {
+func newRule(r *build.Rule, kindType *kinds.Kind, pkgDir string) *rule {
 	return &rule{
-		dir:      pkgDir,
-		kindType: kindType,
-		Rule:     r,
+		dir:  pkgDir,
+		kind: kindType,
+		Rule: r,
 	}
 }

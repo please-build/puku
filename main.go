@@ -41,7 +41,7 @@ func main() {
 		log.Fatalf("Watch mode doesn't support --nowrite")
 	}
 
-	u := generate.NewUpdate("plz", "third_party/go", !opts.LintOnly)
+	u := generate.NewUpdate(!opts.LintOnly)
 
 	paths := opts.Args.Paths
 	if len(opts.Args.Paths) == 0 {

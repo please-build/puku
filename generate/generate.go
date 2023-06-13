@@ -2,11 +2,13 @@ package generate
 
 import (
 	"fmt"
+	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/kinds"
+	"github.com/please-build/puku/please"
 	"io/fs"
 	"path/filepath"
 	"strings"
 
-	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/proxy"
 	"github.com/please-build/puku/trie"
 	"github.com/please-build/puku/work"
@@ -17,28 +19,16 @@ import (
 
 var log = logging.MustGetLogger()
 
-type KindType int
-
-const (
-	KindTypeLib KindType = iota
-	KindTypeTest
-	KindTypeBin
-)
-
-var defaultKinds = map[string]KindType{
-	"go_library": KindTypeLib,
-	"go_binary":  KindTypeBin,
-	"go_test":    KindTypeTest,
+type Proxy interface {
+	ResolveModuleForPackage(pattern string) (*proxy.Module, error)
+	ResolveDeps(mods, newMods []*proxy.Module) ([]*proxy.Module, error)
 }
 
 type Update struct {
-	plzPath, thirdPartyDir string
-	buildFileNames         []string
-	kinds                  map[string]KindType
-	importPath             string
-	usingGoModule          bool
-	goIsPreloaded          bool
-	write                  bool
+	importPath    string
+	usingGoModule bool
+	goIsPreloaded bool
+	write         bool
 
 	newModules   []*proxy.Module
 	modules      []string
@@ -47,48 +37,48 @@ type Update struct {
 
 	paths []string
 
-	proxy *proxy.Proxy
+	proxy          Proxy
+	buildFileNames []string
 }
 
-func NewUpdate(plzPath, thirdPartyDir string, write bool) *Update {
+func NewUpdate(write bool) *Update {
 	return &Update{
-		plzPath:       plzPath,
-		thirdPartyDir: thirdPartyDir,
-		proxy:         proxy.New("https://proxy.golang.org"),
-		kinds:         defaultKinds,
-		installs:      trie.New(),
-		write:         write,
-		knownImports:  map[string]string{},
+		proxy:        proxy.New("https://proxy.golang.org"),
+		installs:     trie.New(),
+		write:        write,
+		knownImports: map[string]string{},
 	}
 }
 
 // Update updates an existing Please project. It may create new BUILD files, however it tries to respect existing build
 // rules, updating them as appropriate.
 func (u *Update) Update(paths ...string) error {
+	conf, err := config.ReadConfig(".")
+	if err != nil {
+		return err
+	}
 	u.paths = paths
 
-	var err error
-
-	c, err := config.QueryConfig(u.plzPath)
+	plzConf, err := please.QueryConfig(conf.GetPlzPath())
 	if err != nil {
 		return fmt.Errorf("failed to query config: %w", err)
 	}
 
-	u.importPath = c.ImportPath()
-	u.buildFileNames = c.BuildFileNames()
-	u.goIsPreloaded = c.GoIsPreloaded()
+	u.importPath = plzConf.ImportPath()
+	u.buildFileNames = plzConf.BuildFileNames()
+	u.goIsPreloaded = plzConf.GoIsPreloaded()
 
-	if err := u.readModules(); err != nil {
+	if err := u.readModules(conf); err != nil {
 		return fmt.Errorf("failed to read third party rules: %v", err)
 	}
 
-	return u.update()
+	return u.update(conf)
 }
 
 // getModules returns the defined third party modules in this project
-func (u *Update) readModules() error {
+func (u *Update) readModules(conf *config.Config) error {
 	// TODO we probably want to support multiple third party dirs mostly just for our setup in core3
-	f, err := parseBuildFile(u.thirdPartyDir, u.buildFileNames)
+	f, err := parseBuildFile(conf.GetThirdPartyDir(), u.buildFileNames)
 	if err != nil {
 		return err
 	}
@@ -96,7 +86,7 @@ func (u *Update) readModules() error {
 	addInstalls := func(targetName, modName string, installs []string) {
 		for _, install := range installs {
 			path := filepath.Join(modName, install)
-			target := buildTarget(targetName, u.thirdPartyDir, "")
+			target := buildTarget(targetName, conf.GetThirdPartyDir(), "")
 			u.installs.Add(path, target)
 		}
 	}
@@ -124,20 +114,32 @@ func (u *Update) readModules() error {
 }
 
 // update loops through the provided paths, updating and creating any build rules it finds.
-func (u *Update) update() error {
+func (u *Update) update(conf *config.Config) error {
 	for _, path := range u.paths {
 		if strings.HasSuffix(path, "...") {
 			p := filepath.Clean(strings.TrimSuffix(path, "..."))
 			if err := u.updateAll(p); err != nil {
 				return fmt.Errorf("failed to update %v: %v", path, err)
 			}
-		} else if err := u.updateOne(path); err != nil {
+			return nil
+		}
+
+		conf, err := config.ReadConfig(path)
+		if err != nil {
+			return err
+		}
+
+		if conf.Stop {
+			return nil
+		}
+
+		if err := u.updateOne(conf, path); err != nil {
 			return fmt.Errorf("failed to update %v: %v", path, err)
 		}
 	}
 
 	// Save any new modules we needed back to the third party file
-	return u.addNewModules()
+	return u.addNewModules(conf)
 }
 
 func (u *Update) updateAll(path string) error {
@@ -145,14 +147,25 @@ func (u *Update) updateAll(path string) error {
 		if !d.IsDir() {
 			return nil
 		}
-		if err := u.updateOne(path); err != nil {
+
+		// TODO move all this out into work.ExpandPaths, and have that handle skipping over dirs
+		conf, err := config.ReadConfig(path)
+		if err != nil {
+			return err
+		}
+
+		if conf.Stop {
+			return filepath.SkipDir
+		}
+
+		if err := u.updateOne(conf, path); err != nil {
 			return err
 		}
 		return nil
 	})
 }
 
-func (u *Update) updateOne(path string) error {
+func (u *Update) updateOne(conf *config.Config, path string) error {
 	// Find all the files in the dir
 	sources, err := ImportDir(path)
 	if err != nil {
@@ -174,7 +187,7 @@ func (u *Update) updateOne(path string) error {
 	}
 
 	// Read existing rules from file
-	rules, calls := u.readRulesFromFile(file, path)
+	rules, calls := u.readRulesFromFile(conf, file, path)
 
 	// Allocate the sources to the rules, creating new rules as necessary
 	newRules, srcsWereModded, err := u.allocateSources(path, sources, rules)
@@ -185,7 +198,7 @@ func (u *Update) updateOne(path string) error {
 	rules = append(rules, newRules...)
 
 	// Update the existing call expressions in the build file
-	depsWereModded, err := u.updateDeps(file, calls, rules, sources)
+	depsWereModded, err := u.updateDeps(conf, file, calls, rules, sources)
 	if err != nil {
 		return err
 	}
@@ -198,12 +211,11 @@ func (u *Update) updateOne(path string) error {
 	return nil
 }
 
-func (u *Update) addNewModules() error {
-	file, err := parseBuildFile(u.thirdPartyDir, u.buildFileNames)
+func (u *Update) addNewModules(conf *config.Config) error {
+	file, err := parseBuildFile(conf.GetThirdPartyDir(), u.buildFileNames)
 	if err != nil {
 		return err
 	}
-
 
 	// This is a workaround for a bug in Please. It seems we queue up the third party build file for subinclude in order
 	// to get at the go_repo rules. This means the go rules aren't preloaded. I don't think this should be the case.
@@ -252,8 +264,15 @@ func (u *Update) addNewModules() error {
 }
 
 // updateRuleDeps updates the dependencies of a build rule based on the imports of its sources
-func (u *Update) updateRuleDeps(rule *rule, rules []*rule, sources map[string]*GoFile) (bool, error) {
+func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, sources map[string]*GoFile) (bool, error) {
 	done := map[string]struct{}{}
+
+	// If the rule operates on non-go sources (e.g. .proto sources for proto_library) then we should skip updating
+	// its deps.
+	if rule.kind.NonGoSources {
+		return false, nil
+	}
+
 	srcs, err := rule.allSources()
 	if err != nil {
 		return false, err
@@ -275,12 +294,17 @@ func (u *Update) updateRuleDeps(rule *rule, rules []*rule, sources map[string]*G
 			}
 			done[i] = struct{}{}
 
-			dep, err := u.resolveImport(i)
+			// If the dep is provided by the kind (i.e. the build def adds it) then skip this import
+
+			dep, err := u.resolveImport(conf, i)
 			if err != nil {
 				log.Warningf("couldn't resolve %q for %v: %v", i, rule.label(), err)
 				continue
 			}
 			if dep == "" {
+				continue
+			}
+			if rule.kind.IsProvided(dep) {
 				continue
 			}
 			if _, ok := deps[dep]; !ok {
@@ -291,14 +315,14 @@ func (u *Update) updateRuleDeps(rule *rule, rules []*rule, sources map[string]*G
 	}
 
 	// Add any libraries for the same package as us
-	if rule.kindType == KindTypeTest {
+	if rule.kind.Type == kinds.Test {
 		pkgName, err := rulePkg(sources, rule)
 		if err != nil {
 			return false, err
 		}
 
 		for _, libRule := range rules {
-			if libRule.kindType == KindTypeTest {
+			if libRule.kind.Type == kinds.Test {
 				continue
 			}
 			libPkgName, err := rulePkg(sources, libRule)
@@ -329,16 +353,16 @@ func (u *Update) updateRuleDeps(rule *rule, rules []*rule, sources map[string]*G
 }
 
 // readRulesFromFile reads the existing build rules from the BUILD file
-func (u *Update) readRulesFromFile(file *build.File, pkgDir string) ([]*rule, map[string]*build.Rule) {
+func (u *Update) readRulesFromFile(conf *config.Config, file *build.File, pkgDir string) ([]*rule, map[string]*build.Rule) {
 	var rules []*rule
 	calls := map[string]*build.Rule{}
 
 	for _, expr := range file.Rules("") {
-		kindType, ok := u.kinds[expr.Kind()]
-		if !ok {
+		kind := conf.GetKind(expr.Kind())
+		if kind == nil {
 			continue
 		}
-		rule := newRule(expr, kindType, pkgDir)
+		rule := newRule(expr, kind, pkgDir)
 		rules = append(rules, rule)
 		calls[rule.Name()] = expr
 	}
@@ -347,13 +371,13 @@ func (u *Update) readRulesFromFile(file *build.File, pkgDir string) ([]*rule, ma
 }
 
 // updateDeps updates the existing rules and creates any new rules in the BUILD file
-func (u *Update) updateDeps(file *build.File, ruleExprs map[string]*build.Rule, rules []*rule, sources map[string]*GoFile) (bool, error) {
+func (u *Update) updateDeps(conf *config.Config, file *build.File, ruleExprs map[string]*build.Rule, rules []*rule, sources map[string]*GoFile) (bool, error) {
 	modified := false
 	for _, rule := range rules {
 		if _, ok := ruleExprs[rule.Name()]; !ok {
 			file.Stmt = append(file.Stmt, rule.Call)
 		}
-		modded, err := u.updateRuleDeps(rule, rules, sources)
+		modded, err := u.updateRuleDeps(conf, rule, rules, sources)
 		if err != nil {
 			return false, err
 		}
@@ -375,7 +399,7 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 		importedFile := sources[src]
 		var rule *rule
 		for _, r := range append(rules, newRules...) {
-			if r.kindType != importedFile.kindType() {
+			if r.kind.Type != importedFile.kindType() {
 				continue
 			}
 
@@ -403,7 +427,7 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 				kind = "go_binary"
 				name = "main"
 			}
-			rule = newRule(newRuleExpr(kind, name), importedFile.kindType(), pkgDir)
+			rule = newRule(newRuleExpr(kind, name), kinds.DefaultKinds[kind], pkgDir)
 			if importedFile.IsExternal(filepath.Join(u.importPath, pkgDir)) {
 				rule.setExternal()
 			}
@@ -418,6 +442,11 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 // rulePkg checks the first source it finds for a rule and returns the name from the "package name" directive at the top
 // of the file
 func rulePkg(srcs map[string]*GoFile, rule *rule) (string, error) {
+	// This is a safe bet if we can't use the source files to figure this out.
+	if rule.kind.NonGoSources {
+		return rule.Name(), nil
+	}
+
 	s, err := rule.allSources()
 	if err != nil {
 		return "", err

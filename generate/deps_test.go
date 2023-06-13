@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/please-build/puku/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,16 +30,16 @@ func TestDepTarget(t *testing.T) {
 }
 
 func TestLocalDeps(t *testing.T) {
-	u := &Update{
-		buildFileNames: buildFileNames,
-		kinds:          defaultKinds,
-	}
-	trgt, err := u.localDep("generate/test_data/foo")
+	u := new(Update)
+
+	u.buildFileNames = []string{"BUILD_FILE", "BUILD_FILE.plz"}
+
+	trgt, err := u.localDep(new(config.Config), "generate/test_data/foo")
 	require.NoError(t, err)
 	assert.Equal(t, "//generate/test_data/foo:bar", trgt)
 
 	u.importPath = "github.com/some/module"
-	trgt, err = u.localDep("github.com/some/module/generate/test_data/foo")
+	trgt, err = u.localDep(new(config.Config), "github.com/some/module/generate/test_data/foo")
 	require.NoError(t, err)
 	assert.Equal(t, "//generate/test_data/foo:bar", trgt)
 }
