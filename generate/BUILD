@@ -34,7 +34,7 @@ testify_test(
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "//config",
         "//kinds",
-        "//trie",
+        "//proxy",
         "//trie",
     ],
 )
