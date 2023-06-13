@@ -8,6 +8,12 @@ const (
 	Bin
 )
 
+// Kind is a kind of build target, e.g. go_library. These can either be library, test or binaries. They can also provide
+// dependencies e.g. you could wrap go_test to add a common testing library, in which case, we should not add it as a
+// dep.
+//
+// Currently, puku assumes these use the same args for e.g. srcs, and deps as go_library, go_test and go_binary. This
+// may become configurable if the need arises.
 type Kind struct {
 	Name         string
 	Type         Type
@@ -17,6 +23,8 @@ type Kind struct {
 	NonGoSources bool
 }
 
+// IsProvided returns whether the dependency is already provided by the kind, and therefore can be omitted from the deps
+// list.
 func (k *Kind) IsProvided(i string) bool {
 	for _, dep := range k.ProvidedDeps {
 		if i == dep {

@@ -1,13 +1,15 @@
 package config
 
 import (
-	"encoding/json"
 	"github.com/please-build/puku/kinds"
+
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
+// KindConfig represents the configuration for a custom kind. See kinds.Kind for more information on how kinds work.
 type KindConfig struct {
 	// NonGoSources indicates that this rule operates on non-go sources and we shouldn't attempt to parse them to
 	// generate the deps list. This is the case for rules like proto_library that still output a go package, but we
@@ -16,6 +18,10 @@ type KindConfig struct {
 	ProvidedDeps []string `json:"providedDeps"`
 }
 
+// Config represents a puku.json file discovered in the repo. These are loaded for each directory, and form a chain of
+// configs all the way up to the root config. Configs at a deeper level in the file tree override values from configs at
+// a shallower level. The shallower cofig file is stored in (*Config).base` and the methods on this struct will recurse
+// into this base config where appropriate.
 type Config struct {
 	base          *Config
 	ThirdPartyDir string                 `json:"thirdPartyDir"`
