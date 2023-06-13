@@ -26,10 +26,8 @@ type Proxy interface {
 }
 
 type Update struct {
-	importPath    string
-	usingGoModule bool
-	goIsPreloaded bool
-	write         bool
+	conf                 *please.Config
+	write, usingGoModule bool
 
 	newModules   []*proxy.Module
 	modules      []string
@@ -38,16 +36,16 @@ type Update struct {
 
 	paths []string
 
-	proxy          Proxy
-	buildFileNames []string
+	proxy Proxy
 }
 
-func NewUpdate(write bool) *Update {
+func NewUpdate(write bool, conf *please.Config) *Update {
 	return &Update{
 		proxy:        proxy.New("https://proxy.golang.org"),
 		installs:     trie.New(),
 		write:        write,
 		knownImports: map[string]string{},
+		conf:         conf,
 	}
 }
 
@@ -60,15 +58,6 @@ func (u *Update) Update(paths ...string) error {
 	}
 	u.paths = paths
 
-	plzConf, err := please.QueryConfig(conf.GetPlzPath())
-	if err != nil {
-		return fmt.Errorf("failed to query config: %w", err)
-	}
-
-	u.importPath = plzConf.ImportPath()
-	u.buildFileNames = plzConf.BuildFileNames()
-	u.goIsPreloaded = plzConf.GoIsPreloaded()
-
 	if err := u.readModules(conf); err != nil {
 		return fmt.Errorf("failed to read third party rules: %v", err)
 	}
@@ -79,7 +68,7 @@ func (u *Update) Update(paths ...string) error {
 // getModules returns the defined third party modules in this project
 func (u *Update) readModules(conf *config.Config) error {
 	// TODO we probably want to support multiple third party dirs mostly just for our setup in core3
-	f, err := parseBuildFile(conf.GetThirdPartyDir(), u.buildFileNames)
+	f, err := parseBuildFile(conf.GetThirdPartyDir(), u.conf.BuildFileNames())
 	if err != nil {
 		return err
 	}
@@ -178,12 +167,12 @@ func (u *Update) updateOne(conf *config.Config, path string) error {
 	}
 
 	// Parse the build file
-	file, err := parseBuildFile(path, u.buildFileNames)
+	file, err := parseBuildFile(path, u.conf.BuildFileNames())
 	if err != nil {
 		return err
 	}
 
-	if !u.goIsPreloaded {
+	if !u.conf.GoIsPreloaded() {
 		ensureSubinclude(file)
 	}
 
@@ -213,7 +202,7 @@ func (u *Update) updateOne(conf *config.Config, path string) error {
 }
 
 func (u *Update) addNewModules(conf *config.Config) error {
-	file, err := parseBuildFile(conf.GetThirdPartyDir(), u.buildFileNames)
+	file, err := parseBuildFile(conf.GetThirdPartyDir(), u.conf.BuildFileNames())
 	if err != nil {
 		return err
 	}
@@ -436,7 +425,7 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 				name = "main"
 			}
 			rule = newRule(newRuleExpr(kind, name), kinds.DefaultKinds[kind], pkgDir)
-			if importedFile.IsExternal(filepath.Join(u.importPath, pkgDir)) {
+			if importedFile.IsExternal(filepath.Join(u.conf.ImportPath(), pkgDir)) {
 				rule.setExternal()
 			}
 			newRules = append(newRules, rule)

@@ -5,6 +5,7 @@ import (
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/kinds"
+	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/trie"
 
 	"github.com/stretchr/testify/assert"
@@ -43,7 +44,8 @@ func TestAllocateSources(t *testing.T) {
 		},
 	}
 
-	u := new(Update)
+	u := &Update{conf: new(please.Config)}
+
 	newRules, _, err := u.allocateSources("foo", files, rules)
 	require.NoError(t, err)
 
@@ -200,9 +202,11 @@ func TestUpdateDeps(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			plzConf := new(please.Config)
+			plzConf.Plugin.Go.ImportPath = []string{"github.com/this/module"}
 			u := &Update{
 				modules:      tc.modules,
-				importPath:   "github.com/this/module",
+				conf:         plzConf,
 				installs:     trie.New(),
 				knownImports: map[string]string{},
 				proxy:        tc.proxy,

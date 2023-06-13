@@ -1,6 +1,7 @@
 package generate
 
 import (
+	"github.com/please-build/puku/please"
 	"path/filepath"
 	"testing"
 
@@ -30,15 +31,16 @@ func TestDepTarget(t *testing.T) {
 }
 
 func TestLocalDeps(t *testing.T) {
-	u := new(Update)
+	conf := new(please.Config)
+	conf.Parse.BuildFileName = []string{"BUILD_FILE", "BUILD_FILE.plz"}
+	conf.Plugin.Go.ImportPath = []string{"github.com/some/module"}
 
-	u.buildFileNames = []string{"BUILD_FILE", "BUILD_FILE.plz"}
+	u := NewUpdate(false, conf)
 
 	trgt, err := u.localDep(new(config.Config), "generate/test_data/foo")
 	require.NoError(t, err)
 	assert.Equal(t, "//generate/test_data/foo:bar", trgt)
 
-	u.importPath = "github.com/some/module"
 	trgt, err = u.localDep(new(config.Config), "github.com/some/module/generate/test_data/foo")
 	require.NoError(t, err)
 	assert.Equal(t, "//generate/test_data/foo:bar", trgt)

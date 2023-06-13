@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/please"
 	"os"
 
 	"github.com/peterebden/go-cli-init/v5/flags"
@@ -14,8 +16,8 @@ import (
 var opts = struct {
 	Usage    string
 	LintOnly bool `long:"nowrite" description:"Prints corrections to stdout instead of formatting the files"`
-	Watch bool `long:"watch" description:"Watch the directory"`
-	Args  struct {
+	Watch    bool `long:"watch" description:"Watch the directory"`
+	Args     struct {
 		Paths []string `positional-arg-name:"packages" description:"The packages to process"`
 	} `positional-args:"true"`
 }{
@@ -35,13 +37,24 @@ func main() {
 	if err := os.Chdir(root); err != nil {
 		log.Fatalf("failed to set working dir to repo root: %v", err)
 	}
+
 	flags.ParseFlagsOrDie("puku", &opts, nil)
 
 	if opts.LintOnly && opts.Watch {
-		log.Fatalf("Watch mode doesn't support --nowrite")
+		log.Fatalf("watch mode doesn't support --nowrite")
 	}
 
-	u := generate.NewUpdate(!opts.LintOnly)
+	conf, err := config.ReadConfig(".")
+	if err != nil {
+		log.Fatalf("failed to read config: %v", err)
+	}
+
+	plzConf, err := please.QueryConfig(conf.GetPlzPath())
+	if err != nil {
+		log.Fatalf("failed to query config: %w", err)
+	}
+
+	u := generate.NewUpdate(!opts.LintOnly, plzConf)
 
 	paths := opts.Args.Paths
 	if len(opts.Args.Paths) == 0 {
