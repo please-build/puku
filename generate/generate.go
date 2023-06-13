@@ -2,9 +2,10 @@ package generate
 
 import (
 	"fmt"
-	"io/fs"
 	"path/filepath"
-	"strings"
+
+	"github.com/bazelbuild/buildtools/build"
+	"github.com/peterebden/go-cli-init/v5/logging"
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/kinds"
