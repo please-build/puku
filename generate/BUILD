@@ -4,7 +4,10 @@ go_library(
         ["*.go"],
         exclude = ["*_test.go"],
     ),
-    visibility = ["//:all"],
+    visibility = [
+        "//:all",
+        "//watch",
+    ],
     deps = [
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "///third_party/go/github.com_bazelbuild_buildtools//edit",
@@ -14,6 +17,7 @@ go_library(
         "//knownimports",
         "//proxy",
         "//trie",
+        "//work",
     ],
 )
 

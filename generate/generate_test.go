@@ -1,11 +1,12 @@
 package generate
 
 import (
-	"github.com/please-build/puku/trie"
-	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/please-build/puku/trie"
 )
 
 func TestAllocateSources(t *testing.T) {

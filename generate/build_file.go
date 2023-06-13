@@ -64,3 +64,43 @@ func newRuleExpr(kind, name string) *build.Rule {
 
 	return rule
 }
+
+func ensureSubinclude(file *build.File) {
+	var subinclude *build.CallExpr
+	for _, expr := range file.Stmt {
+		call, ok := expr.(*build.CallExpr)
+		if !ok {
+			continue
+		}
+
+		x, ok := call.X.(*build.Ident)
+		if !ok {
+			continue
+		}
+
+		if x.Name != "subinclude" {
+			continue
+		}
+		if subinclude == nil {
+			subinclude = call
+		}
+
+		for _, inc := range call.List {
+			str, ok := inc.(*build.StringExpr)
+			if !ok {
+				continue
+			}
+
+			if str.Value == "///go//build_defs:go" {
+				return
+			}
+		}
+	}
+	if subinclude == nil {
+		subinclude = &build.CallExpr{
+			X: &build.Ident{Name: "subinclude"},
+		}
+		file.Stmt = append([]build.Expr{subinclude}, file.Stmt...)
+	}
+	subinclude.List = append(subinclude.List, newStringExpr("///go//build_defs:go"))
+}

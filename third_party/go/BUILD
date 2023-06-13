@@ -207,3 +207,8 @@ go_repo(
     module = "gopkg.in/yaml.v3",
     version = "v3.0.1",
 )
+
+go_repo(
+    module = "github.com/fsnotify/fsnotify",
+    version = "v1.6.0",
+)
