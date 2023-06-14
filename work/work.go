@@ -2,18 +2,29 @@ package work
 
 import (
 	"errors"
+	"github.com/bazelbuild/buildtools/labels"
 	"github.com/please-build/puku/config"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func ExpandPaths(origWD string, paths []string) ([]string, error) {
 	ret := make([]string, 0, len(paths))
 	for _, path := range paths {
-		// Join the path with the original working directory. We would have cd'ed to the root of the plz repo by this
-		// point
-		path = filepath.Join(origWD, path)
+		// Handle using build label style syntax a bit like `plz build`
+		if strings.HasPrefix(path, "//") {
+			l := labels.Parse(path)
+			path = l.Package
+		} else {
+			if strings.HasPrefix(path, ":") {
+				path = "."
+			}
+			// Join the path with the original working directory. We would have cd'ed to the root of the plz repo by this
+			// point
+			path = filepath.Join(origWD, path)
+		}
 
 		if filepath.Base(path) != "..." {
 			ret = append(ret, path)
