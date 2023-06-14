@@ -1,4 +1,4 @@
-name: Paku
+name: Puku
 on: [push, pull_request]
 jobs:
   test:
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Build puku
-        run: ./pleasew build p -v notice --profile release //package:release_files
+        run: ./pleasew build -p -v notice --profile release //package:release_files
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
