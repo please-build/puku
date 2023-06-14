@@ -2,6 +2,9 @@ package generate
 
 import (
 	"fmt"
+	"github.com/please-build/puku/edit"
+	"github.com/please-build/puku/graph"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -27,6 +30,8 @@ type Update struct {
 	conf                 *please.Config
 	write, usingGoModule bool
 
+	graph *graph.Graph
+
 	newModules   []*proxy.Module
 	modules      []string
 	knownImports map[string]string
@@ -44,6 +49,7 @@ func NewUpdate(write bool, conf *please.Config) *Update {
 		write:        write,
 		knownImports: map[string]string{},
 		conf:         conf,
+		graph:        graph.New(conf.BuildFileNames()),
 	}
 }
 
@@ -60,13 +66,16 @@ func (u *Update) Update(paths ...string) error {
 		return fmt.Errorf("failed to read third party rules: %v", err)
 	}
 
-	return u.update(conf)
+	if err := u.update(conf); err != nil {
+		return err
+	}
+	return u.graph.FormatFiles(u.write, os.Stdout)
 }
 
 // getModules returns the defined third party modules in this project
 func (u *Update) readModules(conf *config.Config) error {
 	// TODO we probably want to support multiple third party dirs mostly just for our setup in core3
-	f, err := parseBuildFile(conf.GetThirdPartyDir(), u.conf.BuildFileNames())
+	f, err := u.graph.LoadFile(conf.GetThirdPartyDir())
 	if err != nil {
 		return err
 	}
@@ -134,13 +143,13 @@ func (u *Update) updateOne(conf *config.Config, path string) error {
 	}
 
 	// Parse the build file
-	file, err := parseBuildFile(path, u.conf.BuildFileNames())
+	file, err := u.graph.LoadFile(path)
 	if err != nil {
 		return err
 	}
 
 	if !u.conf.GoIsPreloaded() {
-		ensureSubinclude(file)
+		edit.EnsureSubinclude(file)
 	}
 
 	// Read existing rules from file
@@ -155,14 +164,11 @@ func (u *Update) updateOne(conf *config.Config, path string) error {
 	rules = append(rules, newRules...)
 
 	// Update the existing call expressions in the build file
-	if err := u.updateDeps(conf, file, calls, rules, sources); err != nil {
-		return err
-	}
-	return saveAndFormatBuildFile(file, u.write)
+	return u.updateDeps(conf, file, calls, rules, sources)
 }
 
 func (u *Update) addNewModules(conf *config.Config) error {
-	file, err := parseBuildFile(conf.GetThirdPartyDir(), u.conf.BuildFileNames())
+	file, err := u.graph.LoadFile(conf.GetThirdPartyDir())
 	if err != nil {
 		return err
 	}
@@ -172,7 +178,7 @@ func (u *Update) addNewModules(conf *config.Config) error {
 	//
 	// TODO figure out why Please needs this subinclude and check for u.goIsPreloaded before calling this once that's
 	// 	fixed
-	ensureSubinclude(file)
+	edit.EnsureSubinclude(file)
 
 	var mods []*proxy.Module
 	existingRules := make(map[string]*build.Rule)
@@ -191,7 +197,7 @@ func (u *Update) addNewModules(conf *config.Config) error {
 		if rule, ok := existingRules[mod.Module]; ok {
 			// Modules might be using go_mod_download, which we don't handle.
 			if rule.Attr("version") != nil {
-				rule.SetAttr("version", newStringExpr(mod.Version))
+				rule.SetAttr("version", edit.NewStringExpr(mod.Version))
 			}
 			continue
 		}
@@ -200,11 +206,11 @@ func (u *Update) addNewModules(conf *config.Config) error {
 			X:    &build.Ident{Name: "go_repo"},
 			List: []build.Expr{},
 		})
-		rule.SetAttr("module", newStringExpr(mod.Module))
-		rule.SetAttr("version", newStringExpr(mod.Version))
+		rule.SetAttr("module", edit.NewStringExpr(mod.Module))
+		rule.SetAttr("version", edit.NewStringExpr(mod.Version))
 		file.Stmt = append(file.Stmt, rule.Call)
 	}
-	return saveAndFormatBuildFile(file, u.write)
+	return nil
 }
 
 // updateRuleDeps updates the dependencies of a build rule based on the imports of its sources
@@ -222,13 +228,9 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 		return err
 	}
 
-	depsBefore := rule.AttrStrings("deps")
-	deps := make(map[string]struct{}, len(depsBefore))
+	label := buildTarget(rule.Name(), rule.dir, "")
 
-	for _, dep := range depsBefore {
-		deps[dep] = struct{}{}
-	}
-
+	deps := map[string]struct{}{}
 	for _, src := range srcs {
 		f := sources[src]
 		if f == nil {
@@ -292,6 +294,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 
 	depSlice := make([]string, 0, len(deps))
 	for dep := range deps {
+		u.graph.EnsureVisibility(label, dep)
 		depSlice = append(depSlice, dep)
 	}
 
@@ -384,7 +387,7 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 				kind = "go_binary"
 				name = "main"
 			}
-			rule = newRule(newRuleExpr(kind, name), kinds.DefaultKinds[kind], pkgDir)
+			rule = newRule(edit.NewRuleExpr(kind, name), kinds.DefaultKinds[kind], pkgDir)
 			if importedFile.IsExternal(filepath.Join(u.conf.ImportPath(), pkgDir)) {
 				rule.setExternal()
 			}

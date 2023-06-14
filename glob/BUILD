@@ -7,7 +7,7 @@ go_library(
 go_test(
     name = "glob_test",
     srcs = ["glob_test.go"],
-    data = ["test_data"],
+    data = ["//:test_project"],
     deps = [
         ":glob",
         "//third_party/go:testify",

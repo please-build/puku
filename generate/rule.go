@@ -2,23 +2,12 @@ package generate
 
 import (
 	"fmt"
+	"github.com/please-build/puku/edit"
 
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/please-build/puku/glob"
 	"github.com/please-build/puku/kinds"
 )
-
-func newStringExpr(s string) *build.StringExpr {
-	return &build.StringExpr{Value: s}
-}
-
-func newStringList(ss []string) *build.ListExpr {
-	l := new(build.ListExpr)
-	for _, s := range ss {
-		l.List = append(l.List, newStringExpr(s))
-	}
-	return l
-}
 
 type rule struct {
 	dir  string
@@ -82,7 +71,7 @@ func (r *rule) setOrDeleteAttr(name string, values []string) {
 		r.DelAttr(name)
 		return
 	}
-	r.SetAttr(name, newStringList(values))
+	r.SetAttr(name, edit.NewStringList(values))
 }
 
 func (r *rule) isTest() bool {

@@ -1,6 +1,8 @@
 package generate
 
 import (
+	"github.com/please-build/puku/edit"
+	"github.com/please-build/puku/graph"
 	"testing"
 
 	"github.com/please-build/puku/config"
@@ -13,8 +15,8 @@ import (
 )
 
 func TestAllocateSources(t *testing.T) {
-	foo := newRule(newRuleExpr("go_library", "foo"), kinds.DefaultKinds["go_library"], "")
-	fooTest := newRule(newRuleExpr("go_test", "foo_test"), kinds.DefaultKinds["go_test"], "")
+	foo := newRule(edit.NewRuleExpr("go_library", "foo"), kinds.DefaultKinds["go_library"], "")
+	fooTest := newRule(edit.NewRuleExpr("go_test", "foo_test"), kinds.DefaultKinds["go_test"], "")
 
 	foo.addSrc("foo.go")
 	fooTest.addSrc("foo_test.go")
@@ -68,8 +70,8 @@ func TestAllocateSourcesToCustomKind(t *testing.T) {
 		Type: kinds.Test,
 	}
 
-	foo := newRule(newRuleExpr("go_example_lib", "foo"), exampleKind, "")
-	fooTest := newRule(newRuleExpr("go_test", "foo_test"), satKind, "")
+	foo := newRule(edit.NewRuleExpr("go_example_lib", "foo"), exampleKind, "")
+	fooTest := newRule(edit.NewRuleExpr("go_test", "foo_test"), satKind, "")
 
 	foo.addSrc("foo.go")
 	fooTest.addSrc("foo_test.go")
@@ -210,6 +212,7 @@ func TestUpdateDeps(t *testing.T) {
 				installs:     trie.New(),
 				knownImports: map[string]string{},
 				proxy:        tc.proxy,
+				graph:        graph.New([]string{}),
 			}
 
 			for path, value := range tc.installs {
@@ -221,7 +224,7 @@ func TestUpdateDeps(t *testing.T) {
 				conf = new(config.Config)
 			}
 
-			r := newRule(newRuleExpr(tc.rule.kind.Name, "rule"), tc.rule.kind, "")
+			r := newRule(edit.NewRuleExpr(tc.rule.kind.Name, "rule"), tc.rule.kind, "")
 			for _, src := range tc.rule.srcs {
 				r.addSrc(src)
 			}

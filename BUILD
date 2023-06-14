@@ -11,3 +11,10 @@ go_binary(
         "//work",
     ],
 )
+
+filegroup(
+    name = "test_project",
+    srcs = ["test_project"],
+    test_only = True,
+    visibility = ["PUBLIC"],
+)

@@ -37,11 +37,34 @@ func TestLocalDeps(t *testing.T) {
 
 	u := NewUpdate(false, conf)
 
-	trgt, err := u.localDep(new(config.Config), "generate/test_data/foo")
+	trgt, err := u.localDep(new(config.Config), "test_project/foo")
 	require.NoError(t, err)
-	assert.Equal(t, "//generate/test_data/foo:bar", trgt)
+	assert.Equal(t, "//test_project/foo:bar", trgt)
 
-	trgt, err = u.localDep(new(config.Config), "github.com/some/module/generate/test_data/foo")
+	trgt, err = u.localDep(new(config.Config), "github.com/some/module/test_project/foo")
 	require.NoError(t, err)
-	assert.Equal(t, "//generate/test_data/foo:bar", trgt)
+	assert.Equal(t, "//test_project/foo:bar", trgt)
+}
+
+func TestBuildTarget(t *testing.T) {
+	local := buildTarget("foo", "", "")
+	assert.Equal(t, local, ":foo")
+
+	root := buildTarget("foo", ".", "")
+	assert.Equal(t, "//:foo", root)
+
+	pkg := buildTarget("foo", "pkg", "")
+	assert.Equal(t, "//pkg:foo", pkg)
+
+	pkgSameName := buildTarget("foo", "foo", "")
+	assert.Equal(t, "//foo", pkgSameName)
+
+	subrepo := buildTarget("foo", "pkg", "repo")
+	assert.Equal(t, "///repo//pkg:foo", subrepo)
+
+	subrepoRoot := buildTarget("foo", ".", "repo")
+	assert.Equal(t, "///repo//:foo", subrepoRoot)
+
+	subrepoRootAlt := buildTarget("foo", "", "repo")
+	assert.Equal(t, "///repo//:foo", subrepoRootAlt)
 }

@@ -3,6 +3,7 @@ package generate
 import (
 	"fmt"
 	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/fs"
 	"github.com/please-build/puku/kinds"
 	"os"
 	"path/filepath"
@@ -27,6 +28,7 @@ func (u *Update) resolveImport(conf *config.Config, i string) (string, error) {
 		u.knownImports[i] = t
 	}
 	return t, err
+
 }
 
 // reallyResolveImport actually does the resolution of an import path to a build target.
@@ -42,7 +44,7 @@ func (u *Update) reallyResolveImport(conf *config.Config, i string) (string, err
 	thirdPartyDir := conf.GetThirdPartyDir()
 
 	// Check to see if the target exists in the current repo
-	if isInModule(u.conf.ImportPath(), i) || u.conf.ImportPath() == "" {
+	if fs.IsSubdir(u.conf.ImportPath(), i) || u.conf.ImportPath() == "" {
 		t, err := u.localDep(conf, i)
 		if err != nil {
 			return "", err
@@ -51,7 +53,7 @@ func (u *Update) reallyResolveImport(conf *config.Config, i string) (string, err
 		if t != "" {
 			return t, nil
 		}
-		// The above isInModule check only checks the import path. Modules can have import paths that contain the
+		// The above isSubdir check only checks the import path. Modules can have import paths that contain the
 		// current module, so we should carry on here in case we can resolve this to a third party module
 	}
 
@@ -106,7 +108,7 @@ func (u *Update) isInScope(path string) bool {
 // empty string when no target is found.
 func (u *Update) localDep(conf *config.Config, importPath string) (string, error) {
 	path := strings.Trim(strings.TrimPrefix(importPath, u.conf.ImportPath()), "/")
-	file, err := parseBuildFile(path, u.conf.BuildFileNames())
+	file, err := u.graph.LoadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse BUILD files in %v: %v", path, err)
 	}
@@ -168,27 +170,10 @@ func depTarget(modules []string, importPath, thirdPartyFolder string) string {
 	return buildTarget(name, packageName, subrepoName)
 }
 
-// isInModule checks to see if the given import path is in the provided module. This check is based entirely off the
-// paths, so doesn't actually check if the package exists.
-func isInModule(module, path string) bool {
-	pathParts := strings.Split(path, "/")
-	moduleParts := strings.Split(module, "/")
-	if len(moduleParts) > len(pathParts) {
-		return false
-	}
-
-	for i := range moduleParts {
-		if pathParts[i] != moduleParts[i] {
-			return false
-		}
-	}
-	return true
-}
-
 func moduleForPackage(modules []string, importPath string) string {
 	module := ""
 	for _, mod := range modules {
-		ok := isInModule(mod, importPath)
+		ok := fs.IsSubdir(mod, importPath)
 		if ok && len(mod) > len(module) {
 			module = mod
 		}
@@ -200,19 +185,24 @@ func subrepoName(module, thirdPartyFolder string) string {
 	return filepath.Join(thirdPartyFolder, strings.ReplaceAll(module, "/", "_"))
 }
 
-func buildTarget(name, pkg, subrepo string) string {
+func buildTarget(name, pkgDir, subrepo string) string {
 	bs := new(strings.Builder)
 	if subrepo != "" {
 		bs.WriteString("///")
 		bs.WriteString(subrepo)
 	}
-	if pkg != "" || subrepo != "" {
+
+	if pkgDir != "" || subrepo != "" {
 		bs.WriteString("//")
 	}
 
-	if pkg != "" {
-		bs.WriteString(pkg)
-		if filepath.Base(pkg) != name {
+	if pkgDir == "." {
+		pkgDir = ""
+	}
+
+	if pkgDir != "" {
+		bs.WriteString(pkgDir)
+		if filepath.Base(pkgDir) != name {
 			bs.WriteString(":")
 			bs.WriteString(name)
 		}

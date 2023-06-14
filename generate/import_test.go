@@ -8,7 +8,7 @@ import (
 )
 
 func TestImportDir(t *testing.T) {
-	fooDir, err := ImportDir("generate/test_data/foo")
+	fooDir, err := ImportDir("test_project/foo")
 	require.NoError(t, err)
 
 	foo := fooDir["foo.go"]
@@ -36,7 +36,7 @@ func TestImportDir(t *testing.T) {
 	assert.False(t, fooTest.IsCmd())
 	assert.False(t, externalTest.IsCmd())
 
-	mainDir, err := ImportDir("generate/test_data")
+	mainDir, err := ImportDir("test_project")
 	require.NoError(t, err)
 
 	main := mainDir["main.go"]
@@ -44,5 +44,5 @@ func TestImportDir(t *testing.T) {
 
 	require.True(t, main.IsCmd())
 	require.False(t, main.IsTest())
-	require.False(t, main.IsExternal("test_data"))
+	require.False(t, main.IsExternal("test_project"))
 }
