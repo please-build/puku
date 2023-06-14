@@ -1,13 +1,14 @@
 package generate
 
 import (
-	"github.com/please-build/puku/edit"
-	"github.com/please-build/puku/kinds"
 	"testing"
 
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/please-build/puku/edit"
+	"github.com/please-build/puku/kinds"
 )
 
 func TestParseGlob(t *testing.T) {

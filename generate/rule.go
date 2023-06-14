@@ -2,6 +2,7 @@ package generate
 
 import (
 	"github.com/bazelbuild/buildtools/build"
+
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/glob"
 	"github.com/please-build/puku/kinds"

@@ -2,9 +2,6 @@ package generate
 
 import (
 	"fmt"
-	"github.com/please-build/puku/edit"
-	"github.com/please-build/puku/glob"
-	"github.com/please-build/puku/graph"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +11,9 @@ import (
 	"github.com/peterebden/go-cli-init/v5/logging"
 
 	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/edit"
+	"github.com/please-build/puku/glob"
+	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/kinds"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/proxy"
