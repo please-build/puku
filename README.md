@@ -7,7 +7,7 @@ Southern Africa. This tool is still under development but is rapidly approaching
 
 Running puku with no args will format all your source files. It has sensible defaults, reading your `.plzconfig` file
 to avoid unnecessary configuration, however it can be configured via `puku.json` files throughout the repository. It
-support both `go_module()` and `go_repo()` options for third party code.
+supports both `go_module()` and `go_repo()` options for third party code.
 
 Puku can also lint files under specific paths using a similar wildcard syntax to Please:
 
@@ -15,7 +15,7 @@ Puku can also lint files under specific paths using a similar wildcard syntax to
 $ puku //src/...
 ```
 
-Puku supports `go_library`, `go_test`, `go_binary`, `proto_library`, and `grcp_library` out of the box, but can be
+Puku supports `go_library`, `go_test`, `go_binary`, `proto_library`, and `grpc_library` out of the box, but can be
 configured to support other rules. See the configuration section below for more information.
 
 ### Watch mode
