@@ -6,8 +6,10 @@ import (
 	"github.com/please-build/puku/graph"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/bazelbuild/buildtools/build"
+	"github.com/bazelbuild/buildtools/labels"
 	"github.com/peterebden/go-cli-init/v5/logging"
 
 	"github.com/please-build/puku/config"
@@ -254,6 +256,9 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 			if rule.kind.IsProvided(dep) {
 				continue
 			}
+
+			dep = shorten(rule.dir, dep)
+
 			if _, ok := deps[dep]; !ok {
 				deps[dep] = struct{}{}
 			}
@@ -261,7 +266,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 	}
 
 	// Add any libraries for the same package as us
-	if rule.kind.Type == kinds.Test {
+	if rule.kind.Type == kinds.Test && !rule.isExternal() {
 		pkgName, err := rulePkg(sources, rule)
 		if err != nil {
 			return err
@@ -296,6 +301,15 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 	rule.setOrDeleteAttr("deps", depSlice)
 
 	return nil
+}
+
+// shorten will shorten lables to the local package
+func shorten(pkg, label string) string {
+	if strings.HasPrefix(label, "///") || strings.HasPrefix(label, "@") {
+		return label
+	}
+
+	return labels.Shorten(label, pkg)
 }
 
 // readRulesFromFile reads the existing build rules from the BUILD file
