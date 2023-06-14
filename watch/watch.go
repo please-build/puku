@@ -45,12 +45,12 @@ func (d *debouncer) updatePath(path string) {
 func (d *debouncer) wait() {
 	<-d.timer.C
 
+	d.mux.Lock()
 	paths := make([]string, 0, len(d.paths))
 	for p := range d.paths {
 		paths = append(paths, p)
 	}
 
-	d.mux.Lock()
 	if err := d.update.Update(paths...); err != nil {
 		log.Warningf("failed to update: %v", err)
 	}
@@ -83,7 +83,7 @@ func Watch(u *generate.Update, paths ...string) error {
 				if !ok {
 					return
 				}
-				if !event.Has(fsnotify.Write) && !event.Has(fsnotify.Create) {
+				if !event.Has(fsnotify.Write) && !event.Has(fsnotify.Create) && !event.Has(fsnotify.Remove) {
 					break
 				}
 
