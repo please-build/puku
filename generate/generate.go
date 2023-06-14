@@ -390,15 +390,18 @@ func rulePkg(srcs map[string]*GoFile, rule *rule) (string, error) {
 		return rule.Name(), nil
 	}
 
-	s, err := rule.allSources()
+	ss, err := rule.allSources()
 	if err != nil {
 		return "", err
 	}
-	if len(s) <= 0 { // there is a rule with no sources yet we can't determine the package
-		return "", nil
+
+	for _, s := range ss {
+		if src, ok := srcs[s]; ok {
+			return src.Name, nil
+		}
 	}
 
-	return srcs[s[0]].Name, nil
+	return "", nil
 }
 
 // unallocatedSources returns all the sources that don't already belong to a rule
