@@ -108,6 +108,9 @@ func (u *Update) readModules(conf *config.Config) error {
 	for _, mod := range goMods {
 		module := mod.AttrString("module")
 		installs := mod.AttrStrings("install")
+		if len(installs) == 0 {
+			installs = []string{"."}
+		}
 		addInstalls(mod.Name(), module, installs)
 	}
 
