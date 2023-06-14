@@ -2,12 +2,10 @@ subinclude("//build_defs:testify_test")
 
 go_library(
     name = "generate",
-    srcs = [
-        "deps.go",
-        "generate.go",
-        "import.go",
-        "rule.go",
-    ],
+    srcs = glob(
+        ["*.go"],
+        exclude = ["*_test.go"],
+    ),
     visibility = [
         "//:all",
         "//watch",
@@ -30,13 +28,7 @@ go_library(
 
 testify_test(
     name = "generate_test",
-    srcs = [
-        "deps_test.go",
-        "fake_proxy_test.go",
-        "generate_test.go",
-        "import_test.go",
-        "rule_test.go",
-    ],
+    srcs = glob(["*_test.go"]),
     data = ["//:test_project"],
     deps = [
         ":generate",

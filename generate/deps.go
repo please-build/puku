@@ -28,6 +28,7 @@ func (u *Update) resolveImport(conf *config.Config, i string) (string, error) {
 		u.knownImports[i] = t
 	}
 	return t, err
+
 }
 
 // reallyResolveImport actually does the resolution of an import path to a build target.
