@@ -3,6 +3,8 @@ package watch
 import (
 	"os"
 	"path/filepath"
+	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/peterebden/go-cli-init/v5/logging"
@@ -11,6 +13,50 @@ import (
 )
 
 var log = logging.MustGetLogger()
+
+const debounceDuration = 200 * time.Millisecond
+
+// debouncer batches up updates to paths, waiting for a debounceDuration to pass. This avoids running puku many times
+// during git checkouts etc. but it also avoids inconsistent state when files are being moved around rapidly.
+type debouncer struct {
+	paths  []string
+	timer  *time.Timer
+	mux    sync.Mutex
+	update *generate.Update
+}
+
+// updatePath adds a path to the batch and resets the timer to the deboundDuration
+func (d *debouncer) updatePath(path string) {
+	d.mux.Lock()
+	defer d.mux.Unlock()
+
+	d.paths = append(d.paths, path)
+	if d.timer != nil {
+		log.Info("resting timer, %v paths in queue", len(d.paths))
+		d.timer.Stop()
+		d.timer.Reset(debounceDuration)
+	} else {
+		log.Info("starting timer, %v paths in queue", len(d.paths))
+		d.timer = time.NewTimer(debounceDuration)
+		go d.wait()
+	}
+}
+
+// wait waits for the timer to fire before updating the paths
+func (d *debouncer) wait() {
+	log.Info("waiting for debounce")
+	<-d.timer.C
+
+	d.mux.Lock()
+	if err := d.update.Update(d.paths...); err != nil {
+		log.Warningf("failed to update: %v", err)
+	}
+	log.Info("updated %v paths", len(d.paths))
+	d.paths = nil
+	d.mux.Unlock()
+
+	d.wait()
+}
 
 func Watch(u *generate.Update, paths ...string) error {
 	if len(paths) < 1 {
@@ -21,6 +67,8 @@ func Watch(u *generate.Update, paths ...string) error {
 		return err
 	}
 	defer watcher.Close()
+
+	d := &debouncer{update: u}
 
 	go func() {
 		for {
@@ -34,11 +82,8 @@ func Watch(u *generate.Update, paths ...string) error {
 				}
 
 				if filepath.Ext(event.Name) == ".go" {
-					err := u.Update(filepath.Dir(event.Name))
-					log.Infof("updating: %s", event.Name)
-					if err != nil {
-						log.Warningf("updating error: %s", err)
-					}
+					d.updatePath(filepath.Dir(event.Name))
+					break
 				}
 
 				if event.Has(fsnotify.Create) {
