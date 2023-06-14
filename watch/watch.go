@@ -1,6 +1,7 @@
 package watch
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/fsnotify/fsnotify"
@@ -28,16 +29,27 @@ func Watch(u *generate.Update, paths ...string) error {
 				if !ok {
 					return
 				}
-				if filepath.Ext(event.Name) != ".go" {
-					break
-				}
 				if !event.Has(fsnotify.Write) && !event.Has(fsnotify.Create) {
 					break
 				}
-				err := u.Update(filepath.Dir(event.Name))
-				log.Infof("updating: %s", event.Name)
-				if err != nil {
-					log.Warningf("updating error: %s", err)
+
+				if filepath.Ext(event.Name) == ".go" {
+					err := u.Update(filepath.Dir(event.Name))
+					log.Infof("updating: %s", event.Name)
+					if err != nil {
+						log.Warningf("updating error: %s", err)
+					}
+				}
+
+				if event.Has(fsnotify.Create) {
+					if info, err := os.Lstat(event.Name); err == nil {
+						if info.IsDir() {
+							if err := add(watcher, event.Name); err != nil {
+								log.Warningf("failed to set up watcher: %v", err)
+
+							}
+						}
+					}
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
