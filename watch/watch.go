@@ -58,7 +58,8 @@ func (d *debouncer) wait() {
 	d.paths = map[string]struct{}{}
 	d.mux.Unlock()
 
-	d.wait()
+	//nolint:staticcheck
+	d.wait() // infinite recursive calls are a lint error but it's what we want here
 }
 
 func Watch(u *generate.Update, paths ...string) error {

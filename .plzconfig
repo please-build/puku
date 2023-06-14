@@ -5,3 +5,6 @@ preloadsubincludes = ///go//build_defs:go
 Target = //plugins:go
 ImportPath = github.com/please-build/puku
 GoTool = //third_party/go:toolchain|go
+
+[alias "lint"]
+cmd = run //third_party/binary:golangci-lint -- run
