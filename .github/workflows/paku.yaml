@@ -17,5 +17,22 @@ jobs:
           name: logs
           path: |
             plz-out/log
-            
-
+  release:
+    needs: [test]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Build puku
+        run: ./pleasew build --profile release //package:release_files
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: thought-machine/release-action@master
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: thought-machine/release-action@master
+        with:
+          release-files: plz-out/package
