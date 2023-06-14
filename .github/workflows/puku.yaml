@@ -1,4 +1,4 @@
-name: Paku
+name: Puku
 on: [push, pull_request]
 jobs:
   test:
