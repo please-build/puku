@@ -3,6 +3,7 @@ package generate
 import (
 	"fmt"
 	"github.com/please-build/puku/edit"
+	"github.com/please-build/puku/glob"
 	"github.com/please-build/puku/graph"
 	"os"
 	"path/filepath"
@@ -37,6 +38,8 @@ type Update struct {
 	knownImports map[string]string
 	installs     *trie.Trie
 
+	globber *glob.Globber
+
 	paths []string
 
 	proxy Proxy
@@ -49,6 +52,7 @@ func NewUpdate(write bool, conf *please.Config) *Update {
 		write:        write,
 		knownImports: map[string]string{},
 		conf:         conf,
+		globber:      glob.New(),
 		graph:        graph.New(conf.BuildFileNames()),
 	}
 }
@@ -213,6 +217,15 @@ func (u *Update) addNewModules(conf *config.Config) error {
 	return nil
 }
 
+func (u *Update) allSources(r *rule) ([]string, error) {
+	args := r.parseGlob()
+	if args == nil {
+		return r.AttrStrings("srcs"), nil
+	}
+
+	return u.globber.Glob(r.dir, args)
+}
+
 // updateRuleDeps updates the dependencies of a build rule based on the imports of its sources
 func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, sources map[string]*GoFile) error {
 	done := map[string]struct{}{}
@@ -223,7 +236,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 		return nil
 	}
 
-	srcs, err := rule.allSources()
+	srcs, err := u.allSources(rule)
 	if err != nil {
 		return err
 	}
@@ -267,7 +280,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 
 	// Add any libraries for the same package as us
 	if rule.kind.Type == kinds.Test && !rule.isExternal() {
-		pkgName, err := rulePkg(sources, rule)
+		pkgName, err := u.rulePkg(sources, rule)
 		if err != nil {
 			return err
 		}
@@ -276,7 +289,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 			if libRule.kind.Type == kinds.Test {
 				continue
 			}
-			libPkgName, err := rulePkg(sources, libRule)
+			libPkgName, err := u.rulePkg(sources, libRule)
 			if err != nil {
 				return err
 			}
@@ -346,7 +359,7 @@ func (u *Update) updateDeps(conf *config.Config, file *build.File, ruleExprs map
 // allocateSources allocates sources to rules. If there's no existing rule, a new rule will be created and returned
 // from this function
 func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rules []*rule) ([]*rule, error) {
-	unallocated, err := unallocatedSources(sources, rules)
+	unallocated, err := u.unallocatedSources(sources, rules)
 	if err != nil {
 		return nil, err
 	}
@@ -363,7 +376,7 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 				continue
 			}
 
-			rulePkgName, err := rulePkg(sources, r)
+			rulePkgName, err := u.rulePkg(sources, r)
 			if err != nil {
 				return nil, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.Name(), err)
 			}
@@ -401,13 +414,13 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 
 // rulePkg checks the first source it finds for a rule and returns the name from the "package name" directive at the top
 // of the file
-func rulePkg(srcs map[string]*GoFile, rule *rule) (string, error) {
+func (u *Update) rulePkg(srcs map[string]*GoFile, rule *rule) (string, error) {
 	// This is a safe bet if we can't use the source files to figure this out.
 	if rule.kind.NonGoSources {
 		return rule.Name(), nil
 	}
 
-	ss, err := rule.allSources()
+	ss, err := u.allSources(rule)
 	if err != nil {
 		return "", err
 	}
@@ -422,7 +435,7 @@ func rulePkg(srcs map[string]*GoFile, rule *rule) (string, error) {
 }
 
 // unallocatedSources returns all the sources that don't already belong to a rule
-func unallocatedSources(srcs map[string]*GoFile, rules []*rule) ([]string, error) {
+func (u *Update) unallocatedSources(srcs map[string]*GoFile, rules []*rule) ([]string, error) {
 	var ret []string
 	for src := range srcs {
 		found := false
@@ -431,7 +444,7 @@ func unallocatedSources(srcs map[string]*GoFile, rules []*rule) ([]string, error
 				break
 			}
 
-			ruleSrcs, err := rule.allSources()
+			ruleSrcs, err := u.allSources(rule)
 			if err != nil {
 				return nil, err
 			}

@@ -1,6 +1,8 @@
 package generate
 
 import (
+	"github.com/please-build/puku/edit"
+	"github.com/please-build/puku/kinds"
 	"testing"
 
 	"github.com/bazelbuild/buildtools/build"
@@ -50,9 +52,12 @@ func TestParseGlob(t *testing.T) {
 			call, ok := file.Stmt[0].(*build.CallExpr)
 			require.True(t, ok)
 
-			inc, exc := parseGlob(call)
-			assert.Equal(t, test.include, inc)
-			assert.Equal(t, test.exclude, exc)
+			rule := newRule(edit.NewRuleExpr("go_library", "test"), kinds.DefaultKinds["go_library"], "")
+			rule.SetAttr("srcs", call)
+
+			args := rule.parseGlob()
+			assert.Equal(t, test.include, args.Include)
+			assert.Equal(t, test.exclude, args.Exclude)
 		})
 	}
 }

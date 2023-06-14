@@ -53,10 +53,10 @@ func TestAllocateSources(t *testing.T) {
 
 	require.Len(t, newRules, 1)
 	assert.Equal(t, "foo_test", newRules[0].Name())
-	assert.ElementsMatch(t, []string{"external_test.go"}, mustGetSources(t, newRules[0]))
+	assert.ElementsMatch(t, []string{"external_test.go"}, mustGetSources(t, u, newRules[0]))
 
-	assert.ElementsMatch(t, []string{"foo.go", "bar.go"}, mustGetSources(t, rules[0]))
-	assert.ElementsMatch(t, []string{"foo_test.go", "bar_test.go"}, mustGetSources(t, rules[1]))
+	assert.ElementsMatch(t, []string{"foo.go", "bar.go"}, mustGetSources(t, u, rules[0]))
+	assert.ElementsMatch(t, []string{"foo_test.go", "bar_test.go"}, mustGetSources(t, u, rules[1]))
 }
 
 func TestAllocateSourcesToCustomKind(t *testing.T) {
@@ -103,8 +103,8 @@ func TestAllocateSourcesToCustomKind(t *testing.T) {
 
 	assert.Len(t, newRules, 0)
 
-	assert.ElementsMatch(t, []string{"foo.go", "bar.go"}, mustGetSources(t, rules[0]))
-	assert.ElementsMatch(t, []string{"foo_test.go", "bar_test.go"}, mustGetSources(t, rules[1]))
+	assert.ElementsMatch(t, []string{"foo.go", "bar.go"}, mustGetSources(t, u, rules[0]))
+	assert.ElementsMatch(t, []string{"foo_test.go", "bar_test.go"}, mustGetSources(t, u, rules[1]))
 }
 
 func TestUpdateDeps(t *testing.T) {
@@ -245,10 +245,10 @@ func TestUpdateDeps(t *testing.T) {
 	}
 }
 
-func mustGetSources(t *testing.T, rule *rule) []string {
+func mustGetSources(t *testing.T, u *Update, rule *rule) []string {
 	t.Helper()
 
-	srcs, err := rule.allSources()
+	srcs, err := u.allSources(rule)
 	require.NoError(t, err)
 	return srcs
 }

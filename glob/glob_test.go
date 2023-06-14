@@ -7,15 +7,21 @@ import (
 )
 
 func TestGlob(t *testing.T) {
+	g := &Globber{cache: map[pattern][]string{}}
 	t.Run("globs go files only", func(t *testing.T) {
-		files, err := Glob("test_project", []string{"*_test.go"}, nil)
+		files, err := g.Glob("test_project", &GlobArgs{
+			Include: []string{"*_test.go"},
+		})
 		require.NoError(t, err)
 
 		assert.ElementsMatch(t, []string{"bar_test.go"}, files)
 	})
 
 	t.Run("excludes pattern", func(t *testing.T) {
-		files, err := Glob("test_project", []string{"*.go"}, []string{"*_test.go"})
+		files, err := g.Glob("test_project", &GlobArgs{
+			Include: []string{"*.go"},
+			Exclude: []string{"*_test.go"},
+		})
 		require.NoError(t, err)
 
 		assert.ElementsMatch(t, []string{"main.go", "bar.go"}, files)

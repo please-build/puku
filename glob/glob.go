@@ -9,16 +9,26 @@ type pattern struct {
 	dir, glob string
 }
 
-var cache = map[pattern][]string{}
+type Globber struct {
+	cache map[pattern][]string
+}
+
+type GlobArgs struct {
+	Include, Exclude []string
+}
+
+func New() *Globber {
+	return &Globber{cache: map[pattern][]string{}}
+}
 
 // Glob is a specialised version of the glob builtin from Please. It assumes:
 // 1) globs should only match .go files as they're being used in go rules
 // 2) go rules will never depend on files outside the package dir, so we don't need to support **
 // 3) we don't want symlinks, directories and other non-regular files
-func Glob(dir string, include, exclude []string) ([]string, error) {
+func (g *Globber) Glob(dir string, args *GlobArgs) ([]string, error) {
 	inc := map[string]struct{}{}
-	for _, i := range include {
-		fs, err := glob(dir, i)
+	for _, i := range args.Include {
+		fs, err := g.glob(dir, i)
 		if err != nil {
 			return nil, err
 		}
@@ -28,8 +38,8 @@ func Glob(dir string, include, exclude []string) ([]string, error) {
 		}
 	}
 
-	for _, i := range exclude {
-		fs, err := glob(dir, i)
+	for _, i := range args.Exclude {
+		fs, err := g.glob(dir, i)
 		if err != nil {
 			return nil, err
 		}
@@ -47,9 +57,9 @@ func Glob(dir string, include, exclude []string) ([]string, error) {
 }
 
 // glob matches all regular files in a directory based on a glob pattern
-func glob(dir, glob string) ([]string, error) {
+func (g *Globber) glob(dir, glob string) ([]string, error) {
 	p := pattern{dir: dir, glob: glob}
-	if res, ok := cache[p]; ok {
+	if res, ok := g.cache[p]; ok {
 		return res, nil
 	}
 
@@ -80,6 +90,6 @@ func glob(dir, glob string) ([]string, error) {
 		}
 	}
 
-	cache[p] = files
+	g.cache[p] = files
 	return files, nil
 }
