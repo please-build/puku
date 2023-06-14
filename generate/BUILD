@@ -2,13 +2,10 @@ subinclude("//build_defs:testify_test")
 
 go_library(
     name = "generate",
-    srcs = [
-        "build_file.go",
-        "deps.go",
-        "generate.go",
-        "import.go",
-        "rule.go",
-    ],
+    srcs = glob(
+        ["*.go"],
+        exclude = ["*_test.go"],
+    ),
     visibility = [
         "//:all",
         "//watch",
@@ -18,10 +15,7 @@ go_library(
         "///third_party/go/github.com_bazelbuild_buildtools//edit",
         "///third_party/go/github.com_peterebden_go-cli-init_v5//logging",
         "//config",
-        "//edit",
-        "//fs:filepath",
         "//glob",
-        "//graph",
         "//kinds",
         "//knownimports",
         "//please",
@@ -33,21 +27,12 @@ go_library(
 
 testify_test(
     name = "generate_test",
-    srcs = [
-        "build_file_test.go",
-        "deps_test.go",
-        "fake_proxy_test.go",
-        "generate_test.go",
-        "import_test.go",
-        "rule_test.go",
-    ],
-    data = ["//:test_project"],
+    srcs = glob(include = ["*_test.go"]),
+    data = ["test_data"],
     deps = [
         ":generate",
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "//config",
-        "//edit",
-        "//graph",
         "//kinds",
         "//please",
         "//proxy",
