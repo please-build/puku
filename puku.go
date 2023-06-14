@@ -66,8 +66,15 @@ func main() {
 	}
 
 	paths, err := work.ExpandPaths(wd, opts.Args.Paths)
+	if err != nil {
+		log.Fatalf("failed to expand paths: %v", err)
+	}
+
 	if len(opts.Args.Paths) == 0 {
 		paths, err = work.ExpandPaths(wd, []string{"..."})
+		if err != nil {
+			log.Fatalf("failed to expand paths: %v", err)
+		}
 	}
 	if opts.Watch {
 		err := watch.Watch(plzConf, paths...)
