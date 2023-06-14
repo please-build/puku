@@ -11,6 +11,7 @@ import (
 	"github.com/peterebden/go-cli-init/v5/logging"
 
 	"github.com/please-build/puku/generate"
+	"github.com/please-build/puku/please"
 )
 
 var log = logging.MustGetLogger()
@@ -23,7 +24,7 @@ type debouncer struct {
 	paths  map[string]struct{}
 	timer  *time.Timer
 	mux    sync.Mutex
-	update *generate.Update
+	config *please.Config
 }
 
 // updatePath adds a path to the batch and resets the timer to the deboundDuration
@@ -51,7 +52,8 @@ func (d *debouncer) wait() {
 		paths = append(paths, p)
 	}
 
-	if err := d.update.Update(paths...); err != nil {
+	u := generate.NewUpdate(false, d.config)
+	if err := u.Update(paths...); err != nil {
 		log.Warningf("failed to update: %v", err)
 	}
 	log.Info("updated paths: %v", strings.Join(paths, ", "))
@@ -61,7 +63,7 @@ func (d *debouncer) wait() {
 	d.wait()
 }
 
-func Watch(u *generate.Update, paths ...string) error {
+func Watch(config *please.Config, paths ...string) error {
 	if len(paths) < 1 {
 		return nil
 	}
@@ -72,8 +74,8 @@ func Watch(u *generate.Update, paths ...string) error {
 	defer watcher.Close()
 
 	d := &debouncer{
-		update: u,
 		paths:  map[string]struct{}{},
+		config: config,
 	}
 
 	go func() {

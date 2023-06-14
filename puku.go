@@ -65,20 +65,18 @@ func main() {
 		log.Fatalf("failed to query config: %w", err)
 	}
 
-	u := generate.NewUpdate(!opts.LintOnly, plzConf)
-
 	paths, err := work.ExpandPaths(wd, opts.Args.Paths)
 	if len(opts.Args.Paths) == 0 {
 		paths, err = work.ExpandPaths(wd, []string{"..."})
 	}
 	if opts.Watch {
-		err := watch.Watch(u, paths...)
+		err := watch.Watch(plzConf, paths...)
 		if err != nil {
 			log.Fatalf("%v", err)
 		}
 	}
 
-	if err := u.Update(paths...); err != nil {
+	if err := generate.NewUpdate(!opts.LintOnly, plzConf).Update(paths...); err != nil {
 		log.Fatalf("%v", err)
 	}
 }

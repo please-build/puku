@@ -1,10 +1,9 @@
 package generate
 
 import (
-	"fmt"
-	"github.com/please-build/puku/edit"
-
 	"github.com/bazelbuild/buildtools/build"
+
+	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/glob"
 	"github.com/please-build/puku/kinds"
 )
@@ -15,20 +14,26 @@ type rule struct {
 	*build.Rule
 }
 
-func (r *rule) allSources() ([]string, error) {
-	if call, ok := r.Attr("srcs").(*build.CallExpr); ok {
-		srcs, err := evalGlob(r.dir, call)
-		if err != nil {
-			return nil, fmt.Errorf("failed to eval glob in %v: %v", r.dir, err)
-		}
-
-		return srcs, nil
+func (rule *rule) parseGlob() *glob.GlobArgs {
+	srcs := rule.Attr("srcs")
+	if srcs == nil {
+		return nil
 	}
 
-	return r.AttrStrings("srcs"), nil
-}
+	call, ok := srcs.(*build.CallExpr)
+	if !ok {
+		return nil
+	}
 
-func parseGlob(call *build.CallExpr) ([]string, []string) {
+	ident, ok := call.X.(*build.Ident)
+	if !ok {
+		return nil
+	}
+
+	if ident.Name != "glob" {
+		return nil
+	}
+
 	var include, exclude []string
 	positionalPos := 0
 	for _, expr := range call.List {
@@ -36,7 +41,7 @@ func parseGlob(call *build.CallExpr) ([]string, []string) {
 		if ok {
 			ident := assign.LHS.(*build.Ident)
 			if !ok {
-				return nil, nil
+				return nil
 			}
 			if ident.Name == "include" {
 				include = build.Strings(assign.RHS)
@@ -55,63 +60,58 @@ func parseGlob(call *build.CallExpr) ([]string, []string) {
 		}
 		positionalPos++
 	}
-	return include, exclude
-}
-
-func evalGlob(dir string, call *build.CallExpr) ([]string, error) {
-	if i, ok := call.X.(*build.Ident); !ok || i.Name != "glob" {
-		return nil, nil
+	return &glob.GlobArgs{
+		Include: include,
+		Exclude: exclude,
 	}
-	include, exclude := parseGlob(call)
-	return glob.Glob(dir, include, exclude)
 }
 
-func (r *rule) setOrDeleteAttr(name string, values []string) {
+func (rule *rule) setOrDeleteAttr(name string, values []string) {
 	if len(values) == 0 {
-		r.DelAttr(name)
+		rule.DelAttr(name)
 		return
 	}
-	r.SetAttr(name, edit.NewStringList(values))
+	rule.SetAttr(name, edit.NewStringList(values))
 }
 
-func (r *rule) isTest() bool {
-	return r.kind.Type == kinds.Test
+func (rule *rule) isTest() bool {
+	return rule.kind.Type == kinds.Test
 }
 
-func (r *rule) addSrc(src string) {
-	srcs := r.AttrStrings("srcs")
-	r.setOrDeleteAttr("srcs", append(srcs, src))
+func (rule *rule) addSrc(src string) {
+	srcs := rule.AttrStrings("srcs")
+	rule.setOrDeleteAttr("srcs", append(srcs, src))
 }
 
-func (r *rule) removeSrc(rem string) {
-	srcs := r.AttrStrings("srcs")
+func (rule *rule) removeSrc(rem string) {
+	srcs := rule.AttrStrings("srcs")
 	set := make([]string, 0, len(srcs))
 	for _, src := range srcs {
 		if src != rem {
 			set = append(set, src)
 		}
 	}
-	r.setOrDeleteAttr("srcs", set)
+	rule.setOrDeleteAttr("srcs", set)
 }
 
-func (r *rule) setExternal() {
-	r.SetAttr("external", &build.Ident{Name: "True"})
+func (rule *rule) setExternal() {
+	rule.SetAttr("external", &build.Ident{Name: "True"})
 }
 
-func (r *rule) localLabel() string {
-	return ":" + r.Name()
+func (rule *rule) localLabel() string {
+	return ":" + rule.Name()
 }
 
-func (r *rule) label() string {
-	return buildTarget(r.Name(), r.dir, "")
+func (rule *rule) label() string {
+	return buildTarget(rule.Name(), rule.dir, "")
 }
 
-func (r *rule) isExternal() bool {
-	if !r.isTest() {
+func (rule *rule) isExternal() bool {
+	if !rule.isTest() {
 		return false
 	}
 
-	external := r.Attr("external")
+	external := rule.Attr("external")
 	if external == nil {
 		return false
 	}
