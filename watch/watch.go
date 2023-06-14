@@ -3,6 +3,7 @@ package watch
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,7 +20,7 @@ const debounceDuration = 200 * time.Millisecond
 // debouncer batches up updates to paths, waiting for a debounceDuration to pass. This avoids running puku many times
 // during git checkouts etc. but it also avoids inconsistent state when files are being moved around rapidly.
 type debouncer struct {
-	paths  []string
+	paths  map[string]struct{}
 	timer  *time.Timer
 	mux    sync.Mutex
 	update *generate.Update
@@ -30,13 +31,11 @@ func (d *debouncer) updatePath(path string) {
 	d.mux.Lock()
 	defer d.mux.Unlock()
 
-	d.paths = append(d.paths, path)
+	d.paths[path] = struct{}{}
 	if d.timer != nil {
-		log.Info("resting timer, %v paths in queue", len(d.paths))
 		d.timer.Stop()
 		d.timer.Reset(debounceDuration)
 	} else {
-		log.Info("starting timer, %v paths in queue", len(d.paths))
 		d.timer = time.NewTimer(debounceDuration)
 		go d.wait()
 	}
@@ -44,15 +43,19 @@ func (d *debouncer) updatePath(path string) {
 
 // wait waits for the timer to fire before updating the paths
 func (d *debouncer) wait() {
-	log.Info("waiting for debounce")
 	<-d.timer.C
 
+	paths := make([]string, 0, len(d.paths))
+	for p := range d.paths {
+		paths = append(paths, p)
+	}
+
 	d.mux.Lock()
-	if err := d.update.Update(d.paths...); err != nil {
+	if err := d.update.Update(paths...); err != nil {
 		log.Warningf("failed to update: %v", err)
 	}
-	log.Info("updated %v paths", len(d.paths))
-	d.paths = nil
+	log.Info("updated paths: %v", strings.Join(paths, ", "))
+	d.paths = map[string]struct{}{}
 	d.mux.Unlock()
 
 	d.wait()
@@ -68,7 +71,10 @@ func Watch(u *generate.Update, paths ...string) error {
 	}
 	defer watcher.Close()
 
-	d := &debouncer{update: u}
+	d := &debouncer{
+		update: u,
+		paths:  map[string]struct{}{},
+	}
 
 	go func() {
 		for {
