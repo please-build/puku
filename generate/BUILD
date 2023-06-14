@@ -13,6 +13,7 @@ go_library(
     deps = [
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "///third_party/go/github.com_bazelbuild_buildtools//edit",
+        "///third_party/go/github.com_bazelbuild_buildtools//labels",
         "///third_party/go/github.com_peterebden_go-cli-init_v5//logging",
         "//config",
         "//glob",
