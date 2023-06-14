@@ -63,7 +63,7 @@ func (d *debouncer) wait() {
 	d.wait()
 }
 
-func Watch(u *please.Config, paths ...string) error {
+func Watch(config *please.Config, paths ...string) error {
 	if len(paths) < 1 {
 		return nil
 	}
@@ -74,7 +74,8 @@ func Watch(u *please.Config, paths ...string) error {
 	defer watcher.Close()
 
 	d := &debouncer{
-		paths: map[string]struct{}{},
+		paths:  map[string]struct{}{},
+		config: config,
 	}
 
 	go func() {
