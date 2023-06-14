@@ -6,5 +6,8 @@ go_library(
         "//generate",
         "//watch",
     ],
-    deps = ["//config"],
+    deps = [
+        "///third_party/go/github.com_bazelbuild_buildtools//labels",
+        "//config",
+    ],
 )
