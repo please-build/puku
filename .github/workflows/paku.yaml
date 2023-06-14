@@ -8,8 +8,6 @@ jobs:
         uses: actions/checkout@v2
       - name: Run tests
         run: ./pleasew test -p -v notice --log_file plz-out/log/test.log
-      - name: Run tests with coverage
-        run: ./pleasew cover -p -v notice --nocoverage_report --log_file plz-out/log/test.log
       - name: Archive logs
         if: always()
         uses: actions/upload-artifact@v2
@@ -25,11 +23,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Build puku
-        run: ./pleasew build --profile release //package:release_files
-      - name: Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        uses: thought-machine/release-action@master
+        run: ./pleasew build p -v notice --profile release //package:release_files
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

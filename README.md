@@ -34,7 +34,7 @@ prompt users with a preview before applying auto-fixes.
 Puku can be configured via `puku.json` files that are loaded as puku walks the directory structure. Configuration values
 are overriden as new files are discovered at a deeper level in the source tree.
 
-```json
+```yaml
 {
   // The directory to load and write third party rules to. If using `go_repo`, puku will update this package to satisfy
   // new imports
