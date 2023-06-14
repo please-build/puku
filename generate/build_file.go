@@ -1,6 +1,7 @@
 package generate
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/buildtools/edit"
@@ -22,8 +23,21 @@ func saveAndFormatBuildFile(buildFile *build.File, write bool) error {
 		_, err = f.Write(build.Format(buildFile))
 		return err
 	}
-	_, err := os.Stdout.Write(build.Format(buildFile))
-	return err
+	target := build.Format(buildFile)
+	actual, err := os.ReadFile(buildFile.Path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+		actual = nil
+	}
+
+	if !bytes.Equal(target, actual) {
+		_, err := os.Stdout.Write(target)
+		return err
+	}
+
+	return nil
 }
 
 // parseBuildFile tries to find and parse a build file in a directory. If it finds one, it will return true and the

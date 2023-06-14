@@ -145,7 +145,7 @@ func (u *Update) updateOne(conf *config.Config, path string) error {
 	rules, calls := u.readRulesFromFile(conf, file, path)
 
 	// Allocate the sources to the rules, creating new rules as necessary
-	newRules, srcsWereModded, err := u.allocateSources(path, sources, rules)
+	newRules, err := u.allocateSources(path, sources, rules)
 	if err != nil {
 		return err
 	}
@@ -153,17 +153,10 @@ func (u *Update) updateOne(conf *config.Config, path string) error {
 	rules = append(rules, newRules...)
 
 	// Update the existing call expressions in the build file
-	depsWereModded, err := u.updateDeps(conf, file, calls, rules, sources)
-	if err != nil {
+	if err := u.updateDeps(conf, file, calls, rules, sources); err != nil {
 		return err
 	}
-
-	// If we modified anything, we should format the file
-	if srcsWereModded || depsWereModded {
-		// Save the file back
-		return saveAndFormatBuildFile(file, u.write)
-	}
-	return nil
+	return saveAndFormatBuildFile(file, u.write)
 }
 
 func (u *Update) addNewModules(conf *config.Config) error {
@@ -178,8 +171,6 @@ func (u *Update) addNewModules(conf *config.Config) error {
 	// TODO figure out why Please needs this subinclude and check for u.goIsPreloaded before calling this once that's
 	// 	fixed
 	ensureSubinclude(file)
-
-	modified := false
 
 	var mods []*proxy.Module
 	existingRules := make(map[string]*build.Rule)
@@ -210,27 +201,23 @@ func (u *Update) addNewModules(conf *config.Config) error {
 		rule.SetAttr("module", newStringExpr(mod.Module))
 		rule.SetAttr("version", newStringExpr(mod.Version))
 		file.Stmt = append(file.Stmt, rule.Call)
-		modified = true
 	}
-	if modified {
-		return saveAndFormatBuildFile(file, u.write)
-	}
-	return nil
+	return saveAndFormatBuildFile(file, u.write)
 }
 
 // updateRuleDeps updates the dependencies of a build rule based on the imports of its sources
-func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, sources map[string]*GoFile) (bool, error) {
+func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, sources map[string]*GoFile) error {
 	done := map[string]struct{}{}
 
 	// If the rule operates on non-go sources (e.g. .proto sources for proto_library) then we should skip updating
 	// its deps.
 	if rule.kind.NonGoSources {
-		return false, nil
+		return nil
 	}
 
 	srcs, err := rule.allSources()
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	depsBefore := rule.AttrStrings("deps")
@@ -240,7 +227,6 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 		deps[dep] = struct{}{}
 	}
 
-	modified := false
 	for _, src := range srcs {
 		f := sources[src]
 		if f == nil {
@@ -267,7 +253,6 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 				continue
 			}
 			if _, ok := deps[dep]; !ok {
-				modified = true
 				deps[dep] = struct{}{}
 			}
 		}
@@ -277,7 +262,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 	if rule.kind.Type == kinds.Test {
 		pkgName, err := rulePkg(sources, rule)
 		if err != nil {
-			return false, err
+			return err
 		}
 
 		for _, libRule := range rules {
@@ -286,7 +271,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 			}
 			libPkgName, err := rulePkg(sources, libRule)
 			if err != nil {
-				return false, err
+				return err
 			}
 
 			if libPkgName != pkgName {
@@ -295,7 +280,6 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 
 			t := libRule.localLabel()
 			if _, ok := deps[t]; !ok {
-				modified = true
 				deps[t] = struct{}{}
 			}
 		}
@@ -308,7 +292,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 
 	rule.setOrDeleteAttr("deps", depSlice)
 
-	return modified, nil
+	return nil
 }
 
 // readRulesFromFile reads the existing build rules from the BUILD file
@@ -330,27 +314,24 @@ func (u *Update) readRulesFromFile(conf *config.Config, file *build.File, pkgDir
 }
 
 // updateDeps updates the existing rules and creates any new rules in the BUILD file
-func (u *Update) updateDeps(conf *config.Config, file *build.File, ruleExprs map[string]*build.Rule, rules []*rule, sources map[string]*GoFile) (bool, error) {
-	modified := false
+func (u *Update) updateDeps(conf *config.Config, file *build.File, ruleExprs map[string]*build.Rule, rules []*rule, sources map[string]*GoFile) error {
 	for _, rule := range rules {
 		if _, ok := ruleExprs[rule.Name()]; !ok {
 			file.Stmt = append(file.Stmt, rule.Call)
 		}
-		modded, err := u.updateRuleDeps(conf, rule, rules, sources)
-		if err != nil {
-			return false, err
+		if err := u.updateRuleDeps(conf, rule, rules, sources); err != nil {
+			return err
 		}
-		modified = modded || modified
 	}
-	return modified, nil
+	return nil
 }
 
 // allocateSources allocates sources to rules. If there's no existing rule, a new rule will be created and returned
 // from this function
-func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rules []*rule) ([]*rule, bool, error) {
+func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rules []*rule) ([]*rule, error) {
 	unallocated, err := unallocatedSources(sources, rules)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	var newRules []*rule
@@ -367,7 +348,7 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 
 			rulePkgName, err := rulePkg(sources, r)
 			if err != nil {
-				return nil, false, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.Name(), err)
+				return nil, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.Name(), err)
 			}
 
 			// Find a rule that's for thhe same package and of the same kind (i.e. bin, lib, test)
@@ -398,7 +379,7 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 
 		rule.addSrc(src)
 	}
-	return newRules, len(unallocated) > 0, nil
+	return newRules, nil
 }
 
 // rulePkg checks the first source it finds for a rule and returns the name from the "package name" directive at the top

@@ -46,7 +46,7 @@ func TestAllocateSources(t *testing.T) {
 
 	u := &Update{conf: new(please.Config)}
 
-	newRules, _, err := u.allocateSources("foo", files, rules)
+	newRules, err := u.allocateSources("foo", files, rules)
 	require.NoError(t, err)
 
 	require.Len(t, newRules, 1)
@@ -96,7 +96,7 @@ func TestAllocateSourcesToCustomKind(t *testing.T) {
 	}
 
 	u := new(Update)
-	newRules, _, err := u.allocateSources("foo", files, rules)
+	newRules, err := u.allocateSources("foo", files, rules)
 	require.NoError(t, err)
 
 	assert.Len(t, newRules, 0)
@@ -233,7 +233,7 @@ func TestUpdateDeps(t *testing.T) {
 				srcNames = append(srcNames, f.FileName)
 			}
 
-			_, err := u.updateRuleDeps(conf, r, []*rule{}, files)
+			err := u.updateRuleDeps(conf, r, []*rule{}, files)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, tc.expectedDeps, r.AttrStrings("deps"))
 			assert.ElementsMatch(t, srcNames, r.AttrStrings("srcs"))
