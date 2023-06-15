@@ -3,14 +3,15 @@ package generate
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/kinds"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/trie"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestAllocateSources(t *testing.T) {

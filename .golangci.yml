@@ -32,3 +32,9 @@ linters:
     - whitespace
     - errcheck
     - exportloopref
+linters-settings:
+  gci:
+    sections:
+      - standard # Captures all standard packages if they do not match another section.
+      - default # Contains all imports that could not be matched to another section type.
+      - prefix(github.com/please-build/puku)

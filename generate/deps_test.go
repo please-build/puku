@@ -4,10 +4,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/please-build/puku/config"
-	"github.com/please-build/puku/please"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/please"
 )
 
 func TestDepTarget(t *testing.T) {

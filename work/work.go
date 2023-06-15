@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/buildtools/labels"
+
 	"github.com/please-build/puku/config"
 )
 
