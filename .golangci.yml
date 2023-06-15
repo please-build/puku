@@ -1,0 +1,40 @@
+run:
+  timeout: 5m
+  skip-dirs:
+    - test_data
+    - plz-out
+
+linters:
+  enable:
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - unused
+    - dogsled
+    - dupl
+    - exportloopref
+    - gci
+    - gocritic
+    - gofmt
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - nilerr
+    - prealloc
+    - revive
+    - staticcheck
+    - tenv
+    - thelper
+    - unconvert
+    - unused
+    - wastedassign
+    - whitespace
+    - errcheck
+    - exportloopref
+linters-settings:
+  gci:
+    sections:
+      - standard # Captures all standard packages if they do not match another section.
+      - default # Contains all imports that could not be matched to another section type.
+      - prefix(github.com/please-build/puku)

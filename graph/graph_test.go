@@ -2,12 +2,13 @@ package graph
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/buildtools/labels"
 	"github.com/please-build/puku/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestLoadBuildFile(t *testing.T) {
@@ -161,7 +162,7 @@ func TestCheckVisibility(t *testing.T) {
 	t.Run("doesnt match a different package wildcard", func(t *testing.T) {
 		assert.False(t, checkVisibility(label, []string{"//bar/..."}))
 	})
-	t.Run("doesnt match a differnt package", func(t *testing.T) {
+	t.Run("doesnt match a different package", func(t *testing.T) {
 		assert.False(t, checkVisibility(label, []string{"//bar:all"}))
 	})
 }

@@ -100,7 +100,6 @@ func Watch(config *please.Config, paths ...string) error {
 						if info.IsDir() {
 							if err := add(watcher, event.Name); err != nil {
 								log.Warningf("failed to set up watcher: %v", err)
-
 							}
 						}
 					}
@@ -118,7 +117,6 @@ func Watch(config *please.Config, paths ...string) error {
 		return err
 	}
 	select {}
-
 }
 
 func add(watcher *fsnotify.Watcher, paths ...string) error {

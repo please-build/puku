@@ -1,17 +1,17 @@
 package generate
 
 import (
-	"github.com/please-build/puku/edit"
-	"github.com/please-build/puku/graph"
 	"testing"
-
-	"github.com/please-build/puku/config"
-	"github.com/please-build/puku/kinds"
-	"github.com/please-build/puku/please"
-	"github.com/please-build/puku/trie"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/edit"
+	"github.com/please-build/puku/graph"
+	"github.com/please-build/puku/kinds"
+	"github.com/please-build/puku/please"
+	"github.com/please-build/puku/trie"
 )
 
 func TestAllocateSources(t *testing.T) {
@@ -240,7 +240,6 @@ func TestUpdateDeps(t *testing.T) {
 			require.NoError(t, err)
 			assert.ElementsMatch(t, tc.expectedDeps, r.AttrStrings("deps"))
 			assert.ElementsMatch(t, srcNames, r.AttrStrings("srcs"))
-
 		})
 	}
 }
