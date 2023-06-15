@@ -3,12 +3,13 @@ package proxy
 import (
 	"encoding/json"
 	"fmt"
-	"golang.org/x/mod/modfile"
-	"golang.org/x/mod/semver"
 	"io"
 	"net/http"
 	"path/filepath"
 	"strings"
+
+	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/semver"
 )
 
 var client = http.DefaultClient
@@ -191,6 +192,8 @@ func (proxy *Proxy) getGoMod(mod, ver string) (*modfile.File, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
