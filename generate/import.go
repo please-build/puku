@@ -28,7 +28,7 @@ func ImportDir(dir string) (map[string]*GoFile, error) {
 
 	ret := make(map[string]*GoFile, len(files))
 	for _, info := range files {
-		if info.IsDir() {
+		if !info.Type().IsRegular() {
 			continue
 		}
 

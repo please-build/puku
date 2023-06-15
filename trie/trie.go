@@ -27,7 +27,6 @@ func (trie *Trie) add(parts []string, value string) {
 	key := parts[0]
 	if key == "..." {
 		trie.matchAll = true
-		trie.children = nil
 		trie.value = value
 		return
 	}
@@ -47,18 +46,21 @@ func (trie *Trie) Get(path string) string {
 }
 
 func (trie *Trie) get(parts []string) string {
-	if trie.matchAll {
-		return trie.value
-	}
-
 	if len(parts) == 0 {
 		return trie.value
 	}
 
 	next, ok := trie.children[parts[0]]
 	if !ok {
+		if trie.matchAll {
+			return trie.value
+		}
 		return ""
 	}
 
-	return next.get(parts[1:])
+	v := next.get(parts[1:])
+	if v == "" && trie.matchAll {
+		return trie.value
+	}
+	return v
 }
