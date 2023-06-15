@@ -1,3 +1,10 @@
+Version 0.2.0
+------------
+    * Fixed some issues around resolving install lists on `go_repo` and `go_module` (#33)
+    * Implemented default visibility. This will be parsed out of `package()` statements
+      in BUILD files automatically, but rules can be configured to assume a certain
+      visibility. This can be useful for rules like `go_repo` that default to PUBLIC.
+
 Version 0.1.0
 ------------
     * Initial release
