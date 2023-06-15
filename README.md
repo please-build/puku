@@ -53,6 +53,8 @@ are overriden as new files are discovered at a deeper level in the source tree.
         // Any deps that the build definition will add to the target. Puku will avoid adding these dependencies via
         // deps.
         "providedDeps": ["//common/go:some_common_lib"],
+        // The visibility of the target if no visibility arg is passed
+        "defaultVisibility": ["PUBLIC"]
     },
     "my_proto_library": {
         // Setting this to true indicates to puku that these targets don't operate on Go sources, so it shouldn't try

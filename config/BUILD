@@ -4,6 +4,7 @@ go_library(
     visibility = [
         "//:all",
         "//generate:all",
+        "//graph:all",
         "//work:all",
     ],
     deps = ["//kinds"],

@@ -14,8 +14,9 @@ type KindConfig struct {
 	// NonGoSources indicates that this rule operates on non-go sources and we shouldn't attempt to parse them to
 	// generate the deps list. This is the case for rules like proto_library that still output a go package, but we
 	// shouldn't try to update their deps based on their sources.
-	NonGoSources bool     `json:"nonGoSources"`
-	ProvidedDeps []string `json:"providedDeps"`
+	NonGoSources      bool     `json:"nonGoSources"`
+	ProvidedDeps      []string `json:"providedDeps"`
+	DefaultVisibility []string `json:"defaultVisibility"`
 }
 
 // Config represents a puku.json file discovered in the repo. These are loaded for each directory, and form a chain of
@@ -33,6 +34,7 @@ type Config struct {
 	Stop          bool                   `json:"stop"`
 }
 
+// TODO we should reload this during plz watch so this probably needs to become a member of Update
 // configs contains a cache of configs for a given directory
 var configs = map[string]*Config{}
 
@@ -135,9 +137,10 @@ func (c *Config) GetKind(kind string) *kinds.Kind {
 
 	if k, ok := c.LibKinds[kind]; ok {
 		return &kinds.Kind{
-			Name:         kind,
-			Type:         kinds.Lib,
-			ProvidedDeps: k.ProvidedDeps,
+			Name:              kind,
+			Type:              kinds.Lib,
+			ProvidedDeps:      k.ProvidedDeps,
+			DefaultVisibility: k.DefaultVisibility,
 		}
 	}
 	if k, ok := c.TestKinds[kind]; ok {

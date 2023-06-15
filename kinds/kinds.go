@@ -6,6 +6,7 @@ const (
 	Lib Type = iota
 	Test
 	Bin
+	ThirdParty
 )
 
 // Kind is a kind of build target, e.g. go_library. These can either be library, test or binaries. They can also provide
@@ -15,9 +16,10 @@ const (
 // Currently, puku assumes these use the same args for e.g. srcs, and deps as go_library, go_test and go_binary. This
 // may become configurable if the need arises.
 type Kind struct {
-	Name         string
-	Type         Type
-	ProvidedDeps []string
+	Name              string
+	Type              Type
+	ProvidedDeps      []string
+	DefaultVisibility []string
 	// NonGoSources indicates the puku that the sources to this rule are not go so we shouldn't try to parse them to
 	// infer their deps, for example, proto_library.
 	NonGoSources bool
@@ -57,5 +59,14 @@ var DefaultKinds = map[string]*Kind{
 		Name:         "proto_library",
 		Type:         Lib,
 		NonGoSources: true,
+	},
+	"go_repo": {
+		Name:              "go_repo",
+		Type:              ThirdParty,
+		DefaultVisibility: []string{"PUBLIC"},
+	},
+	"go_module": {
+		Name: "go_repo",
+		Type: ThirdParty,
 	},
 }

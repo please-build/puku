@@ -8,6 +8,8 @@ import (
 	"github.com/bazelbuild/buildtools/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/please-build/puku/config"
 )
 
 func TestLoadBuildFile(t *testing.T) {
@@ -73,6 +75,80 @@ go_library(
 	require.Contains(t, bs.String(), `visibility = ["//bar:all"]`)
 }
 
+func TestDefaultVisibility(t *testing.T) {
+	conf := &config.Config{
+		LibKinds: map[string]*config.KindConfig{
+			"my_go_library": {
+				DefaultVisibility: []string{"//bar/..."},
+			},
+		},
+	}
+
+	foo, err := build.ParseBuild("foo/BUILD", []byte(`
+my_go_library(
+	name = "foo",
+	srcs = ["main.go"],
+)
+`))
+	require.NoError(t, err)
+
+	bar, err := build.ParseBuild("bar/BUILD", []byte(`
+package(default_visibility = ["//baz/..."])
+
+go_library(
+	name = "bar",
+	srcs = ["bar.go"],
+	deps = ["//foo"],
+)
+`))
+	require.NoError(t, err)
+
+	baz, err := build.ParseBuild("baz/BUILD", []byte(`
+package(default_visibility = ["//fizz/..."])
+
+go_library(
+	name = "baz",
+	srcs = ["baz.go"],
+	deps = ["//foo"],
+	visibility = ["//foo/..."],
+)
+`))
+	require.NoError(t, err)
+
+	fizz, err := build.ParseBuild("baz/BUILD", []byte(`
+go_library(
+	name = "fizz",
+	srcs = ["fizz.go"],
+	deps = ["//baz"],
+)
+`))
+	require.NoError(t, err)
+
+	g := New(nil)
+	g.files["foo"] = foo
+	g.files["bar"] = bar
+	g.files["baz"] = baz
+	g.files["fizz"] = fizz
+
+	g.EnsureVisibility("//bar", "//foo")  // Handled by kinds default visibility
+	g.EnsureVisibility("//baz", "//bar")  // Handled by package default visibility
+	g.EnsureVisibility("//fizz", "//baz") // Needs update as package visibility is overridden by visibility arg
+
+	for _, dep := range g.deps {
+		require.NoError(t, g.ensureVisibility(conf, dep))
+	}
+
+	assert.Empty(t, findTargetByName(foo, "foo").AttrStrings("visibility"))
+	assert.Empty(t, findTargetByName(bar, "bar").AttrStrings("visibility"))
+	assert.Empty(t, findTargetByName(fizz, "fizz").AttrStrings("visibility"))
+
+	// This was overridden even though we set the package visibility because the rule set visibility explicitly
+	assert.ElementsMatch(t,
+		[]string{"//foo/...", "//fizz:all"},
+		findTargetByName(baz, "baz").AttrStrings("visibility"),
+	)
+}
+
 func TestCheckVisibility(t *testing.T) {
 	label := labels.Parse("//foo/bar:baz")
 	t.Run("matches exactly", func(t *testing.T) {
@@ -94,4 +170,11 @@ func TestCheckVisibility(t *testing.T) {
 	t.Run("doesnt match a different package", func(t *testing.T) {
 		assert.False(t, checkVisibility(label, []string{"//bar:all"}))
 	})
+}
+
+func TestGetDefaultVisibilityFromFile(t *testing.T) {
+	file, err := build.ParseBuild("test", []byte("package(default_visibility = [\"PUBLIC\"])"))
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"PUBLIC"}, getDefaultVisibility(file))
 }

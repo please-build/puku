@@ -140,6 +140,13 @@ go_repo(
     install = ["..."],
     module = "github.com/stretchr/testify",
     version = "v1.8.4",
+    visibility = [
+        "//edit:all",
+        "//generate:all",
+        "//glob:all",
+        "//graph:all",
+        "//trie:all",
+    ],
 )
 
 go_mod_download(
