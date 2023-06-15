@@ -2,6 +2,7 @@ package generate
 
 import (
 	"errors"
+
 	"github.com/please-build/puku/proxy"
 )
 
@@ -21,9 +22,6 @@ func (f FakeProxy) ResolveModuleForPackage(pattern string) (*proxy.Module, error
 	return nil, errors.New("not found")
 }
 
-func (f FakeProxy) ResolveDeps(mods, newMods []*proxy.Module) ([]*proxy.Module, error) {
+func (f FakeProxy) ResolveDeps(_, _ []*proxy.Module) ([]*proxy.Module, error) {
 	panic("not implemented")
 }
-
-
-

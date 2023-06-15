@@ -1,8 +1,9 @@
 package trie
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTrie(t *testing.T) {

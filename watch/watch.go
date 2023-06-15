@@ -9,7 +9,6 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/peterebden/go-cli-init/v5/logging"
-
 	"github.com/please-build/puku/generate"
 	"github.com/please-build/puku/please"
 )
@@ -100,7 +99,6 @@ func Watch(config *please.Config, paths ...string) error {
 						if info.IsDir() {
 							if err := add(watcher, event.Name); err != nil {
 								log.Warningf("failed to set up watcher: %v", err)
-
 							}
 						}
 					}
@@ -118,7 +116,6 @@ func Watch(config *please.Config, paths ...string) error {
 		return err
 	}
 	select {}
-
 }
 
 func add(watcher *fsnotify.Watcher, paths ...string) error {

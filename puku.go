@@ -1,15 +1,14 @@
 package main
 
 import (
-	"github.com/please-build/puku/config"
-	"github.com/please-build/puku/please"
 	"os"
 	"path/filepath"
 
 	"github.com/peterebden/go-cli-init/v5/flags"
 	"github.com/peterebden/go-cli-init/v5/logging"
-
+	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/generate"
+	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/watch"
 	"github.com/please-build/puku/work"
 )

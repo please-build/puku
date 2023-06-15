@@ -1,12 +1,12 @@
 package config
 
 import (
-	"github.com/please-build/puku/kinds"
-
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/please-build/puku/kinds"
 )
 
 // KindConfig represents the configuration for a custom kind. See kinds.Kind for more information on how kinds work.

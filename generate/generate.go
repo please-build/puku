@@ -9,7 +9,6 @@ import (
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/buildtools/labels"
 	"github.com/peterebden/go-cli-init/v5/logging"
-
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/glob"
@@ -187,9 +186,10 @@ func (u *Update) addNewModules(conf *config.Config) error {
 	// 	fixed
 	edit.EnsureSubinclude(file)
 
-	var mods []*proxy.Module
+	goRepos := file.Rules("go_repo")
+	mods := make([]*proxy.Module, 0, len(goRepos))
 	existingRules := make(map[string]*build.Rule)
-	for _, rule := range file.Rules("go_repo") {
+	for _, rule := range goRepos {
 		mod, ver := rule.AttrString("module"), rule.AttrString("version")
 		existingRules[rule.AttrString("module")] = rule
 		mods = append(mods, &proxy.Module{Module: mod, Version: ver})
@@ -330,10 +330,11 @@ func shorten(pkg, label string) string {
 
 // readRulesFromFile reads the existing build rules from the BUILD file
 func (u *Update) readRulesFromFile(conf *config.Config, file *build.File, pkgDir string) ([]*rule, map[string]*build.Rule) {
-	var rules []*rule
+	ruleExprs := file.Rules("")
+	rules := make([]*rule, 0, len(ruleExprs))
 	calls := map[string]*build.Rule{}
 
-	for _, expr := range file.Rules("") {
+	for _, expr := range ruleExprs {
 		kind := conf.GetKind(expr.Kind())
 		if kind == nil {
 			continue
@@ -396,7 +397,7 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 			name := filepath.Base(pkgDir)
 			kind := "go_library"
 			if importedFile.IsTest() {
-				name = name + "_test"
+				name += "_test"
 				kind = "go_test"
 			}
 			if importedFile.IsCmd() {

@@ -2,7 +2,6 @@ package generate
 
 import (
 	"github.com/bazelbuild/buildtools/build"
-
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/glob"
 	"github.com/please-build/puku/kinds"
@@ -14,7 +13,7 @@ type rule struct {
 	*build.Rule
 }
 
-func (rule *rule) parseGlob() *glob.GlobArgs {
+func (rule *rule) parseGlob() *glob.Args {
 	srcs := rule.Attr("srcs")
 	if srcs == nil {
 		return nil
@@ -60,7 +59,7 @@ func (rule *rule) parseGlob() *glob.GlobArgs {
 		}
 		positionalPos++
 	}
-	return &glob.GlobArgs{
+	return &glob.Args{
 		Include: include,
 		Exclude: exclude,
 	}

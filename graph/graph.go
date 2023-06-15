@@ -3,14 +3,15 @@ package graph
 import (
 	"bytes"
 	"fmt"
-	"github.com/bazelbuild/buildtools/build"
-	"github.com/bazelbuild/buildtools/labels"
-	"github.com/please-build/puku/edit"
-	"github.com/please-build/puku/fs"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/bazelbuild/buildtools/build"
+	"github.com/bazelbuild/buildtools/labels"
+	"github.com/please-build/puku/edit"
+	"github.com/please-build/puku/fs"
 )
 
 type Dependency struct {

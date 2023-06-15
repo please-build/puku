@@ -2,12 +2,13 @@ package work
 
 import (
 	"errors"
-	"github.com/bazelbuild/buildtools/labels"
-	"github.com/please-build/puku/config"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/bazelbuild/buildtools/labels"
+	"github.com/please-build/puku/config"
 )
 
 func ExpandPaths(origWD string, paths []string) ([]string, error) {

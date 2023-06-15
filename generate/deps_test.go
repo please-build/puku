@@ -1,11 +1,11 @@
 package generate
 
 import (
-	"github.com/please-build/puku/please"
 	"path/filepath"
 	"testing"
 
 	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/please"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -1,0 +1,34 @@
+run:
+  timeout: 5m
+  skip-dirs:
+    - test_data
+    - plz-out
+
+linters:
+  enable:
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - unused
+    - dogsled
+    - dupl
+    - exportloopref
+    - gci
+    - gocritic
+    - gofmt
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - nilerr
+    - prealloc
+    - revive
+    - staticcheck
+    - tenv
+    - thelper
+    - unconvert
+    - unused
+    - wastedassign
+    - whitespace
+    - errcheck
+    - exportloopref
