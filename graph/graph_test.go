@@ -6,9 +6,10 @@ import (
 
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/buildtools/labels"
-	"github.com/please-build/puku/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/please-build/puku/config"
 )
 
 func TestLoadBuildFile(t *testing.T) {
@@ -100,6 +101,7 @@ go_library(
 	deps = ["//foo"],
 )
 `))
+	require.NoError(t, err)
 
 	baz, err := build.ParseBuild("baz/BUILD", []byte(`
 package(default_visibility = ["//fizz/..."])
@@ -111,6 +113,8 @@ go_library(
 	visibility = ["//foo/..."],
 )
 `))
+	require.NoError(t, err)
+
 	fizz, err := build.ParseBuild("baz/BUILD", []byte(`
 go_library(
 	name = "fizz",
@@ -118,6 +122,7 @@ go_library(
 	deps = ["//baz"],
 )
 `))
+	require.NoError(t, err)
 
 	g := New(nil)
 	g.files["foo"] = foo
@@ -127,7 +132,7 @@ go_library(
 
 	g.EnsureVisibility("//bar", "//foo")  // Handled by kinds default visibility
 	g.EnsureVisibility("//baz", "//bar")  // Handled by package default visibility
-	g.EnsureVisibility("//fizz", "//baz") // Needs update as package visibility is overriden by visibility arg
+	g.EnsureVisibility("//fizz", "//baz") // Needs update as package visibility is overridden by visibility arg
 
 	for _, dep := range g.deps {
 		require.NoError(t, g.ensureVisibility(conf, dep))
@@ -137,7 +142,7 @@ go_library(
 	assert.Empty(t, findTargetByName(bar, "bar").AttrStrings("visibility"))
 	assert.Empty(t, findTargetByName(fizz, "fizz").AttrStrings("visibility"))
 
-	// This was overriden even though we set the package visibility because the rule set visibility explicitly
+	// This was overridden even though we set the package visibility because the rule set visibility explicitly
 	assert.ElementsMatch(t,
 		[]string{"//foo/...", "//fizz:all"},
 		findTargetByName(baz, "baz").AttrStrings("visibility"),
