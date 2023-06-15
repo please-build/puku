@@ -3,14 +3,17 @@ package graph
 import (
 	"bytes"
 	"fmt"
-	"github.com/bazelbuild/buildtools/build"
-	"github.com/bazelbuild/buildtools/labels"
-	"github.com/please-build/puku/edit"
-	"github.com/please-build/puku/fs"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/bazelbuild/buildtools/build"
+	"github.com/bazelbuild/buildtools/labels"
+
+	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/edit"
+	"github.com/please-build/puku/fs"
 )
 
 type Dependency struct {
@@ -102,29 +105,52 @@ func (g *Graph) FormatFiles(write bool, out io.Writer) error {
 
 func (g *Graph) ensureVisibilities() error {
 	for _, dep := range g.deps {
-		if err := g.ensureVisibility(dep); err != nil {
+		conf, err := config.ReadConfig(dep.To.Package)
+		if err != nil {
+			return err
+		}
+		if err := g.ensureVisibility(conf, dep); err != nil {
 			return fmt.Errorf("failed to set visibility: %v", err)
 		}
 	}
 	return nil
 }
 
-func (g *Graph) ensureVisibility(dep *Dependency) error {
+func getDefaultVisibility(f *build.File) []string {
+	for _, r := range f.Rules("package") {
+		if vis := r.AttrStrings("default_visibility"); len(vis) > 0 {
+			return vis
+		}
+	}
+	return nil
+}
+
+func (g *Graph) ensureVisibility(conf *config.Config, dep *Dependency) error {
 	f, err := g.LoadFile(dep.To.Package)
 	if err != nil {
 		return err
 	}
+
 	t := findTargetByName(f, dep.To.Target)
 	if t == nil {
 		return fmt.Errorf("failed can't find target %v (depended on by %v)", dep.To.Format(), dep.From.Format())
 	}
 
-	visibilities := t.AttrStrings("visibility")
-	if t.Kind() == "go_repo" && len(visibilities) == 0 {
-		return nil // go_repo defaults to public (should it?)
+	kind := conf.GetKind(t.Kind())
+	if kind == nil {
+		return fmt.Errorf("%v tried to depend on %v, but %v is of unknown kind: %v", dep.From.Format(), dep.To.Format(), dep.To.Format(), t.Kind())
 	}
 
-	if checkVisibility(dep.From, visibilities) {
+	visibilities := t.AttrStrings("visibility")
+
+	defaultVis := visibilities
+	if len(defaultVis) == 0 {
+		defaultVis = kind.DefaultVisibility
+	}
+	if len(defaultVis) == 0 {
+		defaultVis = getDefaultVisibility(f)
+	}
+	if checkVisibility(dep.From, defaultVis) {
 		return nil
 	}
 

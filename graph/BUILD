@@ -5,6 +5,7 @@ go_library(
     deps = [
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "///third_party/go/github.com_bazelbuild_buildtools//labels",
+        "//config",
         "//edit",
         "//fs",
     ],
