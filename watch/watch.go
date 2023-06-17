@@ -1,6 +1,7 @@
 package watch
 
 import (
+	"github.com/please-build/puku/logging"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,13 +9,11 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/peterebden/go-cli-init/v5/logging"
-
 	"github.com/please-build/puku/generate"
 	"github.com/please-build/puku/please"
 )
 
-var log = logging.MustGetLogger()
+var log = logging.GetLogger()
 
 const debounceDuration = 200 * time.Millisecond
 
@@ -47,16 +46,17 @@ func (d *debouncer) wait() {
 	<-d.timer.C
 
 	d.mux.Lock()
+
 	paths := make([]string, 0, len(d.paths))
 	for p := range d.paths {
 		paths = append(paths, p)
 	}
-
 	u := generate.NewUpdate(true, d.config)
 	if err := u.Update(paths...); err != nil {
 		log.Warningf("failed to update: %v", err)
+	} else {
+		log.Infof("Updated paths: %v ", strings.Join(paths, ", "))
 	}
-	log.Info("updated paths: %v", strings.Join(paths, ", "))
 	d.paths = map[string]struct{}{}
 	d.mux.Unlock()
 

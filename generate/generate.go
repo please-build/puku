@@ -8,19 +8,19 @@ import (
 
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/buildtools/labels"
-	"github.com/peterebden/go-cli-init/v5/logging"
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/glob"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/kinds"
+	"github.com/please-build/puku/logging"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/proxy"
 	"github.com/please-build/puku/trie"
 )
 
-var log = logging.MustGetLogger()
+var log = logging.GetLogger()
 
 type Proxy interface {
 	ResolveModuleForPackage(pattern string) (*proxy.Module, error)
