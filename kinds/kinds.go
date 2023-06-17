@@ -50,6 +50,10 @@ var DefaultKinds = map[string]*Kind{
 		Name: "go_test",
 		Type: Test,
 	},
+	"go_benchmark": {
+		Name: "go_benchmark",
+		Type: Test,
+	},
 	"proto_library": {
 		Name:         "proto_library",
 		Type:         Lib,
