@@ -1,7 +1,6 @@
 package watch
 
 import (
-	"github.com/please-build/puku/logging"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,7 +8,9 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+
 	"github.com/please-build/puku/generate"
+	"github.com/please-build/puku/logging"
 	"github.com/please-build/puku/please"
 )
 

@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/peterebden/go-cli-init/v5/flags"
 	"os"
 	"path/filepath"
 
+	"github.com/peterebden/go-cli-init/v5/flags"
 	clilogging "github.com/peterebden/go-cli-init/v5/logging"
 
 	"github.com/please-build/puku/config"
