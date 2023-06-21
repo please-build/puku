@@ -19,6 +19,7 @@ go_test(
         ":graph",
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "///third_party/go/github.com_bazelbuild_buildtools//labels",
+        "//config",
         "//third_party/go:testify",
     ],
 )
