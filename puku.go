@@ -5,10 +5,11 @@ import (
 	"path/filepath"
 
 	"github.com/peterebden/go-cli-init/v5/flags"
-	"github.com/peterebden/go-cli-init/v5/logging"
+	clilogging "github.com/peterebden/go-cli-init/v5/logging"
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/generate"
+	"github.com/please-build/puku/logging"
 	"github.com/please-build/puku/migrate"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/watch"
@@ -16,7 +17,8 @@ import (
 )
 
 var opts = struct {
-	Usage string
+	Usage     string
+	Verbosity clilogging.Verbosity `short:"v" long:"verbosity" description:"Verbosity of output (error, warning, notice, info, debug)" default:"info"`
 	Fmt   struct {
 		Args struct {
 			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
@@ -44,7 +46,7 @@ puku is a tool used to generate and update Go targets in build files
 `,
 }
 
-var log = logging.MustGetLogger()
+var log = logging.GetLogger()
 
 var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignalWD string) int{
 	"fmt": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
@@ -82,6 +84,9 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 }
 
 func main() {
+	flags.ParseFlagsOrDie("puku", &opts, nil)
+	logging.InitLogging(opts.Verbosity)
+
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("failed to get wd: %v", err)

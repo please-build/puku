@@ -66,6 +66,8 @@ func (u *Update) reallyResolveImport(conf *config.Config, i string) (string, err
 		return "", fmt.Errorf("module not found")
 	}
 
+	log.Infof("Resolving module for %v...", i)
+
 	// Otherwise try and resolve it to a new dep via the module proxy. We assume the module will contain the package.
 	// Please will error out in a reasonable way if it doesn't.
 	// TODO it would be more correct to download the module and check it actually contains the package
@@ -73,6 +75,8 @@ func (u *Update) reallyResolveImport(conf *config.Config, i string) (string, err
 	if err != nil {
 		return "", err
 	}
+
+	log.Infof("Resolved to %v... done", mod.Module)
 
 	// If the package belongs to this module, we should have found this package when resolving local imports above. We
 	// don't want to resolve this like a third party module, so we should return an error here.

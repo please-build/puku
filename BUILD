@@ -10,6 +10,7 @@ go_binary(
         "//config",
         "//generate",
         "//migrate",
+        "//logging",
         "//please",
         "//watch",
         "//work",

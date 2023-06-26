@@ -16,7 +16,7 @@ Puku can also format files under specific paths using a similar wildcard syntax 
 $ puku fmt //src/...
 ```
 
-Puku supports `go_library`, `go_test`, `go_binary`, `proto_library`, and `grpc_library` out of the box, but can be
+Puku supports `go_library`, `go_test`, `go_binary`, `go_benchmark`, `proto_library`, and `grpc_library` out of the box, but can be
 configured to support other rules. See the configuration section below for more information.
 
 ### Migrate
