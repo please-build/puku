@@ -117,6 +117,7 @@ func Watch(config *please.Config, paths ...string) error {
 	if err := add(watcher, paths...); err != nil {
 		return err
 	}
+	log.Info("And so my watch begins...")
 	select {}
 }
 

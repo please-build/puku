@@ -9,6 +9,7 @@ go_binary(
         "///third_party/go/github.com_peterebden_go-cli-init_v5//logging",
         "//config",
         "//generate",
+        "//migrate",
         "//logging",
         "//please",
         "//watch",

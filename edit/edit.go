@@ -49,6 +49,14 @@ func NewStringExpr(s string) *build.StringExpr {
 	return &build.StringExpr{Value: s}
 }
 
+func NewAssignExpr(key string, value build.Expr) *build.AssignExpr {
+	return &build.AssignExpr{
+		LHS: &build.Ident{Name: key},
+		Op:  "=",
+		RHS: value,
+	}
+}
+
 func NewStringList(ss []string) *build.ListExpr {
 	l := new(build.ListExpr)
 	for _, s := range ss {
@@ -63,7 +71,9 @@ func NewRuleExpr(kind, name string) *build.Rule {
 		List: []build.Expr{},
 	}, kind)
 
-	rule.SetAttr("name", NewStringExpr(name))
+	if name != "" {
+		rule.SetAttr("name", NewStringExpr(name))
+	}
 
 	return rule
 }

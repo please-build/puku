@@ -131,7 +131,7 @@ func (g *Graph) ensureVisibility(conf *config.Config, dep *Dependency) error {
 		return err
 	}
 
-	t := findTargetByName(f, dep.To.Target)
+	t := FindTargetByName(f, dep.To.Target)
 	if t == nil {
 		return fmt.Errorf("failed can't find target %v (depended on by %v)", dep.To.Format(), dep.From.Format())
 	}
@@ -187,7 +187,7 @@ func checkVisibility(target labels.Label, visibilities []string) bool {
 	return false
 }
 
-func findTargetByName(file *build.File, name string) *build.Rule {
+func FindTargetByName(file *build.File, name string) *build.Rule {
 	for _, rule := range file.Rules("") {
 		if rule.Name() == name {
 			return rule

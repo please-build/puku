@@ -5,27 +5,38 @@ Southern Africa. This tool is still under development but is rapidly approaching
 
 ## Usage
 
-Running puku with no args will format all your source files. It has sensible defaults, reading your `.plzconfig` file
-to avoid unnecessary configuration, however it can be configured via `puku.json` files throughout the repository. It
-supports both `go_module()` and `go_repo()` options for third party code.
+Running `puku fmt` with no args will format all your source files. It has sensible defaults, reading your 
+`.plzconfig` file to avoid unnecessary configuration, however it can be configured via `puku.json` files throughout the 
+repository. It supports both `go_module()` and `go_repo()` options for third party code, however it can also generate
+new `go_repo()` targets to satisfy new dependencies.
 
-Puku can also lint files under specific paths using a similar wildcard syntax to Please:
+Puku can also format files under specific paths using a similar wildcard syntax to Please:
 
 ```
-$ puku //src/...
+$ puku fmt //src/...
 ```
 
 Puku supports `go_library`, `go_test`, `go_binary`, `go_benchmark`, `proto_library`, and `grpc_library` out of the box, but can be
 configured to support other rules. See the configuration section below for more information.
 
+### Migrate
+
+NB: This feature is experimental, and may not always get it right. It should help get started in the migration, but 
+there might be a few issues that have to be fixed by hand. You might also be better off deleting your third party 
+folder, and regenerating your dependencies with `puku fmt`. 
+
+Use `puku migrate` to migrate your third party rules from `go_module()` to `go_repo`. This subcommand will create
+build rules that mimic the behaviour of `go_module()` so this should be a drop in replacement.
+
+
 ### Watch mode
 
-To run puku in watch mode, pass `--watch`. Puku will then watch all directories matched by the wildcards passed, and
-automatically update rules as `.go` sources change.
+To run puku in watch mode, use `puku watch`. Puku will then watch all directories matched by the wildcards passed, 
+and automatically update rules as `.go` sources change.
 
 ### No-write mode
 
-By passing `--nowrite`, puku will run in a lint-only mode. It will exit without output if everything linted fine,
+By running `puku lint`, puku will run in a lint-only mode. It will exit without output if everything linted fine,
 otherwise, it will print the desired state to stdout. This can be useful to integrate with tools like arcanist that can
 prompt users with a preview before applying auto-fixes.
 
