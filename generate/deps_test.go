@@ -48,24 +48,24 @@ func TestLocalDeps(t *testing.T) {
 }
 
 func TestBuildTarget(t *testing.T) {
-	local := buildTarget("foo", "", "")
+	local := BuildTarget("foo", "", "")
 	assert.Equal(t, local, ":foo")
 
-	root := buildTarget("foo", ".", "")
+	root := BuildTarget("foo", ".", "")
 	assert.Equal(t, "//:foo", root)
 
-	pkg := buildTarget("foo", "pkg", "")
+	pkg := BuildTarget("foo", "pkg", "")
 	assert.Equal(t, "//pkg:foo", pkg)
 
-	pkgSameName := buildTarget("foo", "foo", "")
+	pkgSameName := BuildTarget("foo", "foo", "")
 	assert.Equal(t, "//foo", pkgSameName)
 
-	subrepo := buildTarget("foo", "pkg", "repo")
+	subrepo := BuildTarget("foo", "pkg", "repo")
 	assert.Equal(t, "///repo//pkg:foo", subrepo)
 
-	subrepoRoot := buildTarget("foo", ".", "repo")
+	subrepoRoot := BuildTarget("foo", ".", "repo")
 	assert.Equal(t, "///repo//:foo", subrepoRoot)
 
-	subrepoRootAlt := buildTarget("foo", "", "repo")
+	subrepoRootAlt := BuildTarget("foo", "", "repo")
 	assert.Equal(t, "///repo//:foo", subrepoRootAlt)
 }

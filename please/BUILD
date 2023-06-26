@@ -4,6 +4,7 @@ go_library(
     visibility = [
         "//:all",
         "//generate:all",
+        "//migrate:all",
         "//watch:all",
     ],
 )

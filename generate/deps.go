@@ -127,7 +127,7 @@ func (u *Update) localDep(conf *config.Config, importPath string) (string, error
 	// If we can't find the lib target, and the target package is in scope for us to potentially generate it, check if
 	// we are going to generate it.
 	if len(libTargets) != 0 {
-		return buildTarget(libTargets[0].Name(), path, ""), nil
+		return BuildTarget(libTargets[0].Name(), path, ""), nil
 	}
 
 	if !u.isInScope(importPath) {
@@ -145,7 +145,7 @@ func (u *Update) localDep(conf *config.Config, importPath string) (string, error
 	// If there are any non-test sources, then we will generate a go_library here later on. Return that target name.
 	for _, f := range files {
 		if !f.IsTest() {
-			return buildTarget(filepath.Base(importPath), path, ""), nil
+			return BuildTarget(filepath.Base(importPath), path, ""), nil
 		}
 	}
 	return "", nil
@@ -159,14 +159,14 @@ func depTarget(modules []string, importPath, thirdPartyFolder string) string {
 		return ""
 	}
 
-	subrepoName := subrepoName(module, thirdPartyFolder)
+	subrepoName := SubrepoName(module, thirdPartyFolder)
 	packageName := strings.TrimPrefix(strings.TrimPrefix(importPath, module), "/")
 	name := filepath.Base(packageName)
 	if packageName == "" {
 		name = filepath.Base(module)
 	}
 
-	return buildTarget(name, packageName, subrepoName)
+	return BuildTarget(name, packageName, subrepoName)
 }
 
 func moduleForPackage(modules []string, importPath string) string {
@@ -180,11 +180,11 @@ func moduleForPackage(modules []string, importPath string) string {
 	return module
 }
 
-func subrepoName(module, thirdPartyFolder string) string {
+func SubrepoName(module, thirdPartyFolder string) string {
 	return filepath.Join(thirdPartyFolder, strings.ReplaceAll(module, "/", "_"))
 }
 
-func buildTarget(name, pkgDir, subrepo string) string {
+func BuildTarget(name, pkgDir, subrepo string) string {
 	bs := new(strings.Builder)
 	if subrepo != "" {
 		bs.WriteString("///")

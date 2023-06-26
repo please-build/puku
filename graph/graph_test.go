@@ -69,7 +69,7 @@ go_library(
 	err = g.FormatFiles(false, bs)
 	require.NoError(t, err)
 
-	fooT := findTargetByName(g.files["foo"], "foo")
+	fooT := FindTargetByName(g.files["foo"], "foo")
 	assert.ElementsMatch(t, []string{"//bar:all"}, fooT.AttrStrings("visibility"))
 
 	require.Contains(t, bs.String(), `visibility = ["//bar:all"]`)
@@ -138,14 +138,14 @@ go_library(
 		require.NoError(t, g.ensureVisibility(conf, dep))
 	}
 
-	assert.Empty(t, findTargetByName(foo, "foo").AttrStrings("visibility"))
-	assert.Empty(t, findTargetByName(bar, "bar").AttrStrings("visibility"))
-	assert.Empty(t, findTargetByName(fizz, "fizz").AttrStrings("visibility"))
+	assert.Empty(t, FindTargetByName(foo, "foo").AttrStrings("visibility"))
+	assert.Empty(t, FindTargetByName(bar, "bar").AttrStrings("visibility"))
+	assert.Empty(t, FindTargetByName(fizz, "fizz").AttrStrings("visibility"))
 
 	// This was overridden even though we set the package visibility because the rule set visibility explicitly
 	assert.ElementsMatch(t,
 		[]string{"//foo/...", "//fizz:all"},
-		findTargetByName(baz, "baz").AttrStrings("visibility"),
+		FindTargetByName(baz, "baz").AttrStrings("visibility"),
 	)
 }
 

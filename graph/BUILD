@@ -1,7 +1,10 @@
 go_library(
     name = "graph",
     srcs = ["graph.go"],
-    visibility = ["//generate:all"],
+    visibility = [
+        "//generate:all",
+        "//migrate:all",
+    ],
     deps = [
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "///third_party/go/github.com_bazelbuild_buildtools//labels",
@@ -19,6 +22,7 @@ go_test(
         ":graph",
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "///third_party/go/github.com_bazelbuild_buildtools//labels",
+        "//config",
         "//third_party/go:testify",
     ],
 )

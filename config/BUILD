@@ -5,6 +5,7 @@ go_library(
         "//:all",
         "//generate:all",
         "//graph:all",
+        "//migrate:all",
         "//work:all",
     ],
     deps = ["//kinds"],

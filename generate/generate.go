@@ -87,7 +87,7 @@ func (u *Update) readModules(conf *config.Config) error {
 	addInstalls := func(targetName, modName string, installs []string) {
 		for _, install := range installs {
 			path := filepath.Join(modName, install)
-			target := buildTarget(targetName, conf.GetThirdPartyDir(), "")
+			target := BuildTarget(targetName, conf.GetThirdPartyDir(), "")
 			u.installs.Add(path, target)
 		}
 	}
@@ -245,7 +245,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 		return err
 	}
 
-	label := buildTarget(rule.Name(), rule.dir, "")
+	label := BuildTarget(rule.Name(), rule.dir, "")
 
 	deps := map[string]struct{}{}
 	for _, src := range srcs {

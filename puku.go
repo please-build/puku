@@ -9,18 +9,35 @@ import (
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/generate"
+	"github.com/please-build/puku/migrate"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/watch"
 	"github.com/please-build/puku/work"
 )
 
 var opts = struct {
-	Usage    string
-	LintOnly bool `long:"nowrite" description:"Prints corrections to stdout instead of formatting the files"`
-	Watch    bool `long:"watch" description:"Watch the directory"`
-	Args     struct {
-		Paths []string `positional-arg-name:"packages" description:"The packages to process"`
-	} `positional-args:"true"`
+	Usage string
+	Fmt   struct {
+		Args struct {
+			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
+		} `positional-args:"true"`
+	} `command:"fmt" description:"Format build files base"`
+	Lint struct {
+		Args struct {
+			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
+		} `positional-args:"true"`
+	} `command:"lint" description:"Migrates from go_module to go_repo"`
+	Watch struct {
+		Args struct {
+			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
+		} `positional-args:"true"`
+	} `command:"watch" description:"Watches the provided paths and "`
+	Migrate struct {
+		Write bool `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
+		Args  struct {
+			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
+		} `positional-args:"true"`
+	} `command:"migrate" description:"Migrates from go_module to go_repo"`
 }{
 	Usage: `
 puku is a tool used to generate and update Go targets in build files
@@ -28,6 +45,41 @@ puku is a tool used to generate and update Go targets in build files
 }
 
 var log = logging.MustGetLogger()
+
+var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignalWD string) int{
+	"fmt": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
+		paths := work.MustExpandPaths(orignalWD, opts.Fmt.Args.Paths)
+		if err := generate.NewUpdate(true, plzConf).Update(paths...); err != nil {
+			log.Fatalf("%v", err)
+		}
+		return 0
+	},
+	"lint": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
+		paths := work.MustExpandPaths(orignalWD, opts.Lint.Args.Paths)
+		if err := generate.NewUpdate(false, plzConf).Update(paths...); err != nil {
+			log.Fatalf("%v", err)
+		}
+		return 0
+	},
+	"watch": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
+		paths := work.MustExpandPaths(orignalWD, opts.Watch.Args.Paths)
+		if err := generate.NewUpdate(true, plzConf).Update(paths...); err != nil {
+			log.Fatalf("%v", err)
+		}
+
+		if err := watch.Watch(plzConf, paths...); err != nil {
+			log.Fatalf("%v", err)
+		}
+		return 0
+	},
+	"migrate": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
+		paths := work.MustExpandPaths(orignalWD, opts.Migrate.Args.Paths)
+		if err := migrate.New(conf, plzConf).Migrate(opts.Migrate.Write, paths...); err != nil {
+			log.Fatalf("%v", err)
+		}
+		return 0
+	},
+}
 
 func main() {
 	wd, err := os.Getwd()
@@ -49,12 +101,6 @@ func main() {
 		log.Fatalf("failed to set working dir to repo root: %v", err)
 	}
 
-	flags.ParseFlagsOrDie("puku", &opts, nil)
-
-	if opts.LintOnly && opts.Watch {
-		log.Fatalf("watch mode doesn't support --nowrite")
-	}
-
 	conf, err := config.ReadConfig(".")
 	if err != nil {
 		log.Fatalf("failed to read config: %v", err)
@@ -65,25 +111,6 @@ func main() {
 		log.Fatalf("failed to query config: %w", err)
 	}
 
-	paths, err := work.ExpandPaths(wd, opts.Args.Paths)
-	if err != nil {
-		log.Fatalf("failed to expand paths: %v", err)
-	}
-
-	if len(opts.Args.Paths) == 0 {
-		paths, err = work.ExpandPaths(wd, []string{"..."})
-		if err != nil {
-			log.Fatalf("failed to expand paths: %v", err)
-		}
-	}
-	if opts.Watch {
-		err := watch.Watch(plzConf, paths...)
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
-	}
-
-	if err := generate.NewUpdate(!opts.LintOnly, plzConf).Update(paths...); err != nil {
-		log.Fatalf("%v", err)
-	}
+	cmd := flags.ParseFlagsOrDie("puku", &opts, nil)
+	os.Exit(funcs[cmd](conf, plzConf, wd))
 }

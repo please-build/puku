@@ -3,6 +3,7 @@ package work
 import (
 	"errors"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,7 +13,19 @@ import (
 	"github.com/please-build/puku/config"
 )
 
+func MustExpandPaths(origWD string, paths []string) []string {
+	paths, err := ExpandPaths(origWD, paths)
+	if err != nil {
+		log.Fatalf("failed to expands paths: %v", err)
+	}
+	return paths
+}
+
 func ExpandPaths(origWD string, paths []string) ([]string, error) {
+	if len(paths) == 0 {
+		return ExpandPaths(origWD, []string{"..."})
+	}
+
 	ret := make([]string, 0, len(paths))
 	for _, path := range paths {
 		// Handle using build label style syntax a bit like `plz build`

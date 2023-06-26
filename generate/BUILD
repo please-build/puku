@@ -8,6 +8,7 @@ go_library(
     ),
     visibility = [
         "//:all",
+        "//migrate:all",
         "//watch",
     ],
     deps = [

@@ -103,7 +103,7 @@ func (rule *rule) localLabel() string {
 }
 
 func (rule *rule) label() string {
-	return buildTarget(rule.Name(), rule.dir, "")
+	return BuildTarget(rule.Name(), rule.dir, "")
 }
 
 func (rule *rule) isExternal() bool {
