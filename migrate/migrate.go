@@ -1,16 +1,18 @@
 package migrate
 
 import (
+	"os"
+	"strings"
+
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/buildtools/labels"
+	"golang.org/x/mod/semver"
+
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/generate"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/please"
-	"golang.org/x/mod/semver"
-	"os"
-	"strings"
 )
 
 func New(conf *config.Config, plzConf *please.Config) *Migrate {
@@ -121,7 +123,6 @@ func (m *Migrate) genRules() error {
 		} else {
 			thirdPartyGo.Stmt = append(thirdPartyGo.Stmt, newGoRepoRule(mod.moduleName, mod.version, "", mod.name, installs, mod.patch))
 		}
-
 	}
 	return nil
 }
@@ -160,9 +161,8 @@ func (m *Migrate) convertModuleRulesToRepoRules() {
 			m := downloadRule.rule.AttrString("module")
 			if m != modName {
 				dl = downloadRule.rule
+				break
 			}
-
-			break
 		}
 
 		name := ""
@@ -184,9 +184,7 @@ func (m *Migrate) convertModuleRulesToRepoRules() {
 			aliases:    aliases,
 			patch:      patches,
 		}
-
 	}
-
 }
 
 func newGoRepoRule(module, version, download, name string, install, patches []string) *build.CallExpr {

@@ -19,7 +19,8 @@ import (
 var opts = struct {
 	Usage     string
 	Verbosity clilogging.Verbosity `short:"v" long:"verbosity" description:"Verbosity of output (error, warning, notice, info, debug)" default:"info"`
-	Fmt   struct {
+
+	Fmt struct {
 		Args struct {
 			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
 		} `positional-args:"true"`
