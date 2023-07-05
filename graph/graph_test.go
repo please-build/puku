@@ -2,6 +2,7 @@ package graph
 
 import (
 	"bytes"
+	"github.com/please-build/puku/edit"
 	"testing"
 
 	"github.com/bazelbuild/buildtools/build"
@@ -69,7 +70,7 @@ go_library(
 	err = g.FormatFiles(false, bs)
 	require.NoError(t, err)
 
-	fooT := FindTargetByName(g.files["foo"], "foo")
+	fooT := edit.FindTargetByName(g.files["foo"], "foo")
 	assert.ElementsMatch(t, []string{"//bar:all"}, fooT.AttrStrings("visibility"))
 
 	require.Contains(t, bs.String(), `visibility = ["//bar:all"]`)
@@ -138,14 +139,14 @@ go_library(
 		require.NoError(t, g.ensureVisibility(conf, dep))
 	}
 
-	assert.Empty(t, FindTargetByName(foo, "foo").AttrStrings("visibility"))
-	assert.Empty(t, FindTargetByName(bar, "bar").AttrStrings("visibility"))
-	assert.Empty(t, FindTargetByName(fizz, "fizz").AttrStrings("visibility"))
+	assert.Empty(t, edit.FindTargetByName(foo, "foo").AttrStrings("visibility"))
+	assert.Empty(t, edit.FindTargetByName(bar, "bar").AttrStrings("visibility"))
+	assert.Empty(t, edit.FindTargetByName(fizz, "fizz").AttrStrings("visibility"))
 
 	// This was overridden even though we set the package visibility because the rule set visibility explicitly
 	assert.ElementsMatch(t,
 		[]string{"//foo/...", "//fizz:all"},
-		FindTargetByName(baz, "baz").AttrStrings("visibility"),
+		edit.FindTargetByName(baz, "baz").AttrStrings("visibility"),
 	)
 }
 

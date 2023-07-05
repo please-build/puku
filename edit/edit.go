@@ -45,6 +45,15 @@ func EnsureSubinclude(file *build.File) {
 	subinclude.List = append(subinclude.List, NewStringExpr("///go//build_defs:go"))
 }
 
+func FindTargetByName(file *build.File, name string) *build.Rule {
+	for _, rule := range file.Rules("") {
+		if rule.Name() == name {
+			return rule
+		}
+	}
+	return nil
+}
+
 func NewStringExpr(s string) *build.StringExpr {
 	return &build.StringExpr{Value: s}
 }

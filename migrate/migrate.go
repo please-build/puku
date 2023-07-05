@@ -239,7 +239,7 @@ func (m *Migrate) readModuleRules(f *build.File, pkg string) error {
 				return err
 			}
 
-			dlRule := graph.FindTargetByName(dlFile, l.Target)
+			dlRule := edit.FindTargetByName(dlFile, l.Target)
 
 			done := false
 			for _, exitingDl := range mod.downloads {

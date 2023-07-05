@@ -4,6 +4,7 @@ go_library(
     visibility = [
         "//generate:all",
         "//migrate:all",
+        "//modfile:all",
     ],
     deps = [
         "///third_party/go/github.com_bazelbuild_buildtools//build",

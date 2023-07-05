@@ -46,7 +46,7 @@ func TestAllocateSources(t *testing.T) {
 		},
 	}
 
-	u := &Update{conf: new(please.Config)}
+	u := &Update{plzConf: new(please.Config)}
 
 	newRules, err := u.allocateSources("foo", files, rules)
 	require.NoError(t, err)
@@ -208,7 +208,7 @@ func TestUpdateDeps(t *testing.T) {
 			plzConf.Plugin.Go.ImportPath = []string{"github.com/this/module"}
 			u := &Update{
 				modules:      tc.modules,
-				conf:         plzConf,
+				plzConf:      plzConf,
 				installs:     trie.New(),
 				knownImports: map[string]string{},
 				proxy:        tc.proxy,

@@ -43,7 +43,7 @@ func (u *Update) reallyResolveImport(conf *config.Config, i string) (string, err
 	thirdPartyDir := conf.GetThirdPartyDir()
 
 	// Check to see if the target exists in the current repo
-	if fs.IsSubdir(u.conf.ImportPath(), i) || u.conf.ImportPath() == "" {
+	if fs.IsSubdir(u.plzConf.ImportPath(), i) || u.plzConf.ImportPath() == "" {
 		t, err := u.localDep(conf, i)
 		if err != nil {
 			return "", err
@@ -80,7 +80,7 @@ func (u *Update) reallyResolveImport(conf *config.Config, i string) (string, err
 
 	// If the package belongs to this module, we should have found this package when resolving local imports above. We
 	// don't want to resolve this like a third party module, so we should return an error here.
-	if mod.Module == u.conf.ImportPath() {
+	if mod.Module == u.plzConf.ImportPath() {
 		return "", fmt.Errorf("can't find import %q", i)
 	}
 
@@ -110,7 +110,7 @@ func (u *Update) isInScope(path string) bool {
 // localDep finds a dependency local to this repository, checking the BUILD file for a go_library target. Returns an
 // empty string when no target is found.
 func (u *Update) localDep(conf *config.Config, importPath string) (string, error) {
-	path := strings.Trim(strings.TrimPrefix(importPath, u.conf.ImportPath()), "/")
+	path := strings.Trim(strings.TrimPrefix(importPath, u.plzConf.ImportPath()), "/")
 	file, err := u.graph.LoadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse BUILD files in %v: %v", path, err)

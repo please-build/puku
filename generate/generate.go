@@ -2,6 +2,7 @@ package generate
 
 import (
 	"fmt"
+	"golang.org/x/mod/modfile"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,7 +29,7 @@ type Proxy interface {
 }
 
 type Update struct {
-	conf                 *please.Config
+	plzConf              *please.Config
 	write, usingGoModule bool
 
 	graph *graph.Graph
@@ -51,7 +52,7 @@ func NewUpdate(write bool, conf *please.Config) *Update {
 		installs:     trie.New(),
 		write:        write,
 		knownImports: map[string]string{},
-		conf:         conf,
+		plzConf:      conf,
 		globber:      glob.New(),
 		graph:        graph.New(conf.BuildFileNames()),
 	}
@@ -76,9 +77,62 @@ func (u *Update) Update(paths ...string) error {
 	return u.graph.FormatFiles(u.write, os.Stdout)
 }
 
+func (u *Update) syncModFile(conf *config.Config, file *build.File, exitingRules map[string]*build.Rule) error {
+	outs, err := please.Build(conf.GetPlzPath(), u.plzConf.ModFile())
+	if err != nil {
+		return err
+	}
+
+	if len(outs) != 1 {
+		return fmt.Errorf("expected exacly one out from Plugin.Go.Modfile, got %v", len(outs))
+	}
+
+	modFile := outs[0]
+	bs, err := os.ReadFile(modFile)
+	if err != nil {
+		return err
+	}
+	f, err := modfile.Parse(modFile, bs, nil)
+	if err != nil {
+		return err
+	}
+
+	for _, req := range f.Require {
+		reqVersion := req.Mod.Version
+		var replace *modfile.Replace
+		for _, r := range f.Replace {
+			if r.Old.Path == req.Mod.Path {
+				replace = r
+				reqVersion = replace.New.Version
+			}
+		}
+
+		// Existing rule will point to the go_mod_download with the version on it so we should use the original path
+		r, ok := exitingRules[req.Mod.Path]
+		if ok {
+			// Make sure the version is up-to-date
+			r.SetAttr("version", edit.NewStringExpr(reqVersion))
+			continue
+		}
+
+		u.modules = append(u.modules, req.Mod.Path)
+
+		if replace == nil {
+			file.Stmt = append(file.Stmt, newGoRepoRule(req.Mod.Path, reqVersion, ""))
+			continue
+		}
+
+		dl, dlName := newModDownloadRule(req.Mod.Path, req.Mod.Version)
+		file.Stmt = append(file.Stmt, dl)
+		file.Stmt = append(file.Stmt, newGoRepoRule(req.Mod.Path, "", dlName))
+	}
+
+	return nil
+}
+
 // getModules returns the defined third party modules in this project
 func (u *Update) readModules(conf *config.Config) error {
-	// TODO we probably want to support multiple third party dirs mostly just for our setup in core3
+
 	f, err := u.graph.LoadFile(conf.GetThirdPartyDir())
 	if err != nil {
 		return err
@@ -92,6 +146,9 @@ func (u *Update) readModules(conf *config.Config) error {
 		}
 	}
 
+	// existingRules contains the rules for modules. These are synced to the go.mod's version as necessary. For modules
+	// that use `go_mod_download`, this map will point to that rule as that is the rule that has the version field.
+	existingRules := make(map[string]*build.Rule)
 	for _, repoRule := range f.Rules("go_repo") {
 		module := repoRule.AttrString("module")
 		u.modules = append(u.modules, module)
@@ -99,6 +156,18 @@ func (u *Update) readModules(conf *config.Config) error {
 		installs := repoRule.AttrStrings("install")
 		if len(installs) > 0 {
 			addInstalls(repoRule.Name(), module, installs)
+		}
+
+		if repoRule.AttrString("version") != "" {
+			existingRules[repoRule.AttrString("module")] = repoRule
+		} else {
+			// If we're using a go_mod_download for this module, then find the download rule instead.
+			t := labels.ParseRelative(repoRule.AttrString("download"), f.Pkg)
+			f, err := u.graph.LoadFile(t.Package)
+			if err != nil {
+				return err
+			}
+			existingRules[repoRule.AttrString("module")] = edit.FindTargetByName(f, t.Target)
 		}
 	}
 
@@ -112,6 +181,10 @@ func (u *Update) readModules(conf *config.Config) error {
 			installs = []string{"."}
 		}
 		addInstalls(mod.Name(), module, installs)
+	}
+
+	if u.plzConf.ModFile() != "" {
+		return u.syncModFile(conf, f, existingRules)
 	}
 
 	return nil
@@ -155,7 +228,7 @@ func (u *Update) updateOne(conf *config.Config, path string) error {
 		return err
 	}
 
-	if !u.conf.GoIsPreloaded() {
+	if !u.plzConf.GoIsPreloaded() {
 		edit.EnsureSubinclude(file)
 	}
 
@@ -210,15 +283,32 @@ func (u *Update) addNewModules(conf *config.Config) error {
 			continue
 		}
 
-		rule := build.NewRule(&build.CallExpr{
-			X:    &build.Ident{Name: "go_repo"},
-			List: []build.Expr{},
-		})
-		rule.SetAttr("module", edit.NewStringExpr(mod.Module))
-		rule.SetAttr("version", edit.NewStringExpr(mod.Version))
-		file.Stmt = append(file.Stmt, rule.Call)
+		file.Stmt = append(file.Stmt, newGoRepoRule(mod.Module, mod.Version, ""))
 	}
 	return nil
+}
+
+func newGoRepoRule(mod, version, download string) *build.CallExpr {
+	rule := build.NewRule(&build.CallExpr{
+		X:    &build.Ident{Name: "go_repo"},
+		List: []build.Expr{},
+	})
+	rule.SetAttr("module", edit.NewStringExpr(mod))
+	if version != "" {
+		rule.SetAttr("version", edit.NewStringExpr(version))
+	}
+	if download != "" {
+		rule.SetAttr("download", edit.NewStringExpr(":"+download))
+	}
+	return rule.Call
+}
+
+func newModDownloadRule(mod, version string) (*build.CallExpr, string) {
+	rule := edit.NewRuleExpr("go_mod_download", strings.ReplaceAll(mod, "/", "_")+"_dl")
+
+	rule.SetAttr("module", edit.NewStringExpr(mod))
+	rule.SetAttr("version", edit.NewStringExpr(version))
+	return rule.Call, rule.Name()
 }
 
 func (u *Update) allSources(r *rule) ([]string, error) {
@@ -406,7 +496,7 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 				name = "main"
 			}
 			rule = newRule(edit.NewRuleExpr(kind, name), kinds.DefaultKinds[kind], pkgDir)
-			if importedFile.IsExternal(filepath.Join(u.conf.ImportPath(), pkgDir)) {
+			if importedFile.IsExternal(filepath.Join(u.plzConf.ImportPath(), pkgDir)) {
 				rule.setExternal()
 			}
 			newRules = append(newRules, rule)
