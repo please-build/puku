@@ -1,16 +1,17 @@
 package syncmod
 
 import (
+	"os"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/modfile"
+
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/generate"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/please"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/mod/modfile"
-	"os"
-	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestModSync(t *testing.T) {
@@ -66,7 +67,6 @@ func TestModSync(t *testing.T) {
 	assert.Equal(t, "github.com_peterebden_buildtools_dl", dlRule.Name())
 	assert.Equal(t, "github.com/peterebden/buildtools", dlRule.AttrString("module"))
 	assert.Equal(t, expectedVers[dlRule.AttrString("module")], dlRule.AttrString("version"))
-
 }
 
 func readModFileVersions() map[string]string {
@@ -76,6 +76,9 @@ func readModFileVersions() map[string]string {
 	}
 
 	file, err := modfile.Parse("go.mod", f, nil)
+	if err != nil {
+		panic(err)
+	}
 
 	ret := make(map[string]string)
 	for _, req := range file.Require {
