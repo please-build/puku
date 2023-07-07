@@ -2,7 +2,6 @@ package graph
 
 import (
 	"bytes"
-	"github.com/please-build/puku/edit"
 	"testing"
 
 	"github.com/bazelbuild/buildtools/build"
@@ -11,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/edit"
 )
 
 func TestLoadBuildFile(t *testing.T) {

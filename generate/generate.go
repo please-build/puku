@@ -2,13 +2,13 @@ package generate
 
 import (
 	"fmt"
-	"golang.org/x/mod/modfile"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/buildtools/labels"
+	"golang.org/x/mod/modfile"
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
@@ -130,9 +130,8 @@ func (u *Update) syncModFile(conf *config.Config, file *build.File, exitingRules
 	return nil
 }
 
-// getModules returns the defined third party modules in this project
+// readModules returns the defined third party modules in this project
 func (u *Update) readModules(conf *config.Config) error {
-
 	f, err := u.graph.LoadFile(conf.GetThirdPartyDir())
 	if err != nil {
 		return err
