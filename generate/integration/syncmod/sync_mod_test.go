@@ -2,6 +2,7 @@ package syncmod
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,6 +21,8 @@ func TestModSync(t *testing.T) {
 	}
 	conf, err := config.ReadConfig(".")
 	require.NoError(t, err)
+
+	conf.PleasePath = filepath.Join(os.Getenv("TMP_DIR"), os.Getenv("DATA_PLZ"))
 
 	plzConf, err := please.QueryConfig(conf.GetPlzPath())
 	require.NoError(t, err)
