@@ -54,6 +54,20 @@ func FindTargetByName(file *build.File, name string) *build.Rule {
 	return nil
 }
 
+// RemoveTarget removes the target with the given name from the build file
+func RemoveTarget(file *build.File, rule *build.Rule) bool {
+	for i, r := range file.Rules("") {
+		// Compare by the call expression as the rule created in Rules will not match
+		if r.Call != rule.Call {
+			continue
+		}
+
+		file.Stmt = append(file.Stmt[:i], file.Stmt[(i+1):]...)
+		return true
+	}
+	return false
+}
+
 func NewStringExpr(s string) *build.StringExpr {
 	return &build.StringExpr{Value: s}
 }

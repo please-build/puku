@@ -47,6 +47,11 @@ type Update struct {
 }
 
 func NewUpdate(write bool, conf *please.Config) *Update {
+	return NewUpdateWithGraph(write, conf, graph.New(conf.BuildFileNames()))
+}
+
+// NewUpdateWithGraph is like NewUpdate but lets us inject a graph which is useful to do testing.
+func NewUpdateWithGraph(write bool, conf *please.Config, g *graph.Graph) *Update {
 	return &Update{
 		proxy:        proxy.New("https://proxy.golang.org"),
 		installs:     trie.New(),
@@ -54,7 +59,7 @@ func NewUpdate(write bool, conf *please.Config) *Update {
 		knownImports: map[string]string{},
 		plzConf:      conf,
 		globber:      glob.New(),
-		graph:        graph.New(conf.BuildFileNames()),
+		graph:        g,
 	}
 }
 
@@ -74,6 +79,19 @@ func (u *Update) Update(paths ...string) error {
 	if err := u.update(conf); err != nil {
 		return err
 	}
+	return u.graph.FormatFiles(u.write, os.Stdout)
+}
+
+func (u *Update) Sync() error {
+	conf, err := config.ReadConfig(".")
+	if err != nil {
+		return err
+	}
+
+	if err := u.readModules(conf); err != nil {
+		return fmt.Errorf("failed to read third party rules: %v", err)
+	}
+
 	return u.graph.FormatFiles(u.write, os.Stdout)
 }
 
@@ -110,9 +128,15 @@ func (u *Update) syncModFile(conf *config.Config, file *build.File, exitingRules
 		// Existing rule will point to the go_mod_download with the version on it so we should use the original path
 		r, ok := exitingRules[req.Mod.Path]
 		if ok {
-			// Make sure the version is up-to-date
-			r.SetAttr("version", edit.NewStringExpr(reqVersion))
-			continue
+			if replace != nil && r.Kind() == "go_repo" {
+				// Looks like we've added in a replace for this module so we need to delete the old go_repo rule
+				// and regen with a go_mod_download and a go_repo.
+				edit.RemoveTarget(file, r)
+			} else {
+				// Make sure the version is up-to-date
+				r.SetAttr("version", edit.NewStringExpr(reqVersion))
+				continue
+			}
 		}
 
 		u.modules = append(u.modules, req.Mod.Path)
@@ -122,7 +146,7 @@ func (u *Update) syncModFile(conf *config.Config, file *build.File, exitingRules
 			continue
 		}
 
-		dl, dlName := newModDownloadRule(req.Mod.Path, req.Mod.Version)
+		dl, dlName := newModDownloadRule(replace.New.Path, replace.New.Version)
 		file.Stmt = append(file.Stmt, dl)
 		file.Stmt = append(file.Stmt, newGoRepoRule(req.Mod.Path, "", dlName))
 	}

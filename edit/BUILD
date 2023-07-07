@@ -3,6 +3,7 @@ go_library(
     srcs = ["edit.go"],
     visibility = [
         "//generate:all",
+        "//generate/integration/syncmod:all",
         "//graph:all",
         "//migrate:all",
     ],

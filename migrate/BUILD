@@ -1,7 +1,10 @@
 go_library(
     name = "migrate",
     srcs = ["migrate.go"],
-    visibility = ["//:all"],
+    visibility = [
+        "//:all",
+        "//cmd/puku:all",
+    ],
     deps = [
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "///third_party/go/github.com_bazelbuild_buildtools//labels",

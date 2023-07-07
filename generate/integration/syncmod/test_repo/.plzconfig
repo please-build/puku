@@ -1,0 +1,7 @@
+[parse]
+BuildFileName = BUILD_FILE
+
+
+[Plugin "go"]
+Target = //plugins:go
+Modfile = //:mod

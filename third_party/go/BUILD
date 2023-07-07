@@ -141,8 +141,10 @@ go_repo(
     module = "github.com/stretchr/testify",
     version = "v1.8.4",
     visibility = [
+        "//e2e/syncmod:all",
         "//edit:all",
         "//generate:all",
+        "//generate/integration/syncmod:all",
         "//glob:all",
         "//graph:all",
         "//trie:all",

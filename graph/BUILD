@@ -3,6 +3,7 @@ go_library(
     srcs = ["graph.go"],
     visibility = [
         "//generate:all",
+        "//generate/integration/syncmod:all",
         "//migrate:all",
         "//modfile:all",
     ],
@@ -24,6 +25,7 @@ go_test(
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "///third_party/go/github.com_bazelbuild_buildtools//labels",
         "//config",
+        "//edit",
         "//third_party/go:testify",
     ],
 )
