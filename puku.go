@@ -24,17 +24,17 @@ var opts = struct {
 		Args struct {
 			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
 		} `positional-args:"true"`
-	} `command:"fmt" description:"Format build files base"`
+	} `command:"fmt" description:"Format build files in the provided paths"`
 	Lint struct {
 		Args struct {
 			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
 		} `positional-args:"true"`
-	} `command:"lint" description:"Migrates from go_module to go_repo"`
+	} `command:"lint" description:"Lint build files in the provided paths"`
 	Watch struct {
 		Args struct {
 			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
 		} `positional-args:"true"`
-	} `command:"watch" description:"Watches the provided paths and "`
+	} `command:"watch" description:"Watch build files in the provided paths and update them when needed"`
 	Migrate struct {
 		Write bool `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
 		Args  struct {
