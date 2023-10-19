@@ -77,3 +77,17 @@ func NewRuleExpr(kind, name string) *build.Rule {
 
 	return rule
 }
+
+func BoolAttr(rule *build.Rule, attrName string) bool {
+	attr := rule.Attr(attrName)
+	if attr == nil {
+		return false
+	}
+
+	ident, ok := attr.(*build.Ident)
+	if !ok {
+		return false
+	}
+
+	return ident.Name == "True"
+}

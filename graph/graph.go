@@ -45,6 +45,11 @@ func (g *Graph) LoadFile(path string) (*build.File, error) {
 	return f, err
 }
 
+// SetFile can be used to override a filepath with a given build file. This is useful for testing.
+func (g *Graph) SetFile(path string, file *build.File) {
+	g.files[path] = file
+}
+
 // EnsureVisibility registers a dependency between two targets in different packages. This is used to ensure the targets are
 // visible to each other.
 func (g *Graph) EnsureVisibility(from, to string) {

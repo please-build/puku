@@ -145,6 +145,7 @@ go_repo(
         "//generate:all",
         "//glob:all",
         "//graph:all",
+        "//migrate:all",
         "//trie:all",
     ],
 )

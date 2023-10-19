@@ -163,14 +163,8 @@ func depTarget(modules []string, importPath, thirdPartyFolder string) string {
 		return ""
 	}
 
-	subrepoName := SubrepoName(module, thirdPartyFolder)
 	packageName := strings.TrimPrefix(strings.TrimPrefix(importPath, module), "/")
-	name := filepath.Base(packageName)
-	if packageName == "" {
-		name = filepath.Base(module)
-	}
-
-	return BuildTarget(name, packageName, subrepoName)
+	return SubrepoTarget(module, thirdPartyFolder, packageName)
 }
 
 func moduleForPackage(modules []string, importPath string) string {
@@ -182,6 +176,17 @@ func moduleForPackage(modules []string, importPath string) string {
 		}
 	}
 	return module
+}
+
+func SubrepoTarget(module, thirdPartyFolder, packageName string) string {
+	subrepoName := SubrepoName(module, thirdPartyFolder)
+
+	name := filepath.Base(packageName)
+	if packageName == "" {
+		name = filepath.Base(module)
+	}
+
+	return BuildTarget(name, packageName, subrepoName)
 }
 
 func SubrepoName(module, thirdPartyFolder string) string {
