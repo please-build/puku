@@ -152,6 +152,7 @@ go_module(
 	require.NoError(t, err)
 
 	repoRule := graph.FindTargetByName(thirdPartyFile, "test")
+	require.NotNil(t, repoRule)
 
 	assert.Equal(t, "github.com/example/example", repoRule.AttrString("module"))
 	assert.Equal(t, ":test_dl", repoRule.AttrString("download"))

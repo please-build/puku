@@ -61,6 +61,9 @@ func (p *moduleParts) writeRules(thirdPartyDir string, g *graph.Graph) error {
 		download = labels.Shorten(generate.BuildTarget(p.download.rule.Name(), p.download.pkg, ""), thirdPartyDir)
 		// Add the download rule back in as we still need this
 		thirdPartyFile.Stmt = append(thirdPartyFile.Stmt, p.download.rule.Call)
+		if len(p.parts) == 1 {
+			name = p.parts[0].rule.Name()
+		}
 	}
 
 	if p.download != nil {
