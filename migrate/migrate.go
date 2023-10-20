@@ -3,6 +3,7 @@ package migrate
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/bazelbuild/buildtools/build"
@@ -114,6 +115,15 @@ func (p *moduleParts) writeRules(thirdPartyDir string, g *graph.Graph) error {
 	return p.writeBinaryAliases(thirdPartyDir, g)
 }
 
+func isInternal(path string) bool {
+	for _, p := range strings.Split(path, string(filepath.Separator)) {
+		if p == "internal" {
+			return true
+		}
+	}
+	return false
+}
+
 func (p *moduleParts) installs() []string {
 	var installs []string
 	done := make(map[string]struct{})
@@ -124,6 +134,10 @@ func (p *moduleParts) installs() []string {
 		}
 
 		for _, i := range is {
+			// We don't need to install internal things anymore with go_repo.
+			if isInternal(i) {
+				continue
+			}
 			if _, ok := done[i]; !ok {
 				installs = append(installs, i)
 				done[i] = struct{}{}
