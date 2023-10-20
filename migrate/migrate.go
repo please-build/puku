@@ -7,6 +7,7 @@ import (
 
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/buildtools/labels"
+	"golang.org/x/mod/semver"
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
@@ -72,18 +73,27 @@ func (p *moduleParts) writeRules(thirdPartyDir string, g *graph.Graph) error {
 		version = p.download.rule.AttrString("version")
 		patches = p.download.rule.AttrStrings("patches")
 	} else if len(p.parts) > 0 {
-		if len(p.parts) != 1 {
-			return fmt.Errorf("%v has multiple go_module rules that don't share a download rule", p.module)
+		if len(p.parts) == 1 {
+			name = p.parts[0].rule.Name()
+			patches = p.parts[0].rule.AttrStrings("patches")
 		}
-		version = p.parts[0].rule.AttrString("version")
-		patches = p.parts[0].rule.AttrStrings("patches")
-		name = p.parts[0].rule.Name()
+		for _, p := range p.parts {
+			v := p.rule.AttrString("version")
+			if version == "" || semver.Compare(version, v) < 0 {
+				version = v
+			}
+		}
+
 	} else {
-		if len(p.binaryParts) != 1 {
-			return fmt.Errorf("%v has multiple go_module rules that don't share a download rule", p.module)
+		if len(p.binaryParts) == 1 {
+			patches = p.binaryParts[0].rule.AttrStrings("patches")
 		}
-		version = p.binaryParts[0].rule.AttrString("version")
-		patches = p.binaryParts[0].rule.AttrStrings("patches")
+		for _, p := range p.binaryParts {
+			v := p.rule.AttrString("version")
+			if version == "" || semver.Compare(version, v) < 0 {
+				version = v
+			}
+		}
 	}
 
 	thirdPartyFile.Stmt = append(thirdPartyFile.Stmt, newGoRepoRule(
@@ -279,8 +289,10 @@ func (m *Migrate) readModuleRules(f *build.File, pkg string) error {
 			if mod.download == nil {
 				mod.download = &pkgRule{pkg: l.Package, rule: dlRule}
 			} else {
-				if mod.download.rule.Call != dlRule.Call {
-					return fmt.Errorf("too many download rules for module %v", moduleName)
+				existingVer := mod.download.rule.AttrString("version")
+				newVer := dlRule.AttrString("version")
+				if semver.Compare(existingVer, newVer) < 0 {
+					mod.download = &pkgRule{pkg: l.Package, rule: dlRule}
 				}
 			}
 		}
