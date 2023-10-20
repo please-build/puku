@@ -2,15 +2,17 @@ package migrate
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/buildtools/labels"
+
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/generate"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/please"
-	"os"
-	"strings"
 )
 
 func New(conf *config.Config, plzConf *please.Config) *Migrate {
@@ -46,7 +48,7 @@ type moduleParts struct {
 
 func (p *moduleParts) writeRules(thirdPartyDir string, g *graph.Graph) error {
 	download := ""
-	version := ""
+	var version string
 	var patches []string
 	var name = strings.ReplaceAll(p.module, "/", "_")
 
@@ -97,11 +99,7 @@ func (p *moduleParts) writeRules(thirdPartyDir string, g *graph.Graph) error {
 		return err
 	}
 
-	if err := p.writeBinaryAliases(thirdPartyDir, g); err != nil {
-		return err
-	}
-
-	return nil
+	return p.writeBinaryAliases(thirdPartyDir, g)
 }
 
 func (p *moduleParts) installs() []string {

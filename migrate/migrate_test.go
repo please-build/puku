@@ -1,11 +1,13 @@
 package migrate
 
 import (
+	"testing"
+
 	"github.com/bazelbuild/buildtools/build"
-	"github.com/please-build/puku/graph"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/please-build/puku/graph"
 )
 
 func TestMigrateGoModule(t *testing.T) {
@@ -119,7 +121,6 @@ go_module(
 
 	binOnlyAlias := graph.FindTargetByName(thirdPartyFile, "test_bin_only")
 	assert.Equal(t, []string{"///third_party/go/github.com_example_bin-only//:bin-only"}, binOnlyAlias.AttrStrings("exported_deps"))
-
 }
 
 func TestModuleAlias(t *testing.T) {
