@@ -10,6 +10,7 @@ import (
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/please"
 	"os"
+	"strings"
 )
 
 func New(conf *config.Config, plzConf *please.Config) *Migrate {
@@ -20,7 +21,7 @@ func New(conf *config.Config, plzConf *please.Config) *Migrate {
 	}
 }
 
-// Migrate replaces go_module rules with the equivalent go_repo rules, generating filegroup aliases where appropriate
+// Migrate replaces go_module rules with the equivalent go_repo rules, generating filegroup writeAliases where appropriate
 type Migrate struct {
 	graph            *graph.Graph
 	thirdPartyFolder string
@@ -43,63 +44,61 @@ type moduleParts struct {
 	binaryParts []*pkgRule
 }
 
-func (p *moduleParts) rules(thirdPartyDir string) ([]*build.Rule, error) {
-	var rules []*build.Rule
-
+func (p *moduleParts) writeRules(thirdPartyDir string, g *graph.Graph) error {
 	download := ""
+	version := ""
+	var patches []string
+	var name = strings.ReplaceAll(p.module, "/", "_")
+
+	thirdPartyFile, err := g.LoadFile(thirdPartyDir)
+	if err != nil {
+		return err
+	}
+
+	// We need to use a go_mod_download if the download rule is downloading the module using a different path than the
+	// import path of the module e.g. for when we've forked a module similar to how replace works in go.mods.
 	if p.download != nil && p.module != p.download.rule.AttrString("module") {
 		download = labels.Shorten(generate.BuildTarget(p.download.rule.Name(), p.download.pkg, ""), thirdPartyDir)
-		rules = []*build.Rule{p.download.rule}
+		// Add the download rule back in as we still need this
+		thirdPartyFile.Stmt = append(thirdPartyFile.Stmt, p.download.rule.Call)
 	}
 
-	if len(p.parts) == 1 {
-		part := p.parts[0]
-		rules = append(rules, newGoRepoRule(
-			p.module,
-			part.rule.AttrString("version"),
-			download,
-			part.rule.Name(),
-			p.installs(),
-			part.rule.AttrStrings("patches"),
-		))
-	} else {
-		// We must be a single binary rule
-		if len(p.parts) == 0 {
-			part := p.binaryParts[0]
-			rules = append(rules, newGoRepoRule(
-				p.module,
-				part.rule.AttrString("version"),
-				"",
-				"",
-				p.installs(),
-				part.rule.AttrStrings("patches"),
-			))
-		} else {
-			rules = append(rules, newGoRepoRule(
-				p.module,
-				p.download.rule.AttrString("version"),
-				download,
-				"",
-				p.installs(),
-				p.download.rule.AttrStrings("patches"),
-			))
+	if p.download != nil {
+		version = p.download.rule.AttrString("version")
+		patches = p.download.rule.AttrStrings("patches")
+	} else if len(p.parts) > 0 {
+		if len(p.parts) != 1 {
+			return fmt.Errorf("%v has multiple go_module rules that don't share a download rule", p.module)
 		}
-
+		version = p.parts[0].rule.AttrString("version")
+		patches = p.parts[0].rule.AttrStrings("patches")
+		name = p.parts[0].rule.Name()
+	} else {
+		if len(p.binaryParts) != 1 {
+			return fmt.Errorf("%v has multiple go_module rules that don't share a download rule", p.module)
+		}
+		version = p.binaryParts[0].rule.AttrString("version")
+		patches = p.binaryParts[0].rule.AttrStrings("patches")
 	}
 
-	aliases, err := p.aliases(thirdPartyDir)
-	if err != nil {
-		return nil, err
-	}
-	rules = append(rules, aliases...)
+	thirdPartyFile.Stmt = append(thirdPartyFile.Stmt, newGoRepoRule(
+		p.module,
+		version,
+		download,
+		name,
+		p.installs(),
+		patches,
+	).Call)
 
-	binAliases, err := p.binaryAliases(thirdPartyDir)
-	if err != nil {
-		return nil, err
+	if err := p.writeAliases(thirdPartyDir, g); err != nil {
+		return err
 	}
-	rules = append(rules, binAliases...)
 
-	return rules, nil
+	if err := p.writeBinaryAliases(thirdPartyDir, g); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p *moduleParts) installs() []string {
@@ -121,11 +120,10 @@ func (p *moduleParts) installs() []string {
 	return installs
 }
 
-func (p *moduleParts) aliases(thirdPartyDir string) ([]*build.Rule, error) {
-	if len(p.parts) == 1 {
-		return nil, nil
+func (p *moduleParts) writeAliases(thirdPartyDir string, g *graph.Graph) error {
+	if len(p.parts) == 1 && p.parts[0].pkg == thirdPartyDir {
+		return nil
 	}
-	aliases := make([]*build.Rule, 0, len(p.parts))
 	for _, part := range p.parts {
 		subrepoName := generate.SubrepoName(p.module, thirdPartyDir)
 		installRule := generate.BuildTarget("installs", ".", subrepoName)
@@ -136,21 +134,30 @@ func (p *moduleParts) aliases(thirdPartyDir string) ([]*build.Rule, error) {
 		// wildcards (i.e. "pkg/...") ourselves.
 		rule.SetAttr("exported_deps", edit.NewStringList([]string{installRule}))
 
-		aliases = append(aliases, rule)
+		f, err := g.LoadFile(part.pkg)
+		if err != nil {
+			return err
+		}
+
+		f.Stmt = append(f.Stmt, rule.Call)
 	}
-	return aliases, nil
+	return nil
 }
 
-func (p *moduleParts) binaryAliases(thirdPartyDir string) ([]*build.Rule, error) {
-	aliases := make([]*build.Rule, 0, len(p.binaryParts))
+func (p *moduleParts) writeBinaryAliases(thirdPartyDir string, g *graph.Graph) error {
 	for _, part := range p.binaryParts {
 		rule, err := binaryAlias(p.module, thirdPartyDir, part)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		aliases = append(aliases, rule)
+		f, err := g.LoadFile(part.pkg)
+		if err != nil {
+			return err
+		}
+
+		f.Stmt = append(f.Stmt, rule.Call)
 	}
-	return aliases, nil
+	return nil
 }
 
 func binaryAlias(module, thirdPartyDir string, part *pkgRule) (*build.Rule, error) {
@@ -205,19 +212,9 @@ func (m *Migrate) Migrate(write bool, paths ...string) error {
 }
 
 func (m *Migrate) genRules() error {
-	thirdPartyGo, err := m.graph.LoadFile(m.thirdPartyFolder)
-	if err != nil {
-		return err
-	}
-
 	for _, parts := range m.moduleRules {
-		rules, err := parts.rules(m.thirdPartyFolder)
-		if err != nil {
+		if err := parts.writeRules(m.thirdPartyFolder, m.graph); err != nil {
 			return err
-		}
-
-		for _, r := range rules {
-			thirdPartyGo.Stmt = append(thirdPartyGo.Stmt, r.Call)
 		}
 	}
 
@@ -229,21 +226,26 @@ func newGoRepoRule(module, version, download, name string, install, patches []st
 		X: &build.Ident{Name: "go_repo"},
 		List: []build.Expr{
 			edit.NewAssignExpr("module", edit.NewStringExpr(module)),
-			edit.NewAssignExpr("install", edit.NewStringList(install)),
 		},
-	}
-	if version != "" {
-		expr.List = append(expr.List, edit.NewAssignExpr("version", edit.NewStringExpr(version)))
-	}
-	if download != "" {
-		expr.List = append(expr.List, edit.NewAssignExpr("download", edit.NewStringExpr(download)))
 	}
 	if name != "" {
 		expr.List = append(expr.List, edit.NewAssignExpr("name", edit.NewStringExpr(name)))
 	}
-	if len(patches) != 0 {
-		expr.List = append(expr.List, edit.NewAssignExpr("patch", edit.NewStringList(patches)))
+	if len(install) != 0 {
+		expr.List = append(expr.List, edit.NewAssignExpr("install", edit.NewStringList(install)))
 	}
+
+	if download != "" {
+		expr.List = append(expr.List, edit.NewAssignExpr("download", edit.NewStringExpr(download)))
+	} else {
+		if version != "" {
+			expr.List = append(expr.List, edit.NewAssignExpr("version", edit.NewStringExpr(version)))
+		}
+		if len(patches) != 0 {
+			expr.List = append(expr.List, edit.NewAssignExpr("patch", edit.NewStringList(patches)))
+		}
+	}
+
 	return build.NewRule(expr)
 }
 

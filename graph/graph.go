@@ -143,7 +143,7 @@ func (g *Graph) ensureVisibility(conf *config.Config, dep *Dependency) error {
 
 	kind := conf.GetKind(t.Kind())
 	if kind == nil {
-		return fmt.Errorf("%v tried to depend on %v, but %v is of unknown kind: %v", dep.From.Format(), dep.To.Format(), dep.To.Format(), t.Kind())
+		return nil
 	}
 
 	visibilities := t.AttrStrings("visibility")

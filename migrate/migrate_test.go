@@ -99,7 +99,7 @@ go_module(
 
 	repoRules := thirdPartyFile.Rules("go_repo")
 	require.Len(t, repoRules, 2)
-	repoRule := repoRules[0]
+	repoRule := graph.FindTargetByName(thirdPartyFile, "github.com_example_example")
 
 	assert.Equal(t, "v1.0.0", repoRule.AttrString("version"))
 	assert.Equal(t, "github.com/example/example", repoRule.AttrString("module"))
@@ -158,4 +158,42 @@ go_module(
 	assert.ElementsMatch(t, []string{"."}, repoRule.AttrStrings("install"))
 
 	assert.NotNil(t, graph.FindTargetByName(thirdPartyFile, "test_dl"))
+}
+
+func TestAliasesInOtherDirs(t *testing.T) {
+	m := &Migrate{
+		graph:            graph.New([]string{"BUILD"}),
+		thirdPartyFolder: "third_party/go",
+		moduleRules:      map[string]*moduleParts{},
+	}
+
+	thirdPartyK8sFile, err := build.ParseBuild("third_party/go/kubernetes", []byte(`
+go_module(
+    name = "api",
+    install = ["..."],
+    module = "k8s.io/api",
+    version = "v0.24.17",
+)
+	`))
+	if err != nil {
+		panic(err)
+	}
+	m.graph.SetFile("third_party/go/kubernetes", thirdPartyK8sFile)
+
+	thirdPartyFile, err := build.ParseBuild("third_party/go", nil)
+	if err != nil {
+		panic(err)
+	}
+	m.graph.SetFile("third_party/go", thirdPartyFile)
+
+	err = m.Migrate(false, "third_party/go", "third_party/go/kubernetes")
+	require.NoError(t, err)
+
+	repoRule := graph.FindTargetByName(thirdPartyFile, "api")
+	require.NotNil(t, repoRule)
+
+	aliasRule := graph.FindTargetByName(thirdPartyK8sFile, "api")
+	require.NotNil(t, aliasRule)
+
+	assert.ElementsMatch(t, []string{"///third_party/go/k8s.io_api//:installs"}, aliasRule.AttrStrings("exported_deps"))
 }

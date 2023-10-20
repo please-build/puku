@@ -111,6 +111,12 @@ func (u *Update) isInScope(path string) bool {
 // empty string when no target is found.
 func (u *Update) localDep(conf *config.Config, importPath string) (string, error) {
 	path := strings.Trim(strings.TrimPrefix(importPath, u.conf.ImportPath()), "/")
+	// If we're using GOPATH based resolution, we don't have a prefix to base whether a path is package local or not. In
+	// this case, we need to check if the directory exists. If it doesn't it's not a local import.
+	if _, err := os.Lstat(path); os.IsNotExist(err) {
+		return "", nil
+	}
+
 	file, err := u.graph.LoadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse BUILD files in %v: %v", path, err)
