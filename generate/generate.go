@@ -180,12 +180,9 @@ func (u *Update) addNewModules(conf *config.Config) error {
 		return err
 	}
 
-	// This is a workaround for a bug in Please. It seems we queue up the third party build file for subinclude in order
-	// to get at the go_repo rules. This means the go rules aren't preloaded. I don't think this should be the case.
-	//
-	// TODO figure out why Please needs this subinclude and check for u.goIsPreloaded before calling this once that's
-	// 	fixed
-	edit.EnsureSubinclude(file)
+	if u.conf.GoIsPreloaded() {
+		edit.EnsureSubinclude(file)
+	}
 
 	goRepos := file.Rules("go_repo")
 	mods := make([]*proxy.Module, 0, len(goRepos))
