@@ -194,9 +194,9 @@ func binaryAlias(module, thirdPartyDir string, part *pkgRule) (*build.Rule, erro
 	installs := part.rule.AttrStrings("install")
 
 	if len(installs) == 0 {
-		rule.SetAttr("exported_deps", edit.NewStringList([]string{generate.SubrepoTarget(module, thirdPartyDir, "")}))
+		rule.SetAttr("srcs", edit.NewStringList([]string{generate.SubrepoTarget(module, thirdPartyDir, "")}))
 	} else if len(installs) == 1 {
-		rule.SetAttr("exported_deps", edit.NewStringList([]string{generate.SubrepoTarget(module, thirdPartyDir, installs[0])}))
+		rule.SetAttr("srcs", edit.NewStringList([]string{generate.SubrepoTarget(module, thirdPartyDir, installs[0])}))
 	} else {
 		return nil, fmt.Errorf("too many installs to binary rule: %s", generate.BuildTarget(rule.Name(), part.pkg, ""))
 	}
