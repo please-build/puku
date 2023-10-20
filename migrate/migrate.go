@@ -74,7 +74,9 @@ func (p *moduleParts) writeRules(thirdPartyDir string, g *graph.Graph) error {
 		patches = p.download.rule.AttrStrings("patches")
 	} else if len(p.parts) > 0 {
 		if len(p.parts) == 1 {
-			name = p.parts[0].rule.Name()
+			if p.parts[0].pkg == thirdPartyDir {
+				name = p.parts[0].rule.Name()
+			}
 			patches = p.parts[0].rule.AttrStrings("patches")
 		}
 		for _, p := range p.parts {
