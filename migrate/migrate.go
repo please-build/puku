@@ -279,9 +279,6 @@ func (m *Migrate) readModuleRules(f *build.File, pkg string) error {
 			if mod.download == nil {
 				mod.download = &pkgRule{pkg: l.Package, rule: dlRule}
 			} else {
-				if mod.download.rule == nil {
-					panic("wat")
-				}
 				if mod.download.rule.Call != dlRule.Call {
 					return fmt.Errorf("too many download rules for module %v", moduleName)
 				}
