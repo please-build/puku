@@ -80,10 +80,7 @@ func readOneConfig(path string) (*Config, error) {
 		return config, nil
 	}
 	f, err := os.ReadFile(filepath.Join(path, "puku.json"))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
+	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
 
