@@ -26,6 +26,7 @@ var opts = struct {
 		} `positional-args:"true"`
 	} `command:"fmt" description:"Format build files in the provided paths"`
 	Sync struct {
+		Write bool `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
 	} `command:"sync" description:"Synchronises the go.mod to the third party build file"`
 	Lint struct {
 		Args struct {
@@ -60,7 +61,7 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 		return 0
 	},
 	"sync": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
-		if err := generate.NewUpdate(false, plzConf).Sync(); err != nil {
+		if err := generate.NewUpdate(opts.Sync.Write, plzConf).Sync(); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
