@@ -114,13 +114,13 @@ go_module(
 	assert.Equal(t, []string{"///third_party/go/github.com_example_example//:installs"}, barAlias.AttrStrings("exported_deps"))
 
 	binWithInstallAlias := graph.FindTargetByName(thirdPartyFile, "test_bin_install")
-	assert.Equal(t, []string{"///third_party/go/github.com_example_example//cmd"}, binWithInstallAlias.AttrStrings("exported_deps"))
+	assert.Equal(t, []string{"///third_party/go/github.com_example_example//cmd"}, binWithInstallAlias.AttrStrings("srcs"))
 
 	binNoInstallAlias := graph.FindTargetByName(thirdPartyFile, "test_bin")
-	assert.Equal(t, []string{"///third_party/go/github.com_example_example//:example"}, binNoInstallAlias.AttrStrings("exported_deps"))
+	assert.Equal(t, []string{"///third_party/go/github.com_example_example//:example"}, binNoInstallAlias.AttrStrings("srcs"))
 
 	binOnlyAlias := graph.FindTargetByName(thirdPartyFile, "test_bin_only")
-	assert.Equal(t, []string{"///third_party/go/github.com_example_bin-only//:bin-only"}, binOnlyAlias.AttrStrings("exported_deps"))
+	assert.Equal(t, []string{"///third_party/go/github.com_example_bin-only//:bin-only"}, binOnlyAlias.AttrStrings("srcs"))
 }
 
 func TestModuleAlias(t *testing.T) {
@@ -191,7 +191,7 @@ go_module(
 	err = m.Migrate(false, "third_party/go", "third_party/go/kubernetes")
 	require.NoError(t, err)
 
-	repoRule := graph.FindTargetByName(thirdPartyFile, "api")
+	repoRule := graph.FindTargetByName(thirdPartyFile, "k8s.io_api")
 	require.NotNil(t, repoRule)
 
 	aliasRule := graph.FindTargetByName(thirdPartyK8sFile, "api")
