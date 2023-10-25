@@ -111,6 +111,12 @@ func (u *Update) isInScope(path string) bool {
 // empty string when no target is found.
 func (u *Update) localDep(conf *config.Config, importPath string) (string, error) {
 	path := strings.Trim(strings.TrimPrefix(importPath, u.conf.ImportPath()), "/")
+	// If we're using GOPATH based resolution, we don't have a prefix to base whether a path is package local or not. In
+	// this case, we need to check if the directory exists. If it doesn't it's not a local import.
+	if _, err := os.Lstat(path); os.IsNotExist(err) {
+		return "", nil
+	}
+
 	file, err := u.graph.LoadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse BUILD files in %v: %v", path, err)
@@ -163,14 +169,8 @@ func depTarget(modules []string, importPath, thirdPartyFolder string) string {
 		return ""
 	}
 
-	subrepoName := SubrepoName(module, thirdPartyFolder)
 	packageName := strings.TrimPrefix(strings.TrimPrefix(importPath, module), "/")
-	name := filepath.Base(packageName)
-	if packageName == "" {
-		name = filepath.Base(module)
-	}
-
-	return BuildTarget(name, packageName, subrepoName)
+	return SubrepoTarget(module, thirdPartyFolder, packageName)
 }
 
 func moduleForPackage(modules []string, importPath string) string {
@@ -182,6 +182,17 @@ func moduleForPackage(modules []string, importPath string) string {
 		}
 	}
 	return module
+}
+
+func SubrepoTarget(module, thirdPartyFolder, packageName string) string {
+	subrepoName := SubrepoName(module, thirdPartyFolder)
+
+	name := filepath.Base(packageName)
+	if packageName == "" {
+		name = filepath.Base(module)
+	}
+
+	return BuildTarget(name, packageName, subrepoName)
 }
 
 func SubrepoName(module, thirdPartyFolder string) string {
