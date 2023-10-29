@@ -1,13 +1,13 @@
 package migrate
 
 import (
-	"github.com/please-build/puku/edit"
 	"testing"
 
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/graph"
 )
 
