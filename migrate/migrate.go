@@ -204,7 +204,7 @@ func binaryAlias(module, thirdPartyDir string, part *pkgRule) (*build.Rule, erro
 	return rule, nil
 }
 
-func (m *Migrate) Migrate(write bool, paths ...string) error {
+func (m *Migrate) Migrate(write bool, modules []string, paths ...string) error {
 	// Read all the BUILD files under the provided paths to find go_module and go_mod_download rules
 	for _, path := range paths {
 		f, err := m.graph.LoadFile(path)
@@ -232,14 +232,27 @@ func (m *Migrate) Migrate(write bool, paths ...string) error {
 	}
 
 	// Now we can generate all the rules we need
-	if err := m.genRules(); err != nil {
+	if err := m.genRules(modules); err != nil {
 		return err
 	}
 	return m.graph.FormatFiles(write, os.Stdout)
 }
 
-func (m *Migrate) genRules() error {
-	for _, parts := range m.moduleRules {
+func (m *Migrate) genRules(modules []string) error {
+	// If we're not migrating specific modules, do all of them
+	if len(modules) == 0 {
+		for _, parts := range m.moduleRules {
+			if err := parts.writeRules(m.thirdPartyFolder, m.graph); err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, mod := range modules {
+		parts, ok := m.moduleRules[mod]
+		if !ok {
+			return fmt.Errorf("couldn't find go_module rules for %v", mod)
+		}
 		if err := parts.writeRules(m.thirdPartyFolder, m.graph); err != nil {
 			return err
 		}
