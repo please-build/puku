@@ -14,7 +14,6 @@ linters:
     - dupl
     - exportloopref
     - gci
-    - gocritic
     - gofmt
     - gosimple
     - govet

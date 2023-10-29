@@ -94,7 +94,7 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 }
 
 func main() {
-	flags.ParseFlagsOrDie("puku", &opts, nil)
+	cmd := flags.ParseFlagsOrDie("puku", &opts, nil)
 	logging.InitLogging(opts.Verbosity)
 
 	wd, err := os.Getwd()
@@ -126,6 +126,5 @@ func main() {
 		log.Fatalf("failed to query config: %w", err)
 	}
 
-	cmd := flags.ParseFlagsOrDie("puku", &opts, nil)
 	os.Exit(funcs[cmd](conf, plzConf, wd))
 }

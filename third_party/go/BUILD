@@ -2,7 +2,7 @@ subinclude("///go//build_defs:go")
 
 go_toolchain(
     name = "toolchain",
-    version = "1.20",
+    version = "1.21.3",
 )
 
 go_repo(
@@ -147,6 +147,7 @@ go_repo(
         "//generate/integration/syncmod:all",
         "//glob:all",
         "//graph:all",
+        "//migrate:all",
         "//trie:all",
     ],
 )
