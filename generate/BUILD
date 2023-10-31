@@ -8,12 +8,15 @@ go_library(
     ),
     visibility = [
         "//:all",
+        "//cmd/puku:all",
+        "//generate/integration/syncmod:all",
         "//migrate:all",
         "//watch",
     ],
     deps = [
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "///third_party/go/github.com_bazelbuild_buildtools//labels",
+        "///third_party/go/golang.org_x_mod//modfile",
         "//config",
         "//edit",
         "//fs",

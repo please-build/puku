@@ -1,22 +1,5 @@
 subinclude("///go//build_defs:go")
 
-go_binary(
-    name = "puku",
-    srcs = ["puku.go"],
-    visibility = ["//package:all"],
-    deps = [
-        "///third_party/go/github.com_peterebden_go-cli-init_v5//flags",
-        "///third_party/go/github.com_peterebden_go-cli-init_v5//logging",
-        "//config",
-        "//generate",
-        "//logging",
-        "//migrate",
-        "//please",
-        "//watch",
-        "//work",
-    ],
-)
-
 filegroup(
     name = "test_project",
     srcs = ["test_project"],
@@ -32,4 +15,10 @@ genrule(
     visibility = [
         "//package:all",
     ],
+)
+
+filegroup(
+    name = "mod",
+    srcs = ["go.mod"],
+    visibility = ["PUBLIC"],
 )

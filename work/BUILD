@@ -3,6 +3,7 @@ go_library(
     srcs = ["work.go"],
     visibility = [
         "//:all",
+        "//cmd/puku:all",
         "//generate",
         "//watch",
     ],
