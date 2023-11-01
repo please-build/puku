@@ -277,6 +277,9 @@ func (m *Migrate) modDeps(deps, modsBeingMigrated []string) ([]string, error) {
 		}
 
 		rule := edit.FindTargetByName(file, label.Target)
+		if rule == nil {
+			return nil, fmt.Errorf("can't find target with name: %v", label.Format())
+		}
 		if rule.Kind() == "go_module" {
 			// Check if this guy is going to be rewritten as a go_repo by the end of this
 			if _, ok := modsInScope[rule.AttrString("module")]; ok {
