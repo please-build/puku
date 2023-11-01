@@ -25,6 +25,9 @@ var opts = struct {
 			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
 		} `positional-args:"true"`
 	} `command:"fmt" description:"Format build files in the provided paths"`
+	Sync struct {
+		Write bool `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
+	} `command:"sync" description:"Synchronises the go.mod to the third party build file"`
 	Lint struct {
 		Args struct {
 			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
@@ -54,6 +57,12 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 	"fmt": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
 		paths := work.MustExpandPaths(orignalWD, opts.Fmt.Args.Paths)
 		if err := generate.NewUpdate(true, plzConf).Update(paths...); err != nil {
+			log.Fatalf("%v", err)
+		}
+		return 0
+	},
+	"sync": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
+		if err := generate.NewUpdate(opts.Sync.Write, plzConf).Sync(); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0

@@ -310,7 +310,7 @@ func (m *Migrate) readModuleRules(f *build.File, pkg string) error {
 				return err
 			}
 
-			dlRule := graph.FindTargetByName(dlFile, l.Target)
+			dlRule := edit.FindTargetByName(dlFile, l.Target)
 			if dlRule == nil {
 				return fmt.Errorf("failed to find :%v referrenced by :%v", l.Target, rule.Name())
 			}

@@ -1,16 +1,14 @@
 package please
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
-	"os/exec"
 )
 
 type Config struct {
 	Plugin struct {
 		Go struct {
 			ImportPath []string `json:"importpath"`
+			Modfile    []string `json:"modfile"`
 		} `json:"go"`
 	} `json:"plugin"`
 	Parse struct {
@@ -40,15 +38,18 @@ func (c *Config) BuildFileNames() []string {
 	return c.Parse.BuildFileName
 }
 
-func QueryConfig(plzTool string) (*Config, error) {
-	cmd := exec.Command(plzTool, "query", "config", "--json")
-	stdErr := new(bytes.Buffer)
-	cmd.Stderr = stdErr
-	out, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("%v\n%v", err, stdErr.String())
+func (c *Config) ModFile() string {
+	if len(c.Plugin.Go.Modfile) == 0 {
+		return ""
 	}
+	return c.Plugin.Go.Modfile[0]
+}
 
+func QueryConfig(plzTool string) (*Config, error) {
+	out, err := execPlease(plzTool, "query", "config", "--json")
+	if err != nil {
+		return nil, err
+	}
 	c := new(Config)
 	if err := json.Unmarshal(out, c); err != nil {
 		return nil, err

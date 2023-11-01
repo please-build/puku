@@ -42,6 +42,8 @@ func (g *Graph) LoadFile(path string) (*build.File, error) {
 	if err == nil {
 		g.files[path] = f
 	}
+
+	f.Pkg = path
 	return f, err
 }
 
@@ -136,7 +138,7 @@ func (g *Graph) ensureVisibility(conf *config.Config, dep *Dependency) error {
 		return err
 	}
 
-	t := FindTargetByName(f, dep.To.Target)
+	t := edit.FindTargetByName(f, dep.To.Target)
 	if t == nil {
 		return fmt.Errorf("failed can't find target %v (depended on by %v)", dep.To.Format(), dep.From.Format())
 	}
@@ -190,15 +192,6 @@ func checkVisibility(target labels.Label, visibilities []string) bool {
 		}
 	}
 	return false
-}
-
-func FindTargetByName(file *build.File, name string) *build.Rule {
-	for _, rule := range file.Rules("") {
-		if rule.Name() == name {
-			return rule
-		}
-	}
-	return nil
 }
 
 func saveAndFormatBuildFile(buildFile *build.File, write bool, out io.Writer) error {

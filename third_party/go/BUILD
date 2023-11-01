@@ -67,7 +67,7 @@ go_repo(
 
 go_repo(
     module = "golang.org/x/mod",
-    version = "v0.10.0",
+    version = "v0.11.0",
 )
 
 go_repo(
@@ -141,8 +141,10 @@ go_repo(
     module = "github.com/stretchr/testify",
     version = "v1.8.4",
     visibility = [
+        "//e2e/syncmod:all",
         "//edit:all",
         "//generate:all",
+        "//generate/integration/syncmod:all",
         "//glob:all",
         "//graph:all",
         "//migrate:all",
@@ -153,7 +155,7 @@ go_repo(
 go_mod_download(
     name = "build_tools_dl",
     module = "github.com/peterebden/buildtools",
-    version = "ce40803f44fb09c5cf60b5554fe5819d02df23fc",
+    version = "v0.0.0-20221223171549-ce40803f44fb",
 )
 
 go_repo(
