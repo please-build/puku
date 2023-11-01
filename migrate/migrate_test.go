@@ -200,3 +200,65 @@ go_module(
 
 	assert.ElementsMatch(t, []string{"///third_party/go/k8s.io_api//:installs"}, aliasRule.AttrStrings("exported_deps"))
 }
+
+func TestPartialMigration(t *testing.T) {
+	m := &Migrate{
+		graph:            graph.New([]string{"BUILD"}),
+		thirdPartyFolder: "third_party/go",
+		moduleRules:      map[string]*moduleParts{},
+	}
+
+	thirdPartyFile, err := build.ParseBuild("third_party/go", []byte(`
+go_module(
+    name = "api",
+    install = ["..."],
+    module = "k8s.io/api",
+    version = "v0.24.17",
+	deps = [
+		":main",
+		":mod",
+	],
+)
+
+go_module(
+    name = "main",
+    install = ["..."],
+    module = "k8s.io/main",
+    version = "v0.24.17",
+)
+
+go_module(
+	name = "mod",
+	module = "github.com/some/mod",
+	version = "v1.0.0",
+)
+	`))
+	if err != nil {
+		panic(err)
+	}
+
+	m.graph.SetFile("third_party/go", thirdPartyFile)
+
+	err = m.Migrate(false, []string{"k8s.io/api", "k8s.io/main"}, "third_party/go")
+	require.NoError(t, err)
+
+	apiRule := edit.FindTargetByName(thirdPartyFile, "api")
+	require.NotNil(t, apiRule)
+
+	deps := apiRule.AttrStrings("deps")
+	assert.Equal(t, []string{":mod"}, deps)
+	assert.Equal(t, "go_repo", apiRule.Kind())
+
+	mainRule := edit.FindTargetByName(thirdPartyFile, "main")
+	require.NotNil(t, mainRule)
+
+	deps = mainRule.AttrStrings("deps")
+	assert.Len(t, deps, 0)
+	assert.Equal(t, "go_repo", mainRule.Kind())
+
+	modRule := edit.FindTargetByName(thirdPartyFile, "mod")
+	require.NotNil(t, mainRule)
+
+	assert.Equal(t, "go_module", modRule.Kind())
+
+}
