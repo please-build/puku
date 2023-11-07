@@ -10,5 +10,8 @@ go_test(
 go_library(
     name = "trie",
     srcs = ["trie.go"],
-    visibility = ["//generate:all"],
+    visibility = [
+        "//generate:all",
+        "//plz-out/tmp/generate/_generate#pkg_info._build/generate:all",
+    ],
 )

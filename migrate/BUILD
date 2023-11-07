@@ -23,6 +23,7 @@ go_test(
     deps = [
         ":migrate",
         "///third_party/go/github.com_bazelbuild_buildtools//build",
+        "//edit",
         "//graph",
         "//third_party/go:testify",
     ],

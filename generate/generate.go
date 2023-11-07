@@ -2,6 +2,7 @@ package generate
 
 import (
 	"fmt"
+	"github.com/please-build/puku/licences"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,7 +44,8 @@ type Update struct {
 
 	paths []string
 
-	proxy Proxy
+	proxy    Proxy
+	licences *licences.Licenses
 }
 
 func NewUpdate(write bool, conf *please.Config) *Update {
@@ -52,8 +54,11 @@ func NewUpdate(write bool, conf *please.Config) *Update {
 
 // NewUpdateWithGraph is like NewUpdate but lets us inject a graph which is useful to do testing.
 func NewUpdateWithGraph(write bool, conf *please.Config, g *graph.Graph) *Update {
+	p := proxy.New(proxy.DefaultURL)
+	l := licences.New(conf, p)
 	return &Update{
-		proxy:        proxy.New("https://proxy.golang.org"),
+		proxy:        p,
+		licences:     l,
 		installs:     trie.New(),
 		write:        write,
 		knownImports: map[string]string{},
@@ -141,14 +146,19 @@ func (u *Update) syncModFile(conf *config.Config, file *build.File, exitingRules
 
 		u.modules = append(u.modules, req.Mod.Path)
 
+		ls, err := u.licences.Get(req.Mod.Path, req.Mod.Version)
+		if err != nil {
+			return fmt.Errorf("failed to get licences for %v: %v", req.Mod.Path, err)
+		}
+
 		if replace == nil {
-			file.Stmt = append(file.Stmt, newGoRepoRule(req.Mod.Path, reqVersion, ""))
+			file.Stmt = append(file.Stmt, newGoRepoRule(req.Mod.Path, reqVersion, "", ls))
 			continue
 		}
 
-		dl, dlName := newModDownloadRule(replace.New.Path, replace.New.Version)
+		dl, dlName := newModDownloadRule(replace.New.Path, replace.New.Version, ls)
 		file.Stmt = append(file.Stmt, dl)
-		file.Stmt = append(file.Stmt, newGoRepoRule(req.Mod.Path, "", dlName))
+		file.Stmt = append(file.Stmt, newGoRepoRule(req.Mod.Path, "", dlName, nil))
 	}
 
 	return nil
@@ -302,13 +312,16 @@ func (u *Update) addNewModules(conf *config.Config) error {
 			}
 			continue
 		}
-
-		file.Stmt = append(file.Stmt, newGoRepoRule(mod.Module, mod.Version, ""))
+		ls, err := u.licences.Get(mod.Module, mod.Version)
+		if err != nil {
+			return fmt.Errorf("failed to get license for mod %v: %v", mod.Module, err)
+		}
+		file.Stmt = append(file.Stmt, newGoRepoRule(mod.Module, mod.Version, "", ls))
 	}
 	return nil
 }
 
-func newGoRepoRule(mod, version, download string) *build.CallExpr {
+func newGoRepoRule(mod, version, download string, licences []string) *build.CallExpr {
 	rule := build.NewRule(&build.CallExpr{
 		X:    &build.Ident{Name: "go_repo"},
 		List: []build.Expr{},
@@ -320,14 +333,20 @@ func newGoRepoRule(mod, version, download string) *build.CallExpr {
 	if download != "" {
 		rule.SetAttr("download", edit.NewStringExpr(":"+download))
 	}
+	if len(licences) != 0 {
+		rule.SetAttr("licences", edit.NewStringList(licences))
+	}
 	return rule.Call
 }
 
-func newModDownloadRule(mod, version string) (*build.CallExpr, string) {
+func newModDownloadRule(mod, version string, licences []string) (*build.CallExpr, string) {
 	rule := edit.NewRuleExpr("go_mod_download", strings.ReplaceAll(mod, "/", "_")+"_dl")
 
 	rule.SetAttr("module", edit.NewStringExpr(mod))
 	rule.SetAttr("version", edit.NewStringExpr(version))
+	if len(licences) != 0 {
+		rule.SetAttr("licences", edit.NewStringList(licences))
+	}
 	return rule.Call, rule.Name()
 }
 

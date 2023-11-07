@@ -1,7 +1,10 @@
 go_library(
     name = "glob",
     srcs = ["glob.go"],
-    visibility = ["//generate"],
+    visibility = [
+        "//generate",
+        "//plz-out/tmp/generate/_generate#pkg_info._build/generate:all",
+    ],
 )
 
 go_test(

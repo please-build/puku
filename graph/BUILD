@@ -4,8 +4,10 @@ go_library(
     visibility = [
         "//generate:all",
         "//generate/integration/syncmod:all",
+        "//licences:all",
         "//migrate:all",
         "//modfile:all",
+        "//plz-out/tmp/generate/_generate#pkg_info._build/generate:all",
     ],
     deps = [
         "///third_party/go/github.com_bazelbuild_buildtools//build",
