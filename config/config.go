@@ -24,14 +24,15 @@ type KindConfig struct {
 // a shallower level. The shallower cofig file is stored in (*Config).base` and the methods on this struct will recurse
 // into this base config where appropriate.
 type Config struct {
-	base          *Config
-	ThirdPartyDir string                 `json:"thirdPartyDir"`
-	PleasePath    string                 `json:"pleasePath"`
-	KnownTargets  map[string]string      `json:"knownTargets"`
-	LibKinds      map[string]*KindConfig `json:"libKinds"`
-	TestKinds     map[string]*KindConfig `json:"testKinds"`
-	BinKinds      map[string]*KindConfig `json:"binKinds"`
-	Stop          bool                   `json:"stop"`
+	base              *Config
+	ThirdPartyDir     string                 `json:"thirdPartyDir"`
+	PleasePath        string                 `json:"pleasePath"`
+	KnownTargets      map[string]string      `json:"knownTargets"`
+	LibKinds          map[string]*KindConfig `json:"libKinds"`
+	TestKinds         map[string]*KindConfig `json:"testKinds"`
+	BinKinds          map[string]*KindConfig `json:"binKinds"`
+	Stop              bool                   `json:"stop"`
+	EnsureSubincludes *bool                  `json:"ensureSubincludes"`
 }
 
 // TODO we should reload this during plz watch so this probably needs to become a member of Update
@@ -130,6 +131,16 @@ func (c *Config) GetPlzPath() string {
 		return c.base.GetPlzPath()
 	}
 	return "plz"
+}
+
+func (c *Config) ShouldEnsureSubincludes() bool {
+	if c.EnsureSubincludes != nil {
+		return *c.EnsureSubincludes
+	}
+	if c.base != nil {
+		return c.base.ShouldEnsureSubincludes()
+	}
+	return true
 }
 
 func (c *Config) GetKind(kind string) *kinds.Kind {

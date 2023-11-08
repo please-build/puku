@@ -7,6 +7,11 @@ ImportPath = github.com/please-build/puku
 GoTool = //third_party/go:toolchain|go
 ModFile = //:mod
 
+[Alias "puku"]
+Cmd = run //cmd/puku --
+PositionalLabels = true
+Desc = A tool to update BUILD files in Go packages
 
 [alias "lint"]
+Desc = Runs golangci-lint as done by our CI
 cmd = run //third_party/binary:golangci-lint -- run
