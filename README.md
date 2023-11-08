@@ -25,7 +25,7 @@ remote_file(
 )
 ```
 
-Then add an alias to your `.plzconfig`, or if you're only donig this for your personal usage, your `.plzconfig.local`:
+Then add an alias to your `.plzconfig`, or for personal usage, your `.plzconfig.local`:
 ```
 [Alias "puku"]
 Cmd = run //third_party/binary:puku --
@@ -101,7 +101,7 @@ prompt users with a preview before applying auto-fixes.
 ## Configuration
 
 Puku can be configured via `puku.json` files that are loaded as puku walks the directory structure. Configuration values
-are overriden as new files are discovered at a deeper level in the source tree.
+are overridden as new files are discovered at a deeper level in the source tree.
 
 ```yaml
 {
@@ -172,7 +172,7 @@ rules. It will parse the `srcs` arguments of each rule, evaluating `glob()`s as 
 unallocated sources.
 
 Sources are then allocated to existing rules where possible based on their kind type. If no rule can be found, then a
-new rule will be created. The kind type that puku chooses for new rules are the built in base types i.e. `go_library`,
+new rule will be created. The kind type that puku chooses for new rules are the built-in base types i.e. `go_library`,
 `go_test`, and `go_binary`.
 
 Once all sources have been allocated, the imports for each source file are collected and resolved. Puku will resolve
