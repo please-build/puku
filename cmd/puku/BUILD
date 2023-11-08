@@ -12,4 +12,5 @@ go_binary(
         "//watch",
         "//work",
     ],
+    visibility = ["PUBLIC"],
 )
