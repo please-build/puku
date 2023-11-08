@@ -1,3 +1,9 @@
+Version 1.0.0
+------------
+    * Support for `go_benchmark` (#41)
+    * Make `puku watch` write to file rather than stdout (#42)
+    * Added `puku migrate` to convert `go_module` targets to `go_repo` (#44, #48)
+
 Version 0.2.0
 ------------
     * Fixed some issues around resolving install lists on `go_repo` and `go_module` (#33)

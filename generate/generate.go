@@ -251,7 +251,7 @@ func (u *Update) updateOne(conf *config.Config, path string) error {
 		return err
 	}
 
-	if !u.plzConf.GoIsPreloaded() {
+	if !u.plzConf.GoIsPreloaded() && conf.ShouldEnsureSubincludes() {
 		edit.EnsureSubinclude(file)
 	}
 
@@ -276,7 +276,7 @@ func (u *Update) addNewModules(conf *config.Config) error {
 		return err
 	}
 
-	if u.plzConf.GoIsPreloaded() {
+	if u.plzConf.GoIsPreloaded() && conf.ShouldEnsureSubincludes() {
 		edit.EnsureSubinclude(file)
 	}
 
