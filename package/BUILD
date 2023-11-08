@@ -17,7 +17,7 @@ go_toolchain(
 def cross_compile(version, arch):
     return build_rule(
         name = f"puku_{arch}",
-        srcs = [f"///{arch}//:puku"],
+        srcs = [f"///{arch}//cmd/puku"],
         outs = [f"puku-{version}-{arch}"],
         cmd = "mv $SRC $OUT",
         labels = ["manual"],
