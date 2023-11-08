@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/please-build/puku/proxy"
 	"os"
 	"path/filepath"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/please-build/puku/logging"
 	"github.com/please-build/puku/migrate"
 	"github.com/please-build/puku/please"
+	"github.com/please-build/puku/proxy"
 	"github.com/please-build/puku/watch"
 	"github.com/please-build/puku/work"
 )

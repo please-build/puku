@@ -60,9 +60,9 @@ go_repo(
 )
 
 go_repo(
+    licences = ["MIT"],
     module = "github.com/chzyer/logex",
     version = "v1.1.10",
-    licences = ["MIT"],
 )
 
 go_repo(

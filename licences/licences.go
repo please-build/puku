@@ -1,14 +1,16 @@
 package licences
 
 import (
+	"os"
+
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/google/go-licenses/licenses"
 	"github.com/google/licenseclassifier/v2/assets"
+
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/proxy"
-	"os"
 )
 
 var modCacheDir = "plz-out/puku/modcache"
@@ -27,7 +29,6 @@ func New(conf *please.Config, p *proxy.Proxy) *Licenses {
 
 // getLicences returns a map of licences in the given directories
 func getLicences(modPaths []string) (map[string][]string, error) {
-
 	c, err := assets.DefaultClassifier()
 	if err != nil {
 		return nil, err

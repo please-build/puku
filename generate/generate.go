@@ -2,7 +2,6 @@ package generate
 
 import (
 	"fmt"
-	"github.com/please-build/puku/licences"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	"github.com/please-build/puku/glob"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/kinds"
+	"github.com/please-build/puku/licences"
 	"github.com/please-build/puku/logging"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/proxy"
