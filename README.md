@@ -13,7 +13,7 @@ $ go install github.com/please-build/puku/cmd/puku
 Then make sure `$GOPATH/bin` is in `$PATH`. This can be done by adding `export PATH=$PATH:$GOROOT/bin:$GOPATH/bin` to 
 your `~/.bashrc`, or similar. 
 
-## Running puku with Please
+### Running puku with Please
 
 Add a remote file to your repo under `third_party/binary/BUILD`
 ```python
@@ -51,7 +51,7 @@ $ puku fmt //src/...
 Puku supports `go_library`, `go_test`, `go_binary`, `go_benchmark`, `proto_library`, and `grpc_library` out of the box, but can be
 configured to support other rules. See the configuration section below for more information.
 
-## Updating and adding third party dependencies 
+### Updating and adding third party dependencies 
 
 Puku will attempt to resolve new imports and add `go_repo` rules to satisfy them. This works most of the time, however 
 setting `ModFile = //:gomod` in your Go plugin, is far more robust and highly recommended. 
@@ -97,6 +97,66 @@ and automatically update rules as `.go` sources change.
 By running `puku lint`, puku will run in a lint-only mode. It will exit without output if everything linted fine,
 otherwise, it will print the desired state to stdout. This can be useful to integrate with tools like arcanist that can
 prompt users with a preview before applying auto-fixes.
+
+## Supporting custom build definitions
+
+Puku treats targets as one of three types: `library`, `binary`, or `test` targets. Sources are allocated to these 
+targets based on their type. Targets that are `library` types are additionally used to satisfy imports from other 
+targets. 
+
+For example, if you have the following `BUILD` file:
+
+```
+my_go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    deps = [":foo"],
+)
+```
+
+Puku can be configured to treat custom types as one of these three kinds by adding some configuration to `puku.json` 
+files. These can be checked in throughout the repo, and the kinds will apply to all subdirectories. For example, the
+following will make puku treat `my_go_library()` the same way it treats `go_library()`.
+
+```
+libKinds": {
+    "my_go_library": {
+        "providedDeps": ["//common/go:some_common_lib"]
+    },
+}
+``` 
+
+Provided deps are assumed to be added to the list of deps provided to the build rule. Puku will avoid adding these when
+it sees an import that's satisfied by them. 
+
+### Non-go sources
+Puku will try and determine the dependencies of a target by parsing their sources. Sometimes a target produces a go 
+package without taking in go sources directly, for example `proto_library()`. If we want to introduce a new protoc 
+plugin, say `grcp_gateway()`, we can teach puku about this like so:
+
+```
+libKinds": {
+    "grcp_gateway": {
+        "nonGoSources": true
+    },
+}
+```
+
+When puku sees a target like this:
+```
+grpc_gateway(
+    name = "foo",
+    srcs = ["foo.proto"],
+)
+```
+
+Puku will avoid trying to parse `foo.proto` as a go source, and will not attempt to remove dependencies from the target,
+but it will still resolve imports for that path to that target. 
 
 ## Configuration
 
