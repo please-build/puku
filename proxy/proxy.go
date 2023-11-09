@@ -233,7 +233,7 @@ func (proxy *Proxy) EnsureDownloaded(mod, ver, dir string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", nil
+		return "", ModuleNotFound{mod}
 	}
 
 	bs, err := io.ReadAll(resp.Body)
@@ -265,4 +265,10 @@ func (proxy *Proxy) EnsureDownloaded(mod, ver, dir string) (string, error) {
 		}
 	}
 	return modRoot, nil
+}
+
+// IsNotFound returns true if the error is ModuleNotFound
+func IsNotFound(err error) bool {
+	_, ok := err.(ModuleNotFound)
+	return ok
 }

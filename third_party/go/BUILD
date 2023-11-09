@@ -177,6 +177,7 @@ go_repo(
         "//generate/integration/syncmod:all",
         "//glob:all",
         "//graph:all",
+        "//licences:all",
         "//migrate:all",
         "//trie:all",
     ],

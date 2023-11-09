@@ -93,7 +93,13 @@ func (l *Licenses) Update(paths []string, write bool) error {
 
 			downloadPath, err := l.proxy.EnsureDownloaded(mod, ver, modCacheDir)
 			if err != nil {
+				if proxy.IsNotFound(err) {
+					continue
+				}
 				return err
+			}
+			if downloadPath == "" {
+				return nil
 			}
 			rules[downloadPath] = r
 			mods = append(mods, downloadPath)
@@ -117,6 +123,9 @@ func (l *Licenses) Update(paths []string, write bool) error {
 func (l *Licenses) Get(mod, ver string) ([]string, error) {
 	path, err := l.proxy.EnsureDownloaded(mod, ver, modCacheDir)
 	if err != nil {
+		if proxy.IsNotFound(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	if path == "" {

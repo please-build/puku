@@ -15,3 +15,16 @@ go_library(
         "//proxy",
     ],
 )
+
+go_test(
+    name = "licences_test",
+    srcs = ["licences_test.go"],
+    deps = [
+        ":licences",
+        "///third_party/go/github.com_bazelbuild_buildtools//build",
+        "//edit",
+        "//graph",
+        "//proxy",
+        "//third_party/go:testify",
+    ],
+)
