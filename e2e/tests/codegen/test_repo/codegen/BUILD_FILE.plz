@@ -1,0 +1,17 @@
+text_file(
+    name = "srcs",
+    content = """
+package main
+
+import "github.com/example/repo/foo"
+
+func main() {
+    println(foo.Message())
+}
+    """,
+)
+
+go_binary(
+    name = "codegen",
+    srcs = [":srcs"],
+)

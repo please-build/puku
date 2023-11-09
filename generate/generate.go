@@ -2,6 +2,7 @@ package generate
 
 import (
 	"fmt"
+	"github.com/please-build/puku/eval"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,16 +39,15 @@ type Update struct {
 	modules      []string
 	knownImports map[string]string
 	installs     *trie.Trie
-
-	globber *glob.Globber
+	eval         *eval.Eval
 
 	paths []string
 
 	proxy Proxy
 }
 
-func NewUpdate(write bool, conf *please.Config) *Update {
-	return NewUpdateWithGraph(write, conf, graph.New(conf.BuildFileNames()))
+func NewUpdate(write bool, plzConf *please.Config) *Update {
+	return NewUpdateWithGraph(write, plzConf, graph.New(plzConf.BuildFileNames()))
 }
 
 // NewUpdateWithGraph is like NewUpdate but lets us inject a graph which is useful to do testing.
@@ -58,7 +58,7 @@ func NewUpdateWithGraph(write bool, conf *please.Config, g *graph.Graph) *Update
 		write:        write,
 		knownImports: map[string]string{},
 		plzConf:      conf,
-		globber:      glob.New(),
+		eval:         eval.New(glob.New()),
 		graph:        g,
 	}
 }
@@ -241,10 +241,6 @@ func (u *Update) updateOne(conf *config.Config, path string) error {
 		return err
 	}
 
-	if len(sources) == 0 {
-		return nil
-	}
-
 	// Parse the build file
 	file, err := u.graph.LoadFile(path)
 	if err != nil {
@@ -259,7 +255,7 @@ func (u *Update) updateOne(conf *config.Config, path string) error {
 	rules, calls := u.readRulesFromFile(conf, file, path)
 
 	// Allocate the sources to the rules, creating new rules as necessary
-	newRules, err := u.allocateSources(path, sources, rules)
+	newRules, err := u.allocateSources(conf, path, sources, rules)
 	if err != nil {
 		return err
 	}
@@ -331,13 +327,27 @@ func newModDownloadRule(mod, version string) (*build.CallExpr, string) {
 	return rule.Call, rule.Name()
 }
 
-func (u *Update) allSources(r *rule) ([]string, error) {
-	args := r.parseGlob()
-	if args == nil {
-		return r.AttrStrings("srcs"), nil
+func (u *Update) allSources(conf *config.Config, r *rule, sourceMap map[string]*GoFile) ([]string, map[string]*GoFile, error) {
+	srcs, err := u.eval.BuildSources(conf.GetPlzPath(), r.dir, r.Rule)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return u.globber.Glob(r.dir, args)
+	sources := make(map[string]*GoFile, len(srcs))
+	for _, src := range srcs {
+		if file, ok := sourceMap[src]; ok {
+			sources[src] = file
+			continue
+		}
+
+		// These are generated sources in plz-out/gen
+		f, err := importFile(".", src)
+		if err != nil {
+			continue
+		}
+		sources[src] = f
+	}
+	return srcs, sources, nil
 }
 
 // updateRuleDeps updates the dependencies of a build rule based on the imports of its sources
@@ -350,7 +360,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 		return nil
 	}
 
-	srcs, err := u.allSources(rule)
+	srcs, sources, err := u.allSources(conf, rule, sources)
 	if err != nil {
 		return err
 	}
@@ -394,7 +404,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 
 	// Add any libraries for the same package as us
 	if rule.kind.Type == kinds.Test && !rule.isExternal() {
-		pkgName, err := u.rulePkg(sources, rule)
+		pkgName, err := u.rulePkg(conf, sources, rule)
 		if err != nil {
 			return err
 		}
@@ -403,7 +413,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 			if libRule.kind.Type == kinds.Test {
 				continue
 			}
-			libPkgName, err := u.rulePkg(sources, libRule)
+			libPkgName, err := u.rulePkg(conf, sources, libRule)
 			if err != nil {
 				return err
 			}
@@ -473,7 +483,7 @@ func (u *Update) updateDeps(conf *config.Config, file *build.File, ruleExprs map
 
 // allocateSources allocates sources to rules. If there's no existing rule, a new rule will be created and returned
 // from this function
-func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rules []*rule) ([]*rule, error) {
+func (u *Update) allocateSources(conf *config.Config, pkgDir string, sources map[string]*GoFile, rules []*rule) ([]*rule, error) {
 	unallocated, err := u.unallocatedSources(sources, rules)
 	if err != nil {
 		return nil, err
@@ -491,7 +501,7 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 				continue
 			}
 
-			rulePkgName, err := u.rulePkg(sources, r)
+			rulePkgName, err := u.rulePkg(conf, sources, r)
 			if err != nil {
 				return nil, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.Name(), err)
 			}
@@ -529,13 +539,13 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 
 // rulePkg checks the first source it finds for a rule and returns the name from the "package name" directive at the top
 // of the file
-func (u *Update) rulePkg(srcs map[string]*GoFile, rule *rule) (string, error) {
+func (u *Update) rulePkg(conf *config.Config, srcs map[string]*GoFile, rule *rule) (string, error) {
 	// This is a safe bet if we can't use the source files to figure this out.
 	if rule.kind.NonGoSources {
 		return rule.Name(), nil
 	}
 
-	ss, err := u.allSources(rule)
+	ss, srcs, err := u.allSources(conf, rule, srcs)
 	if err != nil {
 		return "", err
 	}
@@ -559,7 +569,7 @@ func (u *Update) unallocatedSources(srcs map[string]*GoFile, rules []*rule) ([]s
 				break
 			}
 
-			ruleSrcs, err := u.allSources(rule)
+			ruleSrcs, err := u.eval.EvalGlobs(rule.dir, rule.Rule)
 			if err != nil {
 				return nil, err
 			}

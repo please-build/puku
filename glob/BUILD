@@ -1,7 +1,10 @@
 go_library(
     name = "glob",
     srcs = ["glob.go"],
-    visibility = ["//generate"],
+    visibility = [
+        "//eval:all",
+        "//generate",
+    ],
 )
 
 go_test(

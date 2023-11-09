@@ -47,8 +47,8 @@ func TestAllocateSources(t *testing.T) {
 	}
 
 	u := &Update{plzConf: new(please.Config)}
-
-	newRules, err := u.allocateSources("foo", files, rules)
+	conf := &config.Config{PleasePath: "plz"}
+	newRules, err := u.allocateSources(conf, "foo", files, rules)
 	require.NoError(t, err)
 
 	require.Len(t, newRules, 1)
@@ -98,7 +98,8 @@ func TestAllocateSourcesToCustomKind(t *testing.T) {
 	}
 
 	u := new(Update)
-	newRules, err := u.allocateSources("foo", files, rules)
+	conf := &config.Config{PleasePath: "plz"}
+	newRules, err := u.allocateSources(conf, "foo", files, rules)
 	require.NoError(t, err)
 
 	assert.Len(t, newRules, 0)
@@ -247,7 +248,7 @@ func TestUpdateDeps(t *testing.T) {
 func mustGetSources(t *testing.T, u *Update, rule *rule) []string {
 	t.Helper()
 
-	srcs, err := u.allSources(rule)
+	srcs, err := u.eval.EvalGlobs(rule.dir, rule.Rule)
 	require.NoError(t, err)
 	return srcs
 }

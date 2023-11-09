@@ -20,7 +20,7 @@ remote_file(
 
 remote_file(
     name = "plz",
-    url = f"https://github.com/thought-machine/please/releases/download/v17.1.0/please_17.1.0_{CONFIG.OS}_{CONFIG.ARCH}",
+    url = f"https://github.com/thought-machine/please/releases/download/v17.3.1/please_17.3.1_{CONFIG.OS}_{CONFIG.ARCH}",
     binary = True,
     visibility = ["PUBLIC"],
     test_only = True,

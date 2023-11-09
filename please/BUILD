@@ -8,6 +8,7 @@ go_library(
     visibility = [
         "//:all",
         "//cmd/puku:all",
+        "//eval:all",
         "//generate:all",
         "//generate/integration/syncmod:all",
         "//migrate:all",

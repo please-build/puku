@@ -1,0 +1,9 @@
+[Parse]
+buildfilename = BUILD_FILE.plz
+buildfilename = BUILD
+preloadsubincludes = ///go//build_defs:go
+
+[Plugin "go"]
+Target = //plugins:go
+ImportPath = github.com/example/repo
+

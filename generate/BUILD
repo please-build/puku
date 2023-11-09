@@ -19,6 +19,7 @@ go_library(
         "///third_party/go/golang.org_x_mod//modfile",
         "//config",
         "//edit",
+        "//eval",
         "//fs",
         "//glob",
         "//graph",
@@ -37,7 +38,6 @@ testify_test(
     data = ["//:test_project"],
     deps = [
         ":generate",
-        "///third_party/go/github.com_bazelbuild_buildtools//build",
         "//config",
         "//edit",
         "//graph",

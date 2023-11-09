@@ -1,0 +1,5 @@
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    visibility = ["//codegen:all"],
+)

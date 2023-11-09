@@ -2,6 +2,9 @@ go_library(
     name = "edit",
     srcs = ["edit.go"],
     visibility = [
+        "//e2e/codegen:all",
+        "//e2e/tests/codegen:all",
+        "//eval:all",
         "//generate:all",
         "//generate/integration/syncmod:all",
         "//graph:all",
