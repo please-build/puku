@@ -5,7 +5,6 @@ go_library(
         "//cmd/puku:all",
         "//generate:all",
         "//licences:all",
-        "//plz-out/tmp/generate/_generate#pkg_info._build/generate:all",
     ],
     deps = [
         "///third_party/go/golang.org_x_mod//modfile",

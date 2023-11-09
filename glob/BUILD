@@ -3,7 +3,6 @@ go_library(
     srcs = ["glob.go"],
     visibility = [
         "//generate",
-        "//plz-out/tmp/generate/_generate#pkg_info._build/generate:all",
     ],
 )
 

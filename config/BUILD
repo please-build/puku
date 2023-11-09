@@ -8,7 +8,6 @@ go_library(
         "//generate/integration/syncmod:all",
         "//graph:all",
         "//migrate:all",
-        "//plz-out/tmp/generate/_generate#pkg_info._build/generate:all",
         "//work:all",
     ],
     deps = ["//kinds"],

@@ -4,6 +4,5 @@ go_library(
     visibility = [
         "//generate",
         "//graph",
-        "//plz-out/tmp/generate/_generate#pkg_info._build/generate:all",
     ],
 )

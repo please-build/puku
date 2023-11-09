@@ -12,6 +12,5 @@ go_library(
     srcs = ["trie.go"],
     visibility = [
         "//generate:all",
-        "//plz-out/tmp/generate/_generate#pkg_info._build/generate:all",
     ],
 )
