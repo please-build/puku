@@ -260,5 +260,4 @@ go_module(
 	require.NotNil(t, mainRule)
 
 	assert.Equal(t, "go_module", modRule.Kind())
-
 }
