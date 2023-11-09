@@ -1,13 +1,15 @@
 package licences
 
 import (
+	"testing"
+
 	"github.com/bazelbuild/buildtools/build"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/proxy"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestGetLicences(t *testing.T) {
