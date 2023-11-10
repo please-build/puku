@@ -39,9 +39,10 @@ var opts = struct {
 		} `positional-args:"true"`
 	} `command:"watch" description:"Watch build files in the provided paths and update them when needed"`
 	Migrate struct {
-		Write bool `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
-		Args  struct {
-			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
+		Write          bool     `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
+		ThirdPartyDirs []string `long:"third_party_dir" description:"Directories to find go_module rules to migrate"`
+		Args           struct {
+			Modules []string `positional-arg-name:"modules" description:"The modules to migrate to go_repo"`
 		} `positional-args:"true"`
 	} `command:"migrate" description:"Migrates from go_module to go_repo"`
 }{
@@ -85,8 +86,12 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 		return 0
 	},
 	"migrate": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
-		paths := work.MustExpandPaths(orignalWD, opts.Migrate.Args.Paths)
-		if err := migrate.New(conf, plzConf).Migrate(opts.Migrate.Write, paths...); err != nil {
+		paths := opts.Migrate.ThirdPartyDirs
+		if len(paths) == 0 {
+			paths = []string{conf.GetThirdPartyDir()}
+		}
+		paths = work.MustExpandPaths(orignalWD, paths)
+		if err := migrate.New(conf, plzConf).Migrate(opts.Migrate.Write, opts.Migrate.Args.Modules, paths...); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
