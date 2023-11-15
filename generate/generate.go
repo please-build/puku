@@ -178,7 +178,7 @@ func (u *Update) readModules(conf *config.Config, file *build.File) error {
 	addInstalls := func(targetName, modName string, installs []string) {
 		for _, install := range installs {
 			path := filepath.Join(modName, install)
-			target := BuildTarget(targetName, conf.GetThirdPartyDir(), "")
+			target := BuildTarget(targetName, file.Pkg, "")
 			u.installs.Add(path, target)
 		}
 	}
