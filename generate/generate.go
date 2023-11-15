@@ -2,6 +2,7 @@ package generate
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,7 +73,7 @@ func (u *Update) Update(paths ...string) error {
 	}
 	u.paths = paths
 
-	if err := u.readModules(conf); err != nil {
+	if err := u.readAllModules(conf); err != nil {
 		return fmt.Errorf("failed to read third party rules: %v", err)
 	}
 
@@ -88,7 +89,7 @@ func (u *Update) Sync() error {
 		return err
 	}
 
-	if err := u.readModules(conf); err != nil {
+	if err := u.readAllModules(conf); err != nil {
 		return fmt.Errorf("failed to read third party rules: %v", err)
 	}
 
@@ -154,17 +155,30 @@ func (u *Update) syncModFile(conf *config.Config, file *build.File, exitingRules
 	return nil
 }
 
-// readModules returns the defined third party modules in this project
-func (u *Update) readModules(conf *config.Config) error {
-	f, err := u.graph.LoadFile(conf.GetThirdPartyDir())
-	if err != nil {
-		return err
-	}
+func (u *Update) readAllModules(conf *config.Config) error {
+	return filepath.WalkDir(conf.GetThirdPartyDir(), func(path string, info fs.DirEntry, err error) error {
+		for _, buildFileName := range u.plzConf.BuildFileNames() {
+			if info.Name() == buildFileName {
+				file, err := u.graph.LoadFile(filepath.Dir(path))
+				if err != nil {
+					return err
+				}
 
+				if err := u.readModules(conf, file); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+}
+
+// readModules returns the defined third party modules in this project
+func (u *Update) readModules(conf *config.Config, file *build.File) error {
 	addInstalls := func(targetName, modName string, installs []string) {
 		for _, install := range installs {
 			path := filepath.Join(modName, install)
-			target := BuildTarget(targetName, conf.GetThirdPartyDir(), "")
+			target := BuildTarget(targetName, file.Pkg, "")
 			u.installs.Add(path, target)
 		}
 	}
@@ -172,7 +186,7 @@ func (u *Update) readModules(conf *config.Config) error {
 	// existingRules contains the rules for modules. These are synced to the go.mod's version as necessary. For modules
 	// that use `go_mod_download`, this map will point to that rule as that is the rule that has the version field.
 	existingRules := make(map[string]*build.Rule)
-	for _, repoRule := range f.Rules("go_repo") {
+	for _, repoRule := range file.Rules("go_repo") {
 		module := repoRule.AttrString("module")
 		u.modules = append(u.modules, module)
 
@@ -185,7 +199,7 @@ func (u *Update) readModules(conf *config.Config) error {
 			existingRules[repoRule.AttrString("module")] = repoRule
 		} else {
 			// If we're using a go_mod_download for this module, then find the download rule instead.
-			t := labels.ParseRelative(repoRule.AttrString("download"), f.Pkg)
+			t := labels.ParseRelative(repoRule.AttrString("download"), file.Pkg)
 			f, err := u.graph.LoadFile(t.Package)
 			if err != nil {
 				return err
@@ -194,7 +208,7 @@ func (u *Update) readModules(conf *config.Config) error {
 		}
 	}
 
-	goMods := f.Rules("go_module")
+	goMods := file.Rules("go_module")
 	u.usingGoModule = len(goMods) > 0
 
 	for _, mod := range goMods {
@@ -207,7 +221,7 @@ func (u *Update) readModules(conf *config.Config) error {
 	}
 
 	if u.plzConf.ModFile() != "" {
-		return u.syncModFile(conf, f, existingRules)
+		return u.syncModFile(conf, file, existingRules)
 	}
 
 	return nil
