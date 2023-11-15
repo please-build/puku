@@ -10,8 +10,8 @@ architectures = [
 
 go_toolchain(
     name = "release_toolchain",
-    version= "1.20",
     architectures = architectures,
+    version = "1.20",
 )
 
 def cross_compile(version, arch):

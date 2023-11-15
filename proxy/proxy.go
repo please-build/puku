@@ -1,16 +1,21 @@
 package proxy
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/semver"
 )
+
+var DefaultURL = "https://proxy.golang.org"
 
 var client = http.DefaultClient
 
@@ -211,4 +216,59 @@ func (proxy *Proxy) getGoMod(mod, ver string) (*modfile.File, error) {
 
 	proxy.modFiles[modVer] = modFile
 	return modFile, nil
+}
+
+func (proxy *Proxy) EnsureDownloaded(mod, ver, dir string) (string, error) {
+	modRoot := filepath.Join(dir, fmt.Sprintf("%v@%v", mod, ver))
+	if _, err := os.Lstat(modRoot); err == nil {
+		return modRoot, nil // seems to already exist
+	}
+
+	url := fmt.Sprintf("%v/%v/@v/%v.zip", proxy.url, mod, ver)
+	resp, err := http.DefaultClient.Get(url)
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", ModuleNotFound{mod}
+	}
+
+	bs, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	zipReader, err := zip.NewReader(bytes.NewReader(bs), int64(len(bs)))
+	if err != nil {
+		return "", err
+	}
+
+	// Read all the files from zip archive
+	for _, zipFile := range zipReader.File {
+		path := filepath.Join(dir, zipFile.Name)
+		if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
+			return "", err
+		}
+		dest, err := os.Create(path)
+		if err != nil {
+			return "", err
+		}
+		src, err := zipFile.Open()
+		if err != nil {
+			return "", err
+		}
+		if _, err := io.Copy(dest, src); err != nil {
+			return "", err
+		}
+	}
+	return modRoot, nil
+}
+
+// IsNotFound returns true if the error is ModuleNotFound
+func IsNotFound(err error) bool {
+	_, ok := err.(ModuleNotFound)
+	return ok
 }

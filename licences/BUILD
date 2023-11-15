@@ -1,30 +1,30 @@
 go_library(
-    name = "migrate",
-    srcs = ["migrate.go"],
+    name = "licences",
+    srcs = ["licences.go"],
     visibility = [
-        "//:all",
         "//cmd/puku:all",
+        "//generate:all",
     ],
     deps = [
         "///third_party/go/github.com_bazelbuild_buildtools//build",
-        "///third_party/go/github.com_bazelbuild_buildtools//labels",
-        "///third_party/go/golang.org_x_mod//semver",
-        "//config",
+        "///third_party/go/github.com_google_go-licenses//licenses",
+        "///third_party/go/github.com_google_licenseclassifier_v2//assets",
         "//edit",
-        "//generate",
         "//graph",
         "//please",
+        "//proxy",
     ],
 )
 
 go_test(
-    name = "migrate_test",
-    srcs = ["migrate_test.go"],
+    name = "licences_test",
+    srcs = ["licences_test.go"],
     deps = [
-        ":migrate",
+        ":licences",
         "///third_party/go/github.com_bazelbuild_buildtools//build",
         "//edit",
         "//graph",
+        "//proxy",
         "//third_party/go:testify",
     ],
 )

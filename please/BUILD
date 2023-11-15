@@ -10,6 +10,7 @@ go_library(
         "//cmd/puku:all",
         "//generate:all",
         "//generate/integration/syncmod:all",
+        "//licences:all",
         "//migrate:all",
         "//watch:all",
     ],

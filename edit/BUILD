@@ -5,6 +5,7 @@ go_library(
         "//generate:all",
         "//generate/integration/syncmod:all",
         "//graph:all",
+        "//licences:all",
         "//migrate:all",
     ],
     deps = [
