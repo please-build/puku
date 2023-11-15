@@ -156,7 +156,7 @@ func (u *Update) syncModFile(conf *config.Config, file *build.File, exitingRules
 }
 
 func (u *Update) readAllModules(conf *config.Config) error {
-	return filepath.Walk(conf.GetThirdPartyDir(), func(path string, info fs.FileInfo, err error) error {
+	return filepath.WalkDir(conf.GetThirdPartyDir(), func(path string, info fs.DirEntry, err error) error {
 		for _, buildFileName := range u.plzConf.BuildFileNames() {
 			if info.Name() == buildFileName {
 				file, err := u.graph.LoadFile(filepath.Dir(path))
