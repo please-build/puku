@@ -52,7 +52,7 @@ var opts = struct {
 			Args  struct {
 				Paths []string `positional-arg-name:"packages" description:"The packages to process"`
 			} `positional-args:"true"`
-		} `command:"update" description:"Updates licences iin the given paths"`
+		} `command:"update" description:"Updates licences in the given paths"`
 	} `command:"licences" description:"Commands relating to licences"`
 }{
 	Usage: `
