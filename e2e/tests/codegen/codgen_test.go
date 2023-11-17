@@ -22,4 +22,5 @@ func TestTarget(t *testing.T) {
 	require.NotNil(t, codegen)
 
 	assert.ElementsMatch(t, []string{"//foo"}, codegen.AttrStrings("deps"))
+	assert.ElementsMatch(t, []string{":srcs"}, codegen.AttrStrings("srcs"))
 }

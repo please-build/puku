@@ -384,16 +384,16 @@ func (u *Update) allSources(conf *config.Config, r *rule, sourceMap map[string]*
 }
 
 // updateRuleDeps updates the dependencies of a build rule based on the imports of its sources
-func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, sources map[string]*GoFile) error {
+func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, srcsGoFiles map[string]*GoFile) error {
 	done := map[string]struct{}{}
 
-	// If the rule operates on non-go sources (e.g. .proto sources for proto_library) then we should skip updating
+	// If the rule operates on non-go srcsGoFiles (e.g. .proto srcsGoFiles for proto_library) then we should skip updating
 	// its deps.
 	if rule.kind.NonGoSources {
 		return nil
 	}
 
-	srcs, sources, err := u.allSources(conf, rule, sources)
+	srcs, srcsGoFiles, err := u.allSources(conf, rule, srcsGoFiles)
 	if err != nil {
 		return err
 	}
@@ -402,7 +402,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 
 	deps := map[string]struct{}{}
 	for _, src := range srcs {
-		f := sources[src]
+		f := srcsGoFiles[src]
 		if f == nil {
 			rule.removeSrc(src) // The src doesn't exist so remove it from the list of srcs
 			continue
@@ -437,7 +437,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 
 	// Add any libraries for the same package as us
 	if rule.kind.Type == kinds.Test && !rule.isExternal() {
-		pkgName, err := u.rulePkg(conf, sources, rule)
+		pkgName, err := u.rulePkg(conf, srcsGoFiles, rule)
 		if err != nil {
 			return err
 		}
@@ -446,7 +446,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 			if libRule.kind.Type == kinds.Test {
 				continue
 			}
-			libPkgName, err := u.rulePkg(conf, sources, libRule)
+			libPkgName, err := u.rulePkg(conf, srcsGoFiles, libRule)
 			if err != nil {
 				return err
 			}
