@@ -154,6 +154,7 @@ func (c *Config) GetKind(kind string) *kinds.Kind {
 			Type:              kinds.Lib,
 			ProvidedDeps:      k.ProvidedDeps,
 			DefaultVisibility: k.DefaultVisibility,
+			NonGoSources:      k.NonGoSources,
 		}
 	}
 	if k, ok := c.TestKinds[kind]; ok {
@@ -161,6 +162,7 @@ func (c *Config) GetKind(kind string) *kinds.Kind {
 			Name:         kind,
 			Type:         kinds.Test,
 			ProvidedDeps: k.ProvidedDeps,
+			NonGoSources: k.NonGoSources,
 		}
 	}
 	if k, ok := c.BinKinds[kind]; ok {
@@ -168,6 +170,7 @@ func (c *Config) GetKind(kind string) *kinds.Kind {
 			Name:         kind,
 			Type:         kinds.Bin,
 			ProvidedDeps: k.ProvidedDeps,
+			NonGoSources: k.NonGoSources,
 		}
 	}
 	if c.base != nil {

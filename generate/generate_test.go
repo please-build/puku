@@ -107,6 +107,36 @@ func TestAllocateSourcesToCustomKind(t *testing.T) {
 	assert.ElementsMatch(t, []string{"foo_test.go", "bar_test.go"}, mustGetSources(t, u, rules[1]))
 }
 
+func TestAllocateSourcesToNonGoKind(t *testing.T) {
+	exampleKind := &kinds.Kind{
+		Name:         "go_example_lib",
+		Type:         kinds.Lib,
+		NonGoSources: true,
+	}
+
+	foo := newRule(edit.NewRuleExpr("go_example_lib", "nogo"), exampleKind, "")
+
+	rules := []*rule{foo}
+
+	files := map[string]*GoFile{
+		"foo.go": {
+			Name:     "foo",
+			FileName: "foo.go",
+		},
+	}
+
+	u := new(Update)
+	u.plzConf = &please.Config{}
+	newRules, err := u.allocateSources("foo", files, rules)
+	require.NoError(t, err)
+
+	require.Len(t, newRules, 1)
+
+	assert.ElementsMatch(t, []string{}, mustGetSources(t, u, foo))
+	assert.Equal(t, "go_library", newRules[0].Kind())
+	assert.ElementsMatch(t, []string{"foo.go"}, mustGetSources(t, u, newRules[0]))
+}
+
 func TestUpdateDeps(t *testing.T) {
 	type ruleKind struct {
 		kind *kinds.Kind

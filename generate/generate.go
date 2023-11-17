@@ -529,7 +529,7 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 				return nil, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.Name(), err)
 			}
 
-			// Find a rule that's for thhe same package and of the same kind (i.e. bin, lib, test)
+			// Find a rule that's for the same package and of the same kind (i.e. bin, lib, test)
 			// NB: we return when we find the first one so if there are multiple options, we will pick one essentially at
 			//     random.
 			if rulePkgName == "" || rulePkgName == importedFile.Name {
