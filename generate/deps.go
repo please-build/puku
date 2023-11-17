@@ -23,6 +23,10 @@ func (u *Update) resolveImport(conf *config.Config, i string) (string, error) {
 		return t, nil
 	}
 
+	if t := conf.GetKnownTarget(i); t != "" {
+		return t, nil
+	}
+
 	t, err := u.reallyResolveImport(conf, i)
 	if err == nil {
 		u.knownImports[i] = t
