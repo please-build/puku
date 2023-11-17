@@ -25,6 +25,7 @@ go_library(
         "//graph",
         "//kinds",
         "//knownimports",
+        "//licences",
         "//logging",
         "//please",
         "//proxy",

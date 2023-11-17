@@ -10,5 +10,7 @@ go_test(
 go_library(
     name = "trie",
     srcs = ["trie.go"],
-    visibility = ["//generate:all"],
+    visibility = [
+        "//generate:all",
+    ],
 )

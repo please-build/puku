@@ -1,11 +1,13 @@
 package codegen
 
 import (
-	"github.com/please-build/puku/e2e/harness"
-	"github.com/please-build/puku/edit"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/please-build/puku/e2e/harness"
+	"github.com/please-build/puku/edit"
 )
 
 func TestTarget(t *testing.T) {

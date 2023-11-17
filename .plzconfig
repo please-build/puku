@@ -6,6 +6,7 @@ Target = //plugins:go
 ImportPath = github.com/please-build/puku
 GoTool = //third_party/go:toolchain|go
 ModFile = //:mod
+RequireLicences = true
 
 [Alias "puku"]
 Cmd = run //cmd/puku --

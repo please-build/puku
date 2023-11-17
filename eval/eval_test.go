@@ -1,10 +1,11 @@
 package eval
 
 import (
+	"testing"
+
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestParseGlob(t *testing.T) {

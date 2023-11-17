@@ -9,9 +9,11 @@ import (
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/generate"
+	"github.com/please-build/puku/licences"
 	"github.com/please-build/puku/logging"
 	"github.com/please-build/puku/migrate"
 	"github.com/please-build/puku/please"
+	"github.com/please-build/puku/proxy"
 	"github.com/please-build/puku/watch"
 	"github.com/please-build/puku/work"
 )
@@ -39,11 +41,20 @@ var opts = struct {
 		} `positional-args:"true"`
 	} `command:"watch" description:"Watch build files in the provided paths and update them when needed"`
 	Migrate struct {
-		Write bool `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
-		Args  struct {
-			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
+		Write          bool     `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
+		ThirdPartyDirs []string `long:"third_party_dir" description:"Directories to find go_module rules to migrate"`
+		Args           struct {
+			Modules []string `positional-arg-name:"modules" description:"The modules to migrate to go_repo"`
 		} `positional-args:"true"`
 	} `command:"migrate" description:"Migrates from go_module to go_repo"`
+	Licenses struct {
+		Update struct {
+			Write bool `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
+			Args  struct {
+				Paths []string `positional-arg-name:"packages" description:"The packages to process"`
+			} `positional-args:"true"`
+		} `command:"update" description:"Updates licences in the given paths"`
+	} `command:"licences" description:"Commands relating to licences"`
 }{
 	Usage: `
 puku is a tool used to generate and update Go targets in build files
@@ -85,8 +96,19 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 		return 0
 	},
 	"migrate": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
-		paths := work.MustExpandPaths(orignalWD, opts.Migrate.Args.Paths)
-		if err := migrate.New(conf, plzConf).Migrate(opts.Migrate.Write, paths...); err != nil {
+		paths := opts.Migrate.ThirdPartyDirs
+		if len(paths) == 0 {
+			paths = []string{conf.GetThirdPartyDir()}
+		}
+		paths = work.MustExpandPaths(orignalWD, paths)
+		if err := migrate.New(conf, plzConf).Migrate(opts.Migrate.Write, opts.Migrate.Args.Modules, paths...); err != nil {
+			log.Fatalf("%v", err)
+		}
+		return 0
+	},
+	"update": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
+		paths := work.MustExpandPaths(orignalWD, opts.Licenses.Update.Args.Paths)
+		if err := licences.New(plzConf, proxy.New(proxy.DefaultURL)).Update(paths, opts.Licenses.Update.Write); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
@@ -125,6 +147,5 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to query config: %w", err)
 	}
-
 	os.Exit(funcs[cmd](conf, plzConf, wd))
 }

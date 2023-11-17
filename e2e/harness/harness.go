@@ -3,12 +3,14 @@ package harness
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/bazelbuild/buildtools/build"
-	"github.com/please-build/puku/config"
-	exec "golang.org/x/sys/execabs"
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/bazelbuild/buildtools/build"
+	exec "golang.org/x/sys/execabs"
+
+	"github.com/please-build/puku/config"
 )
 
 type TestHarness struct {

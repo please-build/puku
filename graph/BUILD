@@ -4,6 +4,7 @@ go_library(
     visibility = [
         "//generate:all",
         "//generate/integration/syncmod:all",
+        "//licences:all",
         "//migrate:all",
         "//modfile:all",
     ],

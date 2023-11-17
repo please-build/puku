@@ -2,7 +2,7 @@ package generate
 
 import (
 	"fmt"
-	"github.com/please-build/puku/eval"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,9 +13,11 @@ import (
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
+	"github.com/please-build/puku/eval"
 	"github.com/please-build/puku/glob"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/kinds"
+	"github.com/please-build/puku/licences"
 	"github.com/please-build/puku/logging"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/proxy"
@@ -43,7 +45,8 @@ type Update struct {
 
 	paths []string
 
-	proxy Proxy
+	proxy    Proxy
+	licences *licences.Licenses
 }
 
 func NewUpdate(write bool, plzConf *please.Config) *Update {
@@ -52,8 +55,11 @@ func NewUpdate(write bool, plzConf *please.Config) *Update {
 
 // NewUpdateWithGraph is like NewUpdate but lets us inject a graph which is useful to do testing.
 func NewUpdateWithGraph(write bool, conf *please.Config, g *graph.Graph) *Update {
+	p := proxy.New(proxy.DefaultURL)
+	l := licences.New(conf, p)
 	return &Update{
-		proxy:        proxy.New("https://proxy.golang.org"),
+		proxy:        p,
+		licences:     l,
 		installs:     trie.New(),
 		write:        write,
 		knownImports: map[string]string{},
@@ -72,7 +78,7 @@ func (u *Update) Update(paths ...string) error {
 	}
 	u.paths = paths
 
-	if err := u.readModules(conf); err != nil {
+	if err := u.readAllModules(conf); err != nil {
 		return fmt.Errorf("failed to read third party rules: %v", err)
 	}
 
@@ -88,7 +94,7 @@ func (u *Update) Sync() error {
 		return err
 	}
 
-	if err := u.readModules(conf); err != nil {
+	if err := u.readAllModules(conf); err != nil {
 		return fmt.Errorf("failed to read third party rules: %v", err)
 	}
 
@@ -141,30 +147,48 @@ func (u *Update) syncModFile(conf *config.Config, file *build.File, exitingRules
 
 		u.modules = append(u.modules, req.Mod.Path)
 
+		ls, err := u.licences.Get(req.Mod.Path, req.Mod.Version)
+		if err != nil {
+			return fmt.Errorf("failed to get licences for %v: %v", req.Mod.Path, err)
+		}
+
 		if replace == nil {
-			file.Stmt = append(file.Stmt, newGoRepoRule(req.Mod.Path, reqVersion, ""))
+			file.Stmt = append(file.Stmt, newGoRepoRule(req.Mod.Path, reqVersion, "", ls))
 			continue
 		}
 
-		dl, dlName := newModDownloadRule(replace.New.Path, replace.New.Version)
+		dl, dlName := newModDownloadRule(replace.New.Path, replace.New.Version, ls)
 		file.Stmt = append(file.Stmt, dl)
-		file.Stmt = append(file.Stmt, newGoRepoRule(req.Mod.Path, "", dlName))
+		file.Stmt = append(file.Stmt, newGoRepoRule(req.Mod.Path, "", dlName, nil))
 	}
 
 	return nil
 }
 
-// readModules returns the defined third party modules in this project
-func (u *Update) readModules(conf *config.Config) error {
-	f, err := u.graph.LoadFile(conf.GetThirdPartyDir())
-	if err != nil {
-		return err
-	}
+func (u *Update) readAllModules(conf *config.Config) error {
+	return filepath.WalkDir(conf.GetThirdPartyDir(), func(path string, info fs.DirEntry, err error) error {
+		for _, buildFileName := range u.plzConf.BuildFileNames() {
+			if info.Name() == buildFileName {
+				file, err := u.graph.LoadFile(filepath.Dir(path))
+				if err != nil {
+					return err
+				}
 
+				if err := u.readModules(conf, file); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+}
+
+// readModules returns the defined third party modules in this project
+func (u *Update) readModules(conf *config.Config, file *build.File) error {
 	addInstalls := func(targetName, modName string, installs []string) {
 		for _, install := range installs {
 			path := filepath.Join(modName, install)
-			target := BuildTarget(targetName, conf.GetThirdPartyDir(), "")
+			target := BuildTarget(targetName, file.Pkg, "")
 			u.installs.Add(path, target)
 		}
 	}
@@ -172,7 +196,7 @@ func (u *Update) readModules(conf *config.Config) error {
 	// existingRules contains the rules for modules. These are synced to the go.mod's version as necessary. For modules
 	// that use `go_mod_download`, this map will point to that rule as that is the rule that has the version field.
 	existingRules := make(map[string]*build.Rule)
-	for _, repoRule := range f.Rules("go_repo") {
+	for _, repoRule := range file.Rules("go_repo") {
 		module := repoRule.AttrString("module")
 		u.modules = append(u.modules, module)
 
@@ -185,7 +209,7 @@ func (u *Update) readModules(conf *config.Config) error {
 			existingRules[repoRule.AttrString("module")] = repoRule
 		} else {
 			// If we're using a go_mod_download for this module, then find the download rule instead.
-			t := labels.ParseRelative(repoRule.AttrString("download"), f.Pkg)
+			t := labels.ParseRelative(repoRule.AttrString("download"), file.Pkg)
 			f, err := u.graph.LoadFile(t.Package)
 			if err != nil {
 				return err
@@ -194,7 +218,7 @@ func (u *Update) readModules(conf *config.Config) error {
 		}
 	}
 
-	goMods := f.Rules("go_module")
+	goMods := file.Rules("go_module")
 	u.usingGoModule = len(goMods) > 0
 
 	for _, mod := range goMods {
@@ -207,7 +231,7 @@ func (u *Update) readModules(conf *config.Config) error {
 	}
 
 	if u.plzConf.ModFile() != "" {
-		return u.syncModFile(conf, f, existingRules)
+		return u.syncModFile(conf, file, existingRules)
 	}
 
 	return nil
@@ -298,13 +322,16 @@ func (u *Update) addNewModules(conf *config.Config) error {
 			}
 			continue
 		}
-
-		file.Stmt = append(file.Stmt, newGoRepoRule(mod.Module, mod.Version, ""))
+		ls, err := u.licences.Get(mod.Module, mod.Version)
+		if err != nil {
+			return fmt.Errorf("failed to get license for mod %v: %v", mod.Module, err)
+		}
+		file.Stmt = append(file.Stmt, newGoRepoRule(mod.Module, mod.Version, "", ls))
 	}
 	return nil
 }
 
-func newGoRepoRule(mod, version, download string) *build.CallExpr {
+func newGoRepoRule(mod, version, download string, licences []string) *build.CallExpr {
 	rule := build.NewRule(&build.CallExpr{
 		X:    &build.Ident{Name: "go_repo"},
 		List: []build.Expr{},
@@ -316,14 +343,20 @@ func newGoRepoRule(mod, version, download string) *build.CallExpr {
 	if download != "" {
 		rule.SetAttr("download", edit.NewStringExpr(":"+download))
 	}
+	if len(licences) != 0 {
+		rule.SetAttr("licences", edit.NewStringList(licences))
+	}
 	return rule.Call
 }
 
-func newModDownloadRule(mod, version string) (*build.CallExpr, string) {
+func newModDownloadRule(mod, version string, licences []string) (*build.CallExpr, string) {
 	rule := edit.NewRuleExpr("go_mod_download", strings.ReplaceAll(mod, "/", "_")+"_dl")
 
 	rule.SetAttr("module", edit.NewStringExpr(mod))
 	rule.SetAttr("version", edit.NewStringExpr(version))
+	if len(licences) != 0 {
+		rule.SetAttr("licences", edit.NewStringList(licences))
+	}
 	return rule.Call, rule.Name()
 }
 
@@ -506,7 +539,7 @@ func (u *Update) allocateSources(conf *config.Config, pkgDir string, sources map
 				return nil, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.Name(), err)
 			}
 
-			// Find a rule that's for thhe same package and of the same kind (i.e. bin, lib, test)
+			// Find a rule that's for the same package and of the same kind (i.e. bin, lib, test)
 			// NB: we return when we find the first one so if there are multiple options, we will pick one essentially at
 			//     random.
 			if rulePkgName == "" || rulePkgName == importedFile.Name {
