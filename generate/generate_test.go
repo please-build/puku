@@ -237,12 +237,12 @@ func TestUpdateDeps(t *testing.T) {
 			plzConf := new(please.Config)
 			plzConf.Plugin.Go.ImportPath = []string{"github.com/this/module"}
 			u := &Update{
-				modules:      tc.modules,
-				plzConf:      plzConf,
-				installs:     trie.New(),
-				knownImports: map[string]string{},
-				proxy:        tc.proxy,
-				graph:        graph.New([]string{}),
+				modules:         tc.modules,
+				plzConf:         plzConf,
+				installs:        trie.New(),
+				resolvedImports: map[string]string{},
+				proxy:           tc.proxy,
+				graph:           graph.New([]string{}),
 			}
 
 			for path, value := range tc.installs {
