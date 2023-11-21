@@ -360,7 +360,16 @@ func newModDownloadRule(mod, version string, licences []string) (*build.CallExpr
 	return rule.Call, rule.Name()
 }
 
-func (u *Update) allSources(conf *config.Config, r *rule, sourceMap map[string]*GoFile) ([]string, map[string]*GoFile, error) {
+// allSources calculates the sources for a target. It will evaluate the source list resolving globs, and building any
+// srcs that are other build targets.
+//
+// passedSources is a slice of filepaths, which contains source files passed to the rule, after resolving globs and
+// building any targets. These source files can be looked up in goFiles, if they exist.
+//
+// goFiles contains a mapping of source files to their GoFile. This map might be missing entries from passedSources, if
+// the source doesn't actually exist. In which case, this should be removed from the rule, as the user likely deleted
+// the file.
+func (u *Update) allSources(conf *config.Config, r *rule, sourceMap map[string]*GoFile) (passedSources []string, goFiles map[string]*GoFile, err error) {
 	srcs, err := u.eval.BuildSources(conf.GetPlzPath(), r.dir, r.Rule)
 	if err != nil {
 		return nil, nil, err
