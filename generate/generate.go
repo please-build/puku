@@ -41,7 +41,7 @@ type Update struct {
 	modules         []string
 	resolvedImports map[string]string
 	installs        *trie.Trie
-	eval         *eval.Eval
+	eval            *eval.Eval
 
 	paths []string
 
@@ -64,7 +64,7 @@ func NewUpdateWithGraph(write bool, conf *please.Config, g *graph.Graph) *Update
 		write:           write,
 		resolvedImports: map[string]string{},
 		plzConf:         conf,
-		eval:         eval.New(glob.New()),
+		eval:            eval.New(glob.New()),
 		graph:           g,
 	}
 }
