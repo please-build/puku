@@ -3,8 +3,8 @@ package eval
 import (
 	"strings"
 
-	"github.com/bazelbuild/buildtools/build"
-	"github.com/bazelbuild/buildtools/labels"
+	"github.com/please-build/buildtools/build"
+	"github.com/please-build/buildtools/labels"
 
 	"github.com/please-build/puku/glob"
 	"github.com/please-build/puku/please"

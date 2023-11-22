@@ -3,9 +3,9 @@ package licences
 import (
 	"os"
 
-	"github.com/bazelbuild/buildtools/build"
 	"github.com/google/go-licenses/licenses"
 	"github.com/google/licenseclassifier/v2/assets"
+	"github.com/please-build/buildtools/build"
 
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/graph"

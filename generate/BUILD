@@ -14,8 +14,8 @@ go_library(
         "//watch",
     ],
     deps = [
-        "///third_party/go/github.com_bazelbuild_buildtools//build",
-        "///third_party/go/github.com_bazelbuild_buildtools//labels",
+        "///third_party/go/github.com_please-build_buildtools//build",
+        "///third_party/go/github.com_please-build_buildtools//labels",
         "///third_party/go/golang.org_x_mod//modfile",
         "//config",
         "//edit",
@@ -38,7 +38,6 @@ testify_test(
     srcs = glob(["*_test.go"]),
     data = ["//:test_project"],
     deps = [
-        ":generate",
         "//config",
         "//edit",
         "//graph",

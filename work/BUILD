@@ -8,7 +8,7 @@ go_library(
         "//watch",
     ],
     deps = [
-        "///third_party/go/github.com_bazelbuild_buildtools//labels",
+        "///third_party/go/github.com_please-build_buildtools//labels",
         "//config",
     ],
 )
