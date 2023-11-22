@@ -19,13 +19,17 @@ import (
 // the target can be resolved to a module that isn't currently added to this project, it will return the build target,
 // and record the new module in `u.newModules`. These should later be written to the build graph.
 func (u *Update) resolveImport(conf *config.Config, i string) (string, error) {
-	if t, ok := u.knownImports[i]; ok {
+	if t, ok := u.resolvedImports[i]; ok {
+		return t, nil
+	}
+
+	if t := conf.GetKnownTarget(i); t != "" {
 		return t, nil
 	}
 
 	t, err := u.reallyResolveImport(conf, i)
 	if err == nil {
-		u.knownImports[i] = t
+		u.resolvedImports[i] = t
 	}
 	return t, err
 }

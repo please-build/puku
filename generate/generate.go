@@ -37,10 +37,10 @@ type Update struct {
 
 	graph *graph.Graph
 
-	newModules   []*proxy.Module
-	modules      []string
-	knownImports map[string]string
-	installs     *trie.Trie
+	newModules      []*proxy.Module
+	modules         []string
+	resolvedImports map[string]string
+	installs        *trie.Trie
 	eval         *eval.Eval
 
 	paths []string
@@ -58,14 +58,14 @@ func NewUpdateWithGraph(write bool, conf *please.Config, g *graph.Graph) *Update
 	p := proxy.New(proxy.DefaultURL)
 	l := licences.New(conf, p)
 	return &Update{
-		proxy:        p,
-		licences:     l,
-		installs:     trie.New(),
-		write:        write,
-		knownImports: map[string]string{},
-		plzConf:      conf,
+		proxy:           p,
+		licences:        l,
+		installs:        trie.New(),
+		write:           write,
+		resolvedImports: map[string]string{},
+		plzConf:         conf,
 		eval:         eval.New(glob.New()),
-		graph:        g,
+		graph:           g,
 	}
 }
 
