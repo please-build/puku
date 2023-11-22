@@ -13,6 +13,7 @@ import (
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
+	"github.com/please-build/puku/eval"
 	"github.com/please-build/puku/glob"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/kinds"
@@ -40,8 +41,7 @@ type Update struct {
 	modules         []string
 	resolvedImports map[string]string
 	installs        *trie.Trie
-
-	globber *glob.Globber
+	eval            *eval.Eval
 
 	paths []string
 
@@ -49,8 +49,8 @@ type Update struct {
 	licences *licences.Licenses
 }
 
-func NewUpdate(write bool, conf *please.Config) *Update {
-	return NewUpdateWithGraph(write, conf, graph.New(conf.BuildFileNames()))
+func NewUpdate(write bool, plzConf *please.Config) *Update {
+	return NewUpdateWithGraph(write, plzConf, graph.New(plzConf.BuildFileNames()))
 }
 
 // NewUpdateWithGraph is like NewUpdate but lets us inject a graph which is useful to do testing.
@@ -64,7 +64,7 @@ func NewUpdateWithGraph(write bool, conf *please.Config, g *graph.Graph) *Update
 		write:           write,
 		resolvedImports: map[string]string{},
 		plzConf:         conf,
-		globber:         glob.New(),
+		eval:            eval.New(glob.New()),
 		graph:           g,
 	}
 }
@@ -265,10 +265,6 @@ func (u *Update) updateOne(conf *config.Config, path string) error {
 		return err
 	}
 
-	if len(sources) == 0 {
-		return nil
-	}
-
 	// Parse the build file
 	file, err := u.graph.LoadFile(path)
 	if err != nil {
@@ -283,7 +279,7 @@ func (u *Update) updateOne(conf *config.Config, path string) error {
 	rules, calls := u.readRulesFromFile(conf, file, path)
 
 	// Allocate the sources to the rules, creating new rules as necessary
-	newRules, err := u.allocateSources(path, sources, rules)
+	newRules, err := u.allocateSources(conf, path, sources, rules)
 	if err != nil {
 		return err
 	}
@@ -364,26 +360,49 @@ func newModDownloadRule(mod, version string, licences []string) (*build.CallExpr
 	return rule.Call, rule.Name()
 }
 
-func (u *Update) allSources(r *rule) ([]string, error) {
-	args := r.parseGlob()
-	if args == nil {
-		return r.AttrStrings("srcs"), nil
+// allSources calculates the sources for a target. It will evaluate the source list resolving globs, and building any
+// srcs that are other build targets.
+//
+// passedSources is a slice of filepaths, which contains source files passed to the rule, after resolving globs and
+// building any targets. These source files can be looked up in goFiles, if they exist.
+//
+// goFiles contains a mapping of source files to their GoFile. This map might be missing entries from passedSources, if
+// the source doesn't actually exist. In which case, this should be removed from the rule, as the user likely deleted
+// the file.
+func (u *Update) allSources(conf *config.Config, r *rule, sourceMap map[string]*GoFile) (passedSources []string, goFiles map[string]*GoFile, err error) {
+	srcs, err := u.eval.BuildSources(conf.GetPlzPath(), r.dir, r.Rule)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return u.globber.Glob(r.dir, args)
+	sources := make(map[string]*GoFile, len(srcs))
+	for _, src := range srcs {
+		if file, ok := sourceMap[src]; ok {
+			sources[src] = file
+			continue
+		}
+
+		// These are generated sources in plz-out/gen
+		f, err := importFile(".", src)
+		if err != nil {
+			continue
+		}
+		sources[src] = f
+	}
+	return srcs, sources, nil
 }
 
 // updateRuleDeps updates the dependencies of a build rule based on the imports of its sources
-func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, sources map[string]*GoFile) error {
+func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, srcsGoFiles map[string]*GoFile) error {
 	done := map[string]struct{}{}
 
-	// If the rule operates on non-go sources (e.g. .proto sources for proto_library) then we should skip updating
+	// If the rule operates on non-go srcsGoFiles (e.g. .proto srcsGoFiles for proto_library) then we should skip updating
 	// its deps.
 	if rule.kind.NonGoSources {
 		return nil
 	}
 
-	srcs, err := u.allSources(rule)
+	srcs, srcsGoFiles, err := u.allSources(conf, rule, srcsGoFiles)
 	if err != nil {
 		return err
 	}
@@ -392,7 +411,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 
 	deps := map[string]struct{}{}
 	for _, src := range srcs {
-		f := sources[src]
+		f := srcsGoFiles[src]
 		if f == nil {
 			rule.removeSrc(src) // The src doesn't exist so remove it from the list of srcs
 			continue
@@ -427,7 +446,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 
 	// Add any libraries for the same package as us
 	if rule.kind.Type == kinds.Test && !rule.isExternal() {
-		pkgName, err := u.rulePkg(sources, rule)
+		pkgName, err := u.rulePkg(conf, srcsGoFiles, rule)
 		if err != nil {
 			return err
 		}
@@ -436,7 +455,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 			if libRule.kind.Type == kinds.Test {
 				continue
 			}
-			libPkgName, err := u.rulePkg(sources, libRule)
+			libPkgName, err := u.rulePkg(conf, srcsGoFiles, libRule)
 			if err != nil {
 				return err
 			}
@@ -506,7 +525,7 @@ func (u *Update) updateDeps(conf *config.Config, file *build.File, ruleExprs map
 
 // allocateSources allocates sources to rules. If there's no existing rule, a new rule will be created and returned
 // from this function
-func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rules []*rule) ([]*rule, error) {
+func (u *Update) allocateSources(conf *config.Config, pkgDir string, sources map[string]*GoFile, rules []*rule) ([]*rule, error) {
 	unallocated, err := u.unallocatedSources(sources, rules)
 	if err != nil {
 		return nil, err
@@ -524,7 +543,7 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 				continue
 			}
 
-			rulePkgName, err := u.rulePkg(sources, r)
+			rulePkgName, err := u.rulePkg(conf, sources, r)
 			if err != nil {
 				return nil, fmt.Errorf("failed to determine package name for //%v:%v: %w", pkgDir, r.Name(), err)
 			}
@@ -562,13 +581,13 @@ func (u *Update) allocateSources(pkgDir string, sources map[string]*GoFile, rule
 
 // rulePkg checks the first source it finds for a rule and returns the name from the "package name" directive at the top
 // of the file
-func (u *Update) rulePkg(srcs map[string]*GoFile, rule *rule) (string, error) {
+func (u *Update) rulePkg(conf *config.Config, srcs map[string]*GoFile, rule *rule) (string, error) {
 	// This is a safe bet if we can't use the source files to figure this out.
 	if rule.kind.NonGoSources {
 		return rule.Name(), nil
 	}
 
-	ss, err := u.allSources(rule)
+	ss, srcs, err := u.allSources(conf, rule, srcs)
 	if err != nil {
 		return "", err
 	}
@@ -592,7 +611,7 @@ func (u *Update) unallocatedSources(srcs map[string]*GoFile, rules []*rule) ([]s
 				break
 			}
 
-			ruleSrcs, err := u.allSources(rule)
+			ruleSrcs, err := u.eval.EvalGlobs(rule.dir, rule.Rule)
 			if err != nil {
 				return nil, err
 			}

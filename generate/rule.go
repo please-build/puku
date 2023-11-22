@@ -4,7 +4,6 @@ import (
 	"github.com/bazelbuild/buildtools/build"
 
 	"github.com/please-build/puku/edit"
-	"github.com/please-build/puku/glob"
 	"github.com/please-build/puku/kinds"
 )
 
@@ -12,58 +11,6 @@ type rule struct {
 	dir  string
 	kind *kinds.Kind
 	*build.Rule
-}
-
-func (rule *rule) parseGlob() *glob.Args {
-	srcs := rule.Attr("srcs")
-	if srcs == nil {
-		return nil
-	}
-
-	call, ok := srcs.(*build.CallExpr)
-	if !ok {
-		return nil
-	}
-
-	ident, ok := call.X.(*build.Ident)
-	if !ok {
-		return nil
-	}
-
-	if ident.Name != "glob" {
-		return nil
-	}
-
-	var include, exclude []string
-	positionalPos := 0
-	for _, expr := range call.List {
-		assign, ok := expr.(*build.AssignExpr)
-		if ok {
-			ident := assign.LHS.(*build.Ident)
-			if !ok {
-				return nil
-			}
-			if ident.Name == "include" {
-				include = build.Strings(assign.RHS)
-			}
-			if ident.Name == "exclude" {
-				exclude = build.Strings(assign.RHS)
-			}
-			continue // ignore other args. We don't care about include_symlinks etc.
-		}
-
-		if positionalPos == 0 {
-			include = build.Strings(expr)
-		}
-		if positionalPos == 1 {
-			exclude = build.Strings(expr)
-		}
-		positionalPos++
-	}
-	return &glob.Args{
-		Include: include,
-		Exclude: exclude,
-	}
 }
 
 func (rule *rule) setOrDeleteAttr(name string, values []string) {

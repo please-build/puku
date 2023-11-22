@@ -1,0 +1,20 @@
+def puku_e2e_test(name:str, repo:str, srcs:list, deps:list=[]):
+    repo = build_rule(
+        name = name,
+        tag = "copy",
+        cmd = "cp -r $SRC $OUT",
+        srcs = [repo],
+        outs = [f"{name}_repo"],
+    )
+
+    return go_test(
+        name = name,
+        srcs = srcs,
+        data = {
+            "puku": ["//cmd/puku"],
+            "please": ["//third_party/binary:plz"],
+            "repo": [repo],
+        },
+        deps = deps,
+        labels = ["e2e"],
+    )

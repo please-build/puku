@@ -1,3 +1,4 @@
 plz-out
 .idea
 *.iml
+.plzconfig.local
