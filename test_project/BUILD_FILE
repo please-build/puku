@@ -1,1 +1,1 @@
-go_library(name = "foo")
+go_library(name = "bar")

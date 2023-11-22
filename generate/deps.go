@@ -132,7 +132,18 @@ func (u *Update) localDep(conf *config.Config, importPath string) (string, error
 			continue
 		}
 
-		if kind.Type == kinds.Lib {
+		if kind.Type != kinds.Lib {
+			continue
+		}
+
+		name := rule.Name()
+		pkg := rule.Attr("package")
+		if pkg != nil {
+			if str, ok := pkg.(*build.StringExpr); ok {
+				name = str.Value
+			}
+		}
+		if strings.HasSuffix(path, name) {
 			libTargets = append(libTargets, rule)
 		}
 	}
