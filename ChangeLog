@@ -1,3 +1,9 @@
+Version 1.1.0
+------------
+    * Parse the whole third party tree to find go_module rules (#56)
+    * Added a `licences` subcommand that can be used to update licences (#51)
+    * Allow `migrate` to accept modules as positional args to migrate piecemeal (#50)
+
 Version 1.0.0
 ------------
     * Support for `go_benchmark` (#41)
