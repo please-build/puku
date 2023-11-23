@@ -59,6 +59,32 @@ func TestAllocateSources(t *testing.T) {
 	assert.ElementsMatch(t, []string{"foo_test.go", "bar_test.go"}, mustGetSources(t, u, rules[1]))
 }
 
+func TestAddingLibDepToTest(t *testing.T) {
+	foo := newRule(edit.NewRuleExpr("go_library", "foo"), kinds.DefaultKinds["go_library"], "")
+	fooTest := newRule(edit.NewRuleExpr("go_test", "foo_test"), kinds.DefaultKinds["go_test"], "")
+
+	files := map[string]*GoFile{
+		"foo.go": {
+			Name:     "foo",
+			FileName: "foo.go",
+		},
+		"foo_test.go": {
+			Name:     "foo",
+			FileName: "foo_test.go",
+		},
+	}
+
+	foo.SetAttr("srcs", edit.NewStringList([]string{"foo.go"}))
+	fooTest.SetAttr("srcs", edit.NewStringList([]string{"foo_test.go"}))
+
+	u := &Update{plzConf: new(please.Config)}
+	conf := &config.Config{PleasePath: "plz"}
+	err := u.updateRuleDeps(conf, fooTest, []*rule{foo, fooTest}, files)
+	require.NoError(t, err)
+
+	assert.Equal(t, fooTest.AttrStrings("deps"), []string{":foo"})
+}
+
 func TestAllocateSourcesToCustomKind(t *testing.T) {
 	exampleKind := &kinds.Kind{
 		Name: "go_example_lib",
