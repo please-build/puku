@@ -1,10 +1,12 @@
 package config
 
 import (
-	"github.com/please-build/puku/kinds"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/please-build/puku/kinds"
 )
 
 func TestGetKind(t *testing.T) {
@@ -23,7 +25,7 @@ func TestGetKind(t *testing.T) {
 		assert.Equal(t, kinds.Lib, kind.Type)
 	})
 
-	t.Run("overriden default kind", func(t *testing.T) {
+	t.Run("overridden default kind", func(t *testing.T) {
 		kind := c.GetKind("go_binary")
 		require.NotNil(t, kind)
 		assert.Equal(t, kinds.Lib, kind.Type)

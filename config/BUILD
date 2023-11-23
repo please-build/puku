@@ -13,3 +13,13 @@ go_library(
     ],
     deps = ["//kinds"],
 )
+
+go_test(
+    name = "config_test",
+    srcs = ["config_test.go"],
+    deps = [
+        ":config",
+        "//kinds",
+        "//third_party/go:testify",
+    ],
+)
