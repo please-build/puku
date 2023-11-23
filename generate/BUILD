@@ -38,6 +38,7 @@ testify_test(
     srcs = glob(["*_test.go"]),
     data = ["//:test_project"],
     deps = [
+        ":generate",
         "//config",
         "//edit",
         "//graph",

@@ -22,6 +22,7 @@ go_test(
     srcs = ["graph_test.go"],
     data = ["//:test_project"],
     deps = [
+        ":graph",
         "///third_party/go/github.com_please-build_buildtools//build",
         "///third_party/go/github.com_please-build_buildtools//labels",
         "//config",

@@ -21,6 +21,7 @@ go_test(
     name = "migrate_test",
     srcs = ["migrate_test.go"],
     deps = [
+        ":migrate",
         "///third_party/go/github.com_please-build_buildtools//build",
         "//edit",
         "//graph",

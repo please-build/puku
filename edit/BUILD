@@ -21,6 +21,7 @@ go_test(
     name = "edit_test",
     srcs = ["edit_test.go"],
     deps = [
+        ":edit",
         "///third_party/go/github.com_please-build_buildtools//build",
         "//third_party/go:testify",
     ],
