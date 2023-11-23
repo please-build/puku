@@ -218,6 +218,11 @@ are overridden as new files are discovered at a deeper level in the source tree.
   // Puku will try and add a subinclude for the Go rules if it's not already subincluded. Setting this to false will 
   // disable this behavior. 
   "ensureSubincludes": false,
+
+  // If you have changed the behavior of the default kinds, you may exclude them here so Puku stops treating them as a
+  // known kind. This can be useful for cases where you have changed proto_library to output .go files, rather than to 
+  // generate the go_library for that package. 
+  "excludeBuiltinKinds": ["proto_library"],
 }
 ```
 
