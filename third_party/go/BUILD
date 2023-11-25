@@ -190,12 +190,12 @@ go_mod_download(
     name = "build_tools_dl",
     licences = ["Apache-2.0"],
     module = "github.com/peterebden/buildtools",
-    version = "v0.0.0-20221223171549-ce40803f44fb",
+    version = "v0.0.0-20231122153602-22bdf3fe4f1d",
 )
 
 go_repo(
     download = ":build_tools_dl",
-    module = "github.com/bazelbuild/buildtools",
+    module = "github.com/please-build/buildtools",
 )
 
 go_repo(

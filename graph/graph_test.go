@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/bazelbuild/buildtools/build"
-	"github.com/bazelbuild/buildtools/labels"
+	"github.com/please-build/buildtools/build"
+	"github.com/please-build/buildtools/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

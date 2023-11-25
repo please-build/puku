@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bazelbuild/buildtools/build"
+	"github.com/please-build/buildtools/build"
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/fs"

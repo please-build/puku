@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bazelbuild/buildtools/build"
-	"github.com/bazelbuild/buildtools/labels"
+	"github.com/please-build/buildtools/build"
+	"github.com/please-build/buildtools/labels"
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"

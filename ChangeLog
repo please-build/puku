@@ -1,3 +1,8 @@
+Version 1.1.1
+------------
+    * Remove replace directive so `go install github.com/please-build/puku` works as
+      expected
+
 Version 1.1.0
 ------------
     * Parse the whole third party tree to find go_module rules (#56)

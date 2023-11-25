@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bazelbuild/buildtools/build"
+	"github.com/please-build/buildtools/build"
 	exec "golang.org/x/sys/execabs"
 
 	"github.com/please-build/puku/config"

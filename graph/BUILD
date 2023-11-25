@@ -9,8 +9,8 @@ go_library(
         "//modfile:all",
     ],
     deps = [
-        "///third_party/go/github.com_bazelbuild_buildtools//build",
-        "///third_party/go/github.com_bazelbuild_buildtools//labels",
+        "///third_party/go/github.com_please-build_buildtools//build",
+        "///third_party/go/github.com_please-build_buildtools//labels",
         "//config",
         "//edit",
         "//fs",
@@ -23,8 +23,8 @@ go_test(
     data = ["//:test_project"],
     deps = [
         ":graph",
-        "///third_party/go/github.com_bazelbuild_buildtools//build",
-        "///third_party/go/github.com_bazelbuild_buildtools//labels",
+        "///third_party/go/github.com_please-build_buildtools//build",
+        "///third_party/go/github.com_please-build_buildtools//labels",
         "//config",
         "//edit",
         "//third_party/go:testify",

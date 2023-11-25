@@ -6,8 +6,8 @@ go_library(
         "//cmd/puku:all",
     ],
     deps = [
-        "///third_party/go/github.com_bazelbuild_buildtools//build",
-        "///third_party/go/github.com_bazelbuild_buildtools//labels",
+        "///third_party/go/github.com_please-build_buildtools//build",
+        "///third_party/go/github.com_please-build_buildtools//labels",
         "///third_party/go/golang.org_x_mod//semver",
         "//config",
         "//edit",
@@ -22,7 +22,7 @@ go_test(
     srcs = ["migrate_test.go"],
     deps = [
         ":migrate",
-        "///third_party/go/github.com_bazelbuild_buildtools//build",
+        "///third_party/go/github.com_please-build_buildtools//build",
         "//edit",
         "//graph",
         "//third_party/go:testify",

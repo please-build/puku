@@ -1,8 +1,8 @@
 package edit
 
 import (
-	"github.com/bazelbuild/buildtools/build"
-	"github.com/bazelbuild/buildtools/edit"
+	"github.com/please-build/buildtools/build"
+	"github.com/please-build/buildtools/edit"
 )
 
 func EnsureSubinclude(file *build.File) {

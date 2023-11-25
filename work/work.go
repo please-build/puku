@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bazelbuild/buildtools/labels"
+	"github.com/please-build/buildtools/labels"
 
 	"github.com/please-build/puku/config"
 )
