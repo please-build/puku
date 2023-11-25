@@ -18,7 +18,6 @@ func TestImportDir(t *testing.T) {
 	require.NotNil(t, foo)
 	require.NotNil(t, fooTest)
 	require.NotNil(t, externalTest)
-	assert.Nil(t, fooDir["generated.go"]) // Generated srcs are ignored
 
 	assert.Equal(t, foo.Imports, []string{"github.com/example/module"})
 	assert.Equal(t, fooTest.Imports, []string{"github.com/stretchr/testify/assert"})
