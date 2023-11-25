@@ -397,7 +397,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 	done := map[string]struct{}{}
 
 	// If the rule operates on non-go source files (e.g. *.proto for proto_library) then we should skip updating
-	// its as we can't determine its deps from sources this way.
+	// it as we can't determine its deps from sources this way.
 	if rule.kind.NonGoSources {
 		return nil
 	}
