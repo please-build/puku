@@ -23,4 +23,16 @@ func TestTarget(t *testing.T) {
 
 	assert.ElementsMatch(t, []string{"//foo"}, codegen.AttrStrings("deps"))
 	assert.ElementsMatch(t, []string{":srcs"}, codegen.AttrStrings("srcs"))
+
+	codegenProvider := edit.FindTargetByName(file, "codegen_provider")
+	require.NotNil(t, codegen)
+
+	assert.ElementsMatch(t, []string{"//foo"}, codegenProvider.AttrStrings("deps"))
+	assert.ElementsMatch(t, []string{":provider"}, codegenProvider.AttrStrings("srcs"))
+
+	recursiveCodegenProvider := edit.FindTargetByName(file, "recursive_codegen_provider")
+	require.NotNil(t, codegen)
+
+	assert.ElementsMatch(t, []string{"//foo"}, recursiveCodegenProvider.AttrStrings("deps"))
+	assert.ElementsMatch(t, []string{":recursive_provider"}, recursiveCodegenProvider.AttrStrings("srcs"))
 }

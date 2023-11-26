@@ -10,6 +10,7 @@ require (
 	github.com/please-build/buildtools v0.0.0-20231122153602-22bdf3fe4f1d
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/mod v0.14.0
+	golang.org/x/sys v0.14.0
 	gopkg.in/op/go-logging.v1 v1.0.0-20160211212156-b2cb9fa56473
 )
 
@@ -26,7 +27,6 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/tools v0.14.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
