@@ -17,7 +17,7 @@ your `~/.bashrc`, or similar.
 
 Add a remote file to your repo under `third_party/binary/BUILD`
 ```python
-version = "v9.9.9"
+version = "9.9.9"
 remote_file(
     name = "puku",
     url = f"https://github.com/please-build/puku/releases/download/v{version}/puku-{version}-{CONFIG.OS}_{CONFIG.ARCH}",
