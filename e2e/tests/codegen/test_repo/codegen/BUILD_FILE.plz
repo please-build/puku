@@ -11,7 +11,33 @@ func main() {
     """,
 )
 
+filegroup(
+    name = "provider",
+    srcs = ["foo.proto"],
+    provides = {
+        "go": ":srcs",
+    },
+)
+
+filegroup(
+    name = "recursive_provider",
+    srcs = ["foo.proto"],
+    provides = {
+        "go": ":provider",
+    },
+)
+
 go_binary(
     name = "codegen",
     srcs = [":srcs"],
+)
+
+go_binary(
+    name = "codegen_provider",
+    srcs = [":provider"],
+)
+
+go_binary(
+    name = "recursive_codegen_provider",
+    srcs = [":recursive_provider"],
 )

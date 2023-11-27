@@ -21,7 +21,7 @@ type KindConfig struct {
 
 // Config represents a puku.json file discovered in the repo. These are loaded for each directory, and form a chain of
 // configs all the way up to the root config. Configs at a deeper level in the file tree override values from configs at
-// a shallower level. The shallower cofig file is stored in (*Config).base` and the methods on this struct will recurse
+// a shallower level. The shallower config file is stored in (*Config).base` and the methods on this struct will recurse
 // into this base config where appropriate.
 type Config struct {
 	base                *Config
