@@ -39,12 +39,14 @@ func (g *Graph) LoadFile(path string) (*build.File, error) {
 	}
 
 	f, err := g.loadFile(path)
-	if err == nil {
-		g.files[path] = f
+	if err != nil {
+		return nil, err
 	}
 
+	g.files[path] = f
 	f.Pkg = path
-	return f, err
+
+	return f, nil
 }
 
 // SetFile can be used to override a filepath with a given build file. This is useful for testing.
@@ -98,16 +100,32 @@ func (g *Graph) loadFile(path string) (*build.File, error) {
 	return build.ParseBuild(validFilename, nil)
 }
 
-func (g *Graph) FormatFiles(write bool, out io.Writer) error {
+func (g *Graph) FormatFiles(write bool, out io.Writer, paths []string) error {
 	if err := g.ensureVisibilities(); err != nil {
 		return err
 	}
 	for _, file := range g.files {
-		if err := saveAndFormatBuildFile(file, write, out); err != nil {
+		format := true
+
+		if len(paths) != 0 && !g.isInScope(file.Path, paths) {
+			format = false
+		}
+
+		if err := saveAndFormatBuildFile(file, write, format, out); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (g *Graph) isInScope(path string, paths []string) bool {
+	for _, p := range paths {
+		if fs.IsSubdir(p, path) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (g *Graph) ensureVisibilities() error {
@@ -194,7 +212,7 @@ func checkVisibility(target labels.Label, visibilities []string) bool {
 	return false
 }
 
-func saveAndFormatBuildFile(buildFile *build.File, write bool, out io.Writer) error {
+func saveAndFormatBuildFile(buildFile *build.File, write, format bool, out io.Writer) error {
 	if len(buildFile.Stmt) == 0 {
 		return nil
 	}
@@ -205,10 +223,23 @@ func saveAndFormatBuildFile(buildFile *build.File, write bool, out io.Writer) er
 			return err
 		}
 		defer f.Close()
-		_, err = f.Write(build.Format(buildFile))
+
+		if format {
+			_, err = f.Write(build.Format(buildFile))
+		} else {
+			_, err = f.Write(build.FormatWithoutRewriting(buildFile))
+		}
+
 		return err
 	}
-	target := build.Format(buildFile)
+
+	var target []byte
+	if format {
+		target = build.Format(buildFile)
+	} else {
+		target = build.FormatWithoutRewriting(buildFile)
+	}
+
 	actual, err := os.ReadFile(buildFile.Path)
 	if err != nil {
 		if !os.IsNotExist(err) {
