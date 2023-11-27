@@ -85,7 +85,7 @@ func (u *Update) Update(paths ...string) error {
 	if err := u.update(conf); err != nil {
 		return err
 	}
-	return u.graph.FormatFiles(u.write, os.Stdout)
+	return u.graph.FormatFiles(u.write, os.Stdout, paths)
 }
 
 func (u *Update) Sync() error {
@@ -98,7 +98,7 @@ func (u *Update) Sync() error {
 		return fmt.Errorf("failed to read third party rules: %v", err)
 	}
 
-	return u.graph.FormatFiles(u.write, os.Stdout)
+	return u.graph.FormatFiles(u.write, os.Stdout, []string{})
 }
 
 func (u *Update) syncModFile(conf *config.Config, file *build.File, exitingRules map[string]*build.Rule) error {

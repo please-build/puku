@@ -67,7 +67,7 @@ go_library(
 	})
 
 	bs := new(bytes.Buffer)
-	err = g.FormatFiles(false, bs)
+	err = g.FormatFiles(false, bs, []string{})
 	require.NoError(t, err)
 
 	fooT := edit.FindTargetByName(g.files["foo"], "foo")
