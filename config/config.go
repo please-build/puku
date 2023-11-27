@@ -42,6 +42,7 @@ var configs = map[string]*Config{}
 
 // ReadConfig builds up the config for a given path
 func ReadConfig(dir string) (*Config, error) {
+	dir = filepath.Clean(dir)
 	var parts []string
 	if dir != "." {
 		parts = strings.Split(dir, "/")

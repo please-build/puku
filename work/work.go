@@ -41,6 +41,8 @@ func ExpandPaths(origWD string, paths []string) ([]string, error) {
 			path = filepath.Join(origWD, path)
 		}
 
+		path = filepath.Clean(path)
+
 		if filepath.Base(path) != "..." {
 			ret = append(ret, path)
 		}
