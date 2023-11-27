@@ -14,6 +14,7 @@ go_library(
         "//config",
         "//edit",
         "//fs",
+        "//logging",
     ],
 )
 
