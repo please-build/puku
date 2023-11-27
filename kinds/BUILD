@@ -3,6 +3,7 @@ go_library(
     srcs = ["kinds.go"],
     visibility = [
         "//config",
+        "//config:all",
         "//eval:all",
         "//generate:all",
     ],

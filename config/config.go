@@ -24,15 +24,16 @@ type KindConfig struct {
 // a shallower level. The shallower cofig file is stored in (*Config).base` and the methods on this struct will recurse
 // into this base config where appropriate.
 type Config struct {
-	base              *Config
-	ThirdPartyDir     string                 `json:"thirdPartyDir"`
-	PleasePath        string                 `json:"pleasePath"`
-	KnownTargets      map[string]string      `json:"knownTargets"`
-	LibKinds          map[string]*KindConfig `json:"libKinds"`
-	TestKinds         map[string]*KindConfig `json:"testKinds"`
-	BinKinds          map[string]*KindConfig `json:"binKinds"`
-	Stop              bool                   `json:"stop"`
-	EnsureSubincludes *bool                  `json:"ensureSubincludes"`
+	base                *Config
+	ThirdPartyDir       string                 `json:"thirdPartyDir"`
+	PleasePath          string                 `json:"pleasePath"`
+	KnownTargets        map[string]string      `json:"knownTargets"`
+	LibKinds            map[string]*KindConfig `json:"libKinds"`
+	TestKinds           map[string]*KindConfig `json:"testKinds"`
+	BinKinds            map[string]*KindConfig `json:"binKinds"`
+	Stop                bool                   `json:"stop"`
+	EnsureSubincludes   *bool                  `json:"ensureSubincludes"`
+	ExcludeBuiltinKinds []string               `json:"excludeBuiltinKinds"`
 }
 
 // TODO we should reload this during plz watch so this probably needs to become a member of Update
@@ -143,11 +144,19 @@ func (c *Config) ShouldEnsureSubincludes() bool {
 	return true
 }
 
-func (c *Config) GetKind(kind string) *kinds.Kind {
-	if k, ok := kinds.DefaultKinds[kind]; ok {
-		return k
+func (c *Config) isExcludedDefaultKind(kind string) bool {
+	for _, c := range c.ExcludeBuiltinKinds {
+		if c == kind {
+			return true
+		}
 	}
+	if c.base == nil {
+		return false
+	}
+	return c.base.isExcludedDefaultKind(kind)
+}
 
+func (c *Config) GetKind(kind string) *kinds.Kind {
 	if k, ok := c.LibKinds[kind]; ok {
 		return &kinds.Kind{
 			Name:              kind,
@@ -175,6 +184,12 @@ func (c *Config) GetKind(kind string) *kinds.Kind {
 	}
 	if c.base != nil {
 		return c.base.GetKind(kind)
+	}
+
+	if k, ok := kinds.DefaultKinds[kind]; ok {
+		if !c.isExcludedDefaultKind(kind) {
+			return k
+		}
 	}
 	return nil
 }
