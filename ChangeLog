@@ -1,3 +1,13 @@
+Version 1.2.0
+------------
+    * Fix issue where puku would add a subinclude to third_party/go/BUILD
+      erroneously (#74)
+    * Allow users to disable the built in kinds (#69)
+    * Follow require/provides logic when evaluating targets (#72)
+    * Sanitise paths passed to puku fixing issues with stack overflows
+      loading config (#75)
+    * Limit lint fixes (e.g. list re-ordering etc.) to paths passed to puku (#71)
+
 Version 1.1.1
 ------------
     * Remove replace directive so `go install github.com/please-build/puku` works as
