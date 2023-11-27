@@ -296,7 +296,7 @@ func (u *Update) addNewModules(conf *config.Config) error {
 		return err
 	}
 
-	if u.plzConf.GoIsPreloaded() && conf.ShouldEnsureSubincludes() {
+	if !u.plzConf.GoIsPreloaded() && conf.ShouldEnsureSubincludes() {
 		edit.EnsureSubinclude(file)
 	}
 
