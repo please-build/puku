@@ -186,6 +186,7 @@ var goRootImports = map[string]struct{}{
 	"unicode/utf16":                     {},
 	"unicode/utf8":                      {},
 	"unsafe":                            {},
+	"C":                                 {},
 }
 
 func IsInGoRoot(i string) bool {
