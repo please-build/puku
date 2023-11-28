@@ -1,3 +1,8 @@
+Version 1.2.1
+------------
+    * Log a warning instead of exiting when failing to set visibility on a target (#78)
+    * Add "C" as a known import (#77)
+
 Version 1.2.0
 ------------
     * Fix issue where puku would add a subinclude to third_party/go/BUILD
