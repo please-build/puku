@@ -5,6 +5,7 @@ go_library(
         "//:all",
         "//cmd/puku:all",
         "//generate:all",
+        "//graph:all",
         "//watch:all",
     ],
     deps = [

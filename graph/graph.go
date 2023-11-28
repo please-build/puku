@@ -14,7 +14,10 @@ import (
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/fs"
+	"github.com/please-build/puku/logging"
 )
+
+var log = logging.GetLogger()
 
 type Dependency struct {
 	From, To labels.Label
@@ -135,7 +138,7 @@ func (g *Graph) ensureVisibilities() error {
 			return err
 		}
 		if err := g.ensureVisibility(conf, dep); err != nil {
-			return fmt.Errorf("failed to set visibility: %v", err)
+			log.Warningf("failed to set visibility: %v", err)
 		}
 	}
 	return nil
