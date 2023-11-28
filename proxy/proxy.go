@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -27,7 +28,7 @@ func (err ModuleNotFound) Error() string {
 	return fmt.Sprintf("can't find module %v", err.Path)
 }
 
-// Module is the module and it's version returned from @latest
+// Module is the module, and it's version returned from @latest
 type Module struct {
 	Module  string
 	Version string
@@ -131,8 +132,7 @@ func (proxy *Proxy) getGoModWithFallback(mod, version string) (*modfile.File, er
 	for mod, version := range modVersionsToAttempt {
 		modFile, err := proxy.getGoMod(mod, version)
 		if err != nil {
-			// TODO: when we upgrade to Go 1.20, use `errors.Join(...)`.
-			errs = fmt.Errorf("%w: %w", errs, err)
+			errs = errors.Join(errs, err)
 			continue
 		}
 
