@@ -38,8 +38,9 @@ func ExpandPaths(originalWorkingDir string, paths []string) ([]string, error) {
 
 	ret := make([]string, 0, len(paths))
 	for _, path := range paths {
+		isFullLabel := strings.HasPrefix(path, "//")
 		// Handle using build label style syntax a bit like `plz build`
-		if strings.HasPrefix(path, "//") {
+		if isFullLabel {
 			l := labels.Parse(path)
 			path = l.Package
 		} else {
@@ -61,7 +62,7 @@ func ExpandPaths(originalWorkingDir string, paths []string) ([]string, error) {
 				return nil, err
 			}
 			path = p
-		} else {
+		} else if !isFullLabel { // Labels are already relative to the repo root; don't join through
 			path = filepath.Join(originalWorkingDir, path)
 		}
 
