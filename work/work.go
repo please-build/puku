@@ -21,9 +21,19 @@ func MustExpandPaths(origWD string, paths []string) []string {
 	return paths
 }
 
-func ExpandPaths(origWD string, paths []string) ([]string, error) {
+// ExpandPaths expands the paths passed in by the user, resolving any `...` wildcards to the subdirectories of the path
+// passed in. The paths are made relative to the repo root. By this point, if we were in a subdirectory of the repo,
+// puku will have changed its working directory to the repo root, but recorded the original working directory. The
+// original working directory is passed in here, so we can join any relative paths with that directory to make them
+// relative to the repo root.
+func ExpandPaths(originalWorkingDir string, paths []string) ([]string, error) {
 	if len(paths) == 0 {
-		return ExpandPaths(origWD, []string{"..."})
+		return ExpandPaths(originalWorkingDir, []string{"..."})
+	}
+	// We assume by this point, we have changed directory to the repo root.
+	repoRoot, err := os.Getwd()
+	if err != nil {
+		return nil, err
 	}
 
 	ret := make([]string, 0, len(paths))
@@ -36,19 +46,35 @@ func ExpandPaths(origWD string, paths []string) ([]string, error) {
 			if strings.HasPrefix(path, ":") {
 				path = "."
 			}
-			// Join the path with the original working directory. We would have cd'ed to the root of the plz repo by this
-			// point
-			path = filepath.Join(origWD, path)
+		}
+
+		isWildcard := false
+		if filepath.Base(path) == "..." {
+			isWildcard = true
+			path = filepath.Dir(path)
 		}
 
 		path = filepath.Clean(path)
-
-		if filepath.Base(path) != "..." {
-			ret = append(ret, path)
+		if filepath.IsAbs(path) {
+			p, err := filepath.Rel(repoRoot, path)
+			if err != nil {
+				return nil, err
+			}
+			path = p
+		} else {
+			path = filepath.Join(originalWorkingDir, path)
 		}
 
-		path = filepath.Dir(path)
-		err := filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+		if !isWildcard {
+			// This allows passing the file that changed or the BUILD file instead of the directory
+			if stat, err := os.Lstat(path); err == nil && !stat.IsDir() {
+				path = filepath.Dir(path)
+			}
+			ret = append(ret, path)
+			continue
+		}
+
+		err = filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}

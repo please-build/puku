@@ -184,6 +184,7 @@ go_repo(
         "//licences:all",
         "//migrate:all",
         "//trie:all",
+        "//work:all",
     ],
 )
 

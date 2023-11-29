@@ -7,7 +7,8 @@ import (
 	"strings"
 )
 
-// Optimisation to avoid going to disk. We still check incase a new Go version includes a new package.
+// Optimisation to avoid going to disk, but also includes packages like runtime/cgo and C that don't actually appear in
+// the SDK. We still check in case a new Go version includes a new package.
 var goRootImports = map[string]struct{}{
 	"archive/tar":                       {},
 	"archive/zip":                       {},
