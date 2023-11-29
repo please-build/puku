@@ -1,6 +1,7 @@
 Version 1.3.0
 ------------
     * Allow paths passed to puku to be absolute (#82)
+    * Allow passing in a file instead of a dir. Puku will format the directory it's in. (#82)
     * Fix issue where all paths were being considered wildcards (#82)
 
 Version 1.2.1

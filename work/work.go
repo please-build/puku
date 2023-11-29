@@ -60,6 +60,10 @@ func ExpandPaths(origWD string, paths []string) ([]string, error) {
 		}
 
 		if !isWildcard {
+			// This allows passing the file that changed or the BUILD file instead of the directory
+			if stat, err := os.Lstat(path); err == nil && !stat.IsDir() {
+				path = filepath.Dir(path)
+			}
 			ret = append(ret, path)
 			continue
 		}
