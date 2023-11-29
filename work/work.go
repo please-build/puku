@@ -25,6 +25,10 @@ func ExpandPaths(origWD string, paths []string) ([]string, error) {
 	if len(paths) == 0 {
 		return ExpandPaths(origWD, []string{"..."})
 	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
 
 	ret := make([]string, 0, len(paths))
 	for _, path := range paths {
@@ -36,26 +40,31 @@ func ExpandPaths(origWD string, paths []string) ([]string, error) {
 			if strings.HasPrefix(path, ":") {
 				path = "."
 			}
-			// Join the path with the original working directory. We would have cd'ed to the root of the plz repo by this
-			// point
-			path = filepath.Join(origWD, path)
+		}
+
+		isWildcard := false
+		if filepath.Base(path) == "..." {
+			isWildcard = true
+			path = filepath.Dir(path)
 		}
 
 		path = filepath.Clean(path)
 		if filepath.IsAbs(path) {
-			p, err := filepath.Rel(origWD, path)
+			p, err := filepath.Rel(wd, path)
 			if err != nil {
 				return nil, err
 			}
 			path = p
+		} else {
+			path = filepath.Join(origWD, path)
 		}
 
-		if filepath.Base(path) != "..." {
+		if !isWildcard {
 			ret = append(ret, path)
+			continue
 		}
 
-		path = filepath.Dir(path)
-		err := filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+		err = filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
