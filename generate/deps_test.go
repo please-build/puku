@@ -40,11 +40,11 @@ func TestLocalDeps(t *testing.T) {
 
 	u := NewUpdate(false, conf)
 
-	trgt, err := u.localDep(new(config.Config), "test_project/foo")
+	trgt, err := u.localDep("test_project/foo")
 	require.NoError(t, err)
 	assert.Equal(t, "//test_project/foo:bar", trgt)
 
-	trgt, err = u.localDep(new(config.Config), "github.com/some/module/test_project/foo")
+	trgt, err = u.localDep("github.com/some/module/test_project/foo")
 	require.NoError(t, err)
 	assert.Equal(t, "//test_project/foo:bar", trgt)
 }
