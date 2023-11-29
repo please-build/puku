@@ -21,11 +21,17 @@ func MustExpandPaths(origWD string, paths []string) []string {
 	return paths
 }
 
-func ExpandPaths(origWD string, paths []string) ([]string, error) {
+// ExpandPaths expands the paths passed in by the user, resolving any `...` wildcards to the subdirectories of the path
+// passed in. The paths are made relative to the repo root. By this point, if we were in a subdirectory of the repo,
+// puku will have changed its working directory to the repo root, but recorded the original working directory. The
+// original working directory is passed in here, so we can join any relative paths with that directory to make them
+// relative to the repo root.
+func ExpandPaths(originalWorkingDir string, paths []string) ([]string, error) {
 	if len(paths) == 0 {
-		return ExpandPaths(origWD, []string{"..."})
+		return ExpandPaths(originalWorkingDir, []string{"..."})
 	}
-	wd, err := os.Getwd()
+	// We assume by this point, we have changed directory to the repo root.
+	repoRoot, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
@@ -50,13 +56,13 @@ func ExpandPaths(origWD string, paths []string) ([]string, error) {
 
 		path = filepath.Clean(path)
 		if filepath.IsAbs(path) {
-			p, err := filepath.Rel(wd, path)
+			p, err := filepath.Rel(repoRoot, path)
 			if err != nil {
 				return nil, err
 			}
 			path = p
 		} else {
-			path = filepath.Join(origWD, path)
+			path = filepath.Join(originalWorkingDir, path)
 		}
 
 		if !isWildcard {
