@@ -13,12 +13,48 @@ type rule struct {
 	*build.Rule
 }
 
+// setOrDeleteAttr will make sure the attribute with the given name matches the values passed in. It will keep the
+// existing expressions in the list to maintain things like comments.
 func (rule *rule) setOrDeleteAttr(name string, values []string) {
 	if len(values) == 0 {
 		rule.DelAttr(name)
 		return
 	}
-	rule.SetAttr(name, edit.NewStringList(values))
+
+	valuesMap := make(map[string]struct{})
+	for _, v := range values {
+		valuesMap[v] = struct{}{}
+	}
+
+	listExpr, _ := rule.Attr(name).(*build.ListExpr)
+	if listExpr == nil {
+		listExpr = &build.ListExpr{}
+	}
+
+	exprs := make([]build.Expr, 0, len(values))
+	done := map[string]struct{}{}
+
+	// Loop through the existing values, filtering out any that aren't supposed to be there
+	for _, expr := range listExpr.List {
+		val, ok := expr.(*build.StringExpr)
+		if !ok {
+			continue
+		}
+		if _, ok := valuesMap[val.Value]; ok {
+			exprs = append(exprs, val)
+			done[val.Value] = struct{}{}
+		}
+	}
+
+	// Loops through the value adding any new values that didn't used to be there
+	for _, v := range values {
+		if _, done := done[v]; !done {
+			exprs = append(exprs, edit.NewStringExpr(v))
+		}
+	}
+
+	listExpr.List = exprs
+	rule.SetAttr(name, listExpr)
 }
 
 func (rule *rule) isTest() bool {

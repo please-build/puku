@@ -139,7 +139,7 @@ func (m *Migrate) Migrate(write bool, modules []string, paths ...string) error {
 	if err := m.genRules(modules); err != nil {
 		return err
 	}
-	return m.graph.FormatFiles(write, os.Stdout, paths)
+	return m.graph.FormatFiles(write, os.Stdout)
 }
 
 func (m *Migrate) genRules(modules []string) error {
