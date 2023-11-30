@@ -103,18 +103,12 @@ func (g *Graph) loadFile(path string) (*build.File, error) {
 	return build.ParseBuild(validFilename, nil)
 }
 
-func (g *Graph) FormatFiles(write bool, out io.Writer, paths []string) error {
+func (g *Graph) FormatFiles(write bool, out io.Writer) error {
 	if err := g.ensureVisibilities(); err != nil {
 		return err
 	}
 	for _, file := range g.files {
-		format := true
-
-		if len(paths) != 0 && !g.isInScope(file.Path, paths) {
-			format = false
-		}
-
-		if err := saveAndFormatBuildFile(file, write, format, out); err != nil {
+		if err := saveAndFormatBuildFile(file, write, out); err != nil {
 			return err
 		}
 	}
@@ -215,7 +209,7 @@ func checkVisibility(target labels.Label, visibilities []string) bool {
 	return false
 }
 
-func saveAndFormatBuildFile(buildFile *build.File, write, format bool, out io.Writer) error {
+func saveAndFormatBuildFile(buildFile *build.File, write bool, out io.Writer) error {
 	if len(buildFile.Stmt) == 0 {
 		return nil
 	}
@@ -227,21 +221,11 @@ func saveAndFormatBuildFile(buildFile *build.File, write, format bool, out io.Wr
 		}
 		defer f.Close()
 
-		if format {
-			_, err = f.Write(build.Format(buildFile))
-		} else {
-			_, err = f.Write(build.FormatWithoutRewriting(buildFile))
-		}
-
+		_, err = f.Write(build.FormatWithoutRewriting(buildFile))
 		return err
 	}
 
-	var target []byte
-	if format {
-		target = build.Format(buildFile)
-	} else {
-		target = build.FormatWithoutRewriting(buildFile)
-	}
+	target := build.FormatWithoutRewriting(buildFile)
 
 	actual, err := os.ReadFile(buildFile.Path)
 	if err != nil {

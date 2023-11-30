@@ -117,7 +117,7 @@ func (l *Licenses) Update(paths []string, write bool) error {
 		}
 	}
 
-	return l.graph.FormatFiles(write, os.Stdout, []string{})
+	return l.graph.FormatFiles(write, os.Stdout)
 }
 
 func (l *Licenses) Get(mod, ver string) ([]string, error) {
