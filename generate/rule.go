@@ -48,12 +48,9 @@ func (rule *rule) setOrDeleteAttr(name string, values []string) {
 
 	// Loops through the value adding any new values that didn't used to be there
 	for _, v := range values {
-		_, done := done[v]
-		if done {
-			continue
+		if _, done := done[v]; !done {
+			exprs = append(exprs, edit.NewStringExpr(v))
 		}
-
-		exprs = append(exprs, edit.NewStringExpr(v))
 	}
 
 	listExpr.List = exprs
