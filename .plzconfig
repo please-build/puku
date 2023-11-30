@@ -16,3 +16,6 @@ Desc = A tool to update BUILD files in Go packages
 [alias "lint"]
 Desc = Runs golangci-lint as done by our CI
 cmd = run //third_party/binary:golangci-lint -- run
+
+[BuildConfig]
+go-version = 1.21.4
