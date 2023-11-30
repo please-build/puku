@@ -57,7 +57,7 @@ func (rule *rule) setOrDeleteAttr(name string, values []string) {
 	}
 
 	listExpr.List = exprs
-	rule.SetAttr("deps", listExpr)
+	rule.SetAttr(name, listExpr)
 }
 
 func (rule *rule) isTest() bool {

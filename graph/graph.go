@@ -115,16 +115,6 @@ func (g *Graph) FormatFiles(write bool, out io.Writer) error {
 	return nil
 }
 
-func (g *Graph) isInScope(path string, paths []string) bool {
-	for _, p := range paths {
-		if fs.IsSubdir(p, path) {
-			return true
-		}
-	}
-
-	return false
-}
-
 func (g *Graph) ensureVisibilities() error {
 	for _, dep := range g.deps {
 		conf, err := config.ReadConfig(dep.To.Package)
