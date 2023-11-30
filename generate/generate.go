@@ -477,7 +477,7 @@ func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, 
 		depSlice = append(depSlice, dep)
 	}
 
-	rule.setDeps(depSlice)
+	rule.setOrDeleteAttr("deps", depSlice)
 
 	return nil
 }

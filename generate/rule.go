@@ -13,56 +13,51 @@ type rule struct {
 	*build.Rule
 }
 
-func (rule *rule) setDeps(values []string) {
+// setOrDeleteAttr will make sure the attribute with the given name matches the values passed in. It will keep the
+// existing expressions in the list to maintain things like comments.
+func (rule *rule) setOrDeleteAttr(name string, values []string) {
 	if len(values) == 0 {
-		rule.DelAttr("deps")
+		rule.DelAttr(name)
 		return
 	}
 
-	deps := make(map[string]struct{})
+	valuesMap := make(map[string]struct{})
+	for _, v := range values {
+		valuesMap[v] = struct{}{}
+	}
+
+	listExpr, _ := rule.Attr(name).(*build.ListExpr)
+	if listExpr == nil {
+		listExpr = &build.ListExpr{}
+	}
+
+	exprs := make([]build.Expr, 0, len(values))
 	done := map[string]struct{}{}
 
-	for _, dep := range values {
-		deps[dep] = struct{}{}
-	}
-
-	depExprs := make([]build.Expr, 0, len(values))
-	existingDeps, ok := rule.Attr("deps").(*build.ListExpr)
-	if existingDeps == nil {
-		existingDeps = &build.ListExpr{}
-	}
-	if ok {
-		for _, dep := range existingDeps.List {
-			val, ok := dep.(*build.StringExpr)
-			if !ok {
-				continue
-			}
-			if _, ok := deps[val.Value]; ok {
-				depExprs = append(depExprs, dep)
-				done[val.Value] = struct{}{}
-			}
+	// Loop through the existing values, filtering out any that aren't supposed to be there
+	for _, expr := range listExpr.List {
+		val, ok := expr.(*build.StringExpr)
+		if !ok {
+			continue
+		}
+		if _, ok := valuesMap[val.Value]; ok {
+			exprs = append(exprs, val)
+			done[val.Value] = struct{}{}
 		}
 	}
 
+	// Loops through the value adding any new values that didn't used to be there
 	for _, v := range values {
 		_, done := done[v]
 		if done {
 			continue
 		}
 
-		depExprs = append(depExprs, edit.NewStringExpr(v))
+		exprs = append(exprs, edit.NewStringExpr(v))
 	}
 
-	existingDeps.List = depExprs
-	rule.SetAttr("deps", existingDeps)
-}
-
-func (rule *rule) setOrDeleteAttr(name string, values []string) {
-	if len(values) == 0 {
-		rule.DelAttr(name)
-		return
-	}
-	rule.SetAttr(name, edit.NewStringList(values))
+	listExpr.List = exprs
+	rule.SetAttr("deps", listExpr)
 }
 
 func (rule *rule) isTest() bool {
