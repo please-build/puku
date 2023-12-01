@@ -219,7 +219,7 @@ func (u *Update) readModules(conf *config.Config, file *build.File) error {
 	}
 
 	goMods := file.Rules("go_module")
-	u.usingGoModule = len(goMods) > 0
+	u.usingGoModule = len(goMods) > 0 || u.usingGoModule
 
 	for _, mod := range goMods {
 		module := mod.AttrString("module")
