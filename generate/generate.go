@@ -186,7 +186,7 @@ func (u *Update) readAllModules(conf *config.Config) error {
 // readModules returns the defined third party modules in this project
 func (u *Update) readModules(conf *config.Config, file *build.File) error {
 	addInstalls := func(targetName, modName string, installs []string) {
-		log.Infof("Building target %v for module %v", targetName, modName)
+		log.Infof("Adding installs for target %v for module %v", targetName, modName)
 		for _, install := range installs {
 			path := filepath.Join(modName, install)
 			target := BuildTarget(targetName, file.Pkg, "")
