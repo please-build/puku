@@ -8,9 +8,11 @@ go_test(
     deps = [
         "///third_party/go/golang.org_x_mod//modfile",
         "//config",
-        "//generate",
         "//graph",
         "//please",
         "//third_party/go:testify",
+        "//licences",
+        "//proxy",
+        "//sync",
     ],
 )

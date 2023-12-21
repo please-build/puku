@@ -14,5 +14,7 @@ go_library(
         "//licences:all",
         "//migrate:all",
         "//watch:all",
+        "//sync:all",
+        "//sync/integration/syncmod:all",
     ],
 )

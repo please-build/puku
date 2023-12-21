@@ -1,6 +1,9 @@
 package syncmod
 
 import (
+	"github.com/please-build/puku/licences"
+	"github.com/please-build/puku/proxy"
+	"github.com/please-build/puku/sync"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,7 +13,6 @@ import (
 	"golang.org/x/mod/modfile"
 
 	"github.com/please-build/puku/config"
-	"github.com/please-build/puku/generate"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/please"
 )
@@ -19,6 +21,7 @@ func TestModSync(t *testing.T) {
 	if err := os.Chdir(os.Getenv("DATA_REPO")); err != nil {
 		panic(err)
 	}
+
 	conf, err := config.ReadConfig(".")
 	require.NoError(t, err)
 
@@ -29,10 +32,10 @@ func TestModSync(t *testing.T) {
 
 	g := graph.New(plzConf.BuildFileNames())
 
-	u := generate.NewUpdateWithGraph(false, plzConf, g)
+	s := sync.New(plzConf, g, licences.New(proxy.New(proxy.DefaultURL), g), false)
 	require.NoError(t, err)
 
-	err = u.Sync()
+	err = s.Sync()
 	require.NoError(t, err)
 
 	thirdPartyBuildFile, err := g.LoadFile(conf.GetThirdPartyDir())
@@ -53,14 +56,17 @@ func TestModSync(t *testing.T) {
 	// )
 
 	for _, repoRule := range thirdPartyBuildFile.Rules("go_repo") {
-		// Check that we've replaced build tools
-		if repoRule.AttrString("version") == "" {
-			assert.Equal(t, "github.com/bazelbuild/buildtools", repoRule.AttrString("module"))
-			assert.Equal(t, ":github.com_peterebden_buildtools_dl", repoRule.AttrString("download"))
-			continue
-		}
-		// All rules start off at v0.0.1 and should be updated to v1.0.0 as per the go.mod
-		assert.Equal(t, expectedVers[repoRule.AttrString("module")], repoRule.AttrString("version"))
+		t.Run(repoRule.AttrString("module"), func(t *testing.T) {
+			// Check that we've replaced build tools
+			if repoRule.AttrString("version") == "" {
+				assert.Equal(t, "github.com/bazelbuild/buildtools", repoRule.AttrString("module"))
+				assert.Equal(t, ":github.com_peterebden_buildtools_dl", repoRule.AttrString("download"))
+				return
+			}
+			// All rules start off at v0.0.1 and should be updated to v1.0.0 as per the go.mod
+			assert.Equal(t, expectedVers[repoRule.AttrString("module")], repoRule.AttrString("version"))
+		})
+
 	}
 
 	dlRules := thirdPartyBuildFile.Rules("go_mod_download")

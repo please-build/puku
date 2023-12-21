@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/please-build/puku/graph"
+	"github.com/please-build/puku/sync"
 	"os"
 	"path/filepath"
 
@@ -72,7 +74,10 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 		return 0
 	},
 	"sync": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
-		if err := generate.NewUpdate(opts.Sync.Write, plzConf).Sync(); err != nil {
+		g := graph.New(plzConf.BuildFileNames())
+		p := proxy.New(proxy.DefaultURL)
+		l := licences.New(p, g)
+		if err := sync.New(plzConf, g, l, opts.Sync.Write).Sync(); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
@@ -108,7 +113,7 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 	},
 	"update": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
 		paths := work.MustExpandPaths(orignalWD, opts.Licenses.Update.Args.Paths)
-		if err := licences.New(plzConf, proxy.New(proxy.DefaultURL)).Update(paths, opts.Licenses.Update.Write); err != nil {
+		if err := licences.New(proxy.New(proxy.DefaultURL), graph.New(plzConf.BuildFileNames())).Update(paths, opts.Licenses.Update.Write); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0

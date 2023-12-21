@@ -3,6 +3,7 @@ package edit
 import (
 	"github.com/please-build/buildtools/build"
 	"github.com/please-build/buildtools/edit"
+	"strings"
 )
 
 func EnsureSubinclude(file *build.File) {
@@ -113,4 +114,33 @@ func BoolAttr(rule *build.Rule, attrName string) bool {
 	}
 
 	return ident.Name == "True"
+}
+
+func NewGoRepoRule(mod, version, download string, licences []string) *build.CallExpr {
+	rule := build.NewRule(&build.CallExpr{
+		X:    &build.Ident{Name: "go_repo"},
+		List: []build.Expr{},
+	})
+	rule.SetAttr("module", NewStringExpr(mod))
+	if version != "" {
+		rule.SetAttr("version", NewStringExpr(version))
+	}
+	if download != "" {
+		rule.SetAttr("download", NewStringExpr(":"+download))
+	}
+	if len(licences) != 0 {
+		rule.SetAttr("licences", NewStringList(licences))
+	}
+	return rule.Call
+}
+
+func NewModDownloadRule(mod, version string, licences []string) (*build.CallExpr, string) {
+	rule := NewRuleExpr("go_mod_download", strings.ReplaceAll(mod, "/", "_")+"_dl")
+
+	rule.SetAttr("module", NewStringExpr(mod))
+	rule.SetAttr("version", NewStringExpr(version))
+	if len(licences) != 0 {
+		rule.SetAttr("licences", NewStringList(licences))
+	}
+	return rule.Call, rule.Name()
 }

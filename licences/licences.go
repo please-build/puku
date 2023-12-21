@@ -9,7 +9,6 @@ import (
 
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/graph"
-	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/proxy"
 )
 
@@ -20,9 +19,9 @@ type Licenses struct {
 	proxy *proxy.Proxy
 }
 
-func New(conf *please.Config, p *proxy.Proxy) *Licenses {
+func New(p *proxy.Proxy, g *graph.Graph) *Licenses {
 	return &Licenses{
-		graph: graph.New(conf.BuildFileNames()),
+		graph: g,
 		proxy: p,
 	}
 }
