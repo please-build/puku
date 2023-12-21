@@ -2,17 +2,17 @@ package sync
 
 import (
 	"fmt"
-	"golang.org/x/mod/modfile"
 	"os"
+
+	"github.com/please-build/buildtools/build"
+	"github.com/please-build/buildtools/labels"
+	"golang.org/x/mod/modfile"
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/licences"
 	"github.com/please-build/puku/please"
-
-	"github.com/please-build/buildtools/build"
-	"github.com/please-build/buildtools/labels"
 )
 
 type Sync struct {

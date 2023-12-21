@@ -1,8 +1,6 @@
 package main
 
 import (
-	"github.com/please-build/puku/graph"
-	"github.com/please-build/puku/sync"
 	"os"
 	"path/filepath"
 
@@ -11,11 +9,13 @@ import (
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/generate"
+	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/licences"
 	"github.com/please-build/puku/logging"
 	"github.com/please-build/puku/migrate"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/proxy"
+	"github.com/please-build/puku/sync"
 	"github.com/please-build/puku/watch"
 	"github.com/please-build/puku/work"
 )

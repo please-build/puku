@@ -1,9 +1,6 @@
 package syncmod
 
 import (
-	"github.com/please-build/puku/licences"
-	"github.com/please-build/puku/proxy"
-	"github.com/please-build/puku/sync"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,7 +11,10 @@ import (
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/graph"
+	"github.com/please-build/puku/licences"
 	"github.com/please-build/puku/please"
+	"github.com/please-build/puku/proxy"
+	"github.com/please-build/puku/sync"
 )
 
 func TestModSync(t *testing.T) {
@@ -66,7 +66,6 @@ func TestModSync(t *testing.T) {
 			// All rules start off at v0.0.1 and should be updated to v1.0.0 as per the go.mod
 			assert.Equal(t, expectedVers[repoRule.AttrString("module")], repoRule.AttrString("version"))
 		})
-
 	}
 
 	dlRules := thirdPartyBuildFile.Rules("go_mod_download")

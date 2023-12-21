@@ -1,9 +1,10 @@
 package edit
 
 import (
+	"strings"
+
 	"github.com/please-build/buildtools/build"
 	"github.com/please-build/buildtools/edit"
-	"strings"
 )
 
 func EnsureSubinclude(file *build.File) {
