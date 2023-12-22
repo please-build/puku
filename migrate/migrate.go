@@ -25,7 +25,7 @@ func New(conf *config.Config, plzConf *please.Config) *Migrate {
 	}
 }
 
-// Migrate replaces go_module rules with the equivalent go_repo rules, generating filegroup writeAliases where appropriate
+// Migrate replaces go_module rules with the equivalent go_repo rules, generating filegroup replacePartsWithAliases where appropriate
 type Migrate struct {
 	graph            *graph.Graph
 	thirdPartyFolder string
@@ -96,13 +96,6 @@ func (p *moduleParts) deps() []string {
 	return deps
 }
 
-func (p *moduleParts) allRules() []*pkgRule {
-	if p.download == nil {
-		return append(p.parts, p.binaryParts...)
-	}
-	return append(append(p.parts, p.binaryParts...), p.download)
-}
-
 func binaryAlias(module, thirdPartyDir string, part *pkgRule) (*build.Rule, error) {
 	rule := edit.NewRuleExpr("filegroup", part.rule.Name())
 	rule.SetAttr("binary", &build.Ident{Name: "True"})
@@ -146,10 +139,7 @@ func (m *Migrate) genRules(modules []string) error {
 	// If we're not migrating specific modules, do all of them
 	if len(modules) == 0 {
 		for _, parts := range m.moduleRules {
-			if err := deleteRules(parts, m.graph); err != nil {
-				return err
-			}
-			if err := m.genRule(parts, nil); err != nil {
+			if err := m.replaceRules(parts, nil); err != nil {
 				return err
 			}
 		}
@@ -160,10 +150,7 @@ func (m *Migrate) genRules(modules []string) error {
 		if !ok {
 			return fmt.Errorf("couldn't find go_module rules for %v", mod)
 		}
-		if err := deleteRules(parts, m.graph); err != nil {
-			return err
-		}
-		if err := m.genRule(parts, modules); err != nil {
+		if err := m.replaceRules(parts, modules); err != nil {
 			return err
 		}
 	}
@@ -171,22 +158,20 @@ func (m *Migrate) genRules(modules []string) error {
 	return nil
 }
 
-func deleteRules(parts *moduleParts, g *graph.Graph) error {
-	for _, part := range parts.allRules() {
-		file, err := g.LoadFile(part.pkg)
-		if err != nil {
-			return err
+func ruleIdx(file *build.File, rule *build.Rule) int {
+	for idx, expr := range file.Stmt {
+		if expr == rule.Call {
+			return idx
 		}
-
-		file.DelRules(part.rule.Kind(), part.rule.Name())
 	}
-	return nil
+	return -1
 }
 
-func (m *Migrate) genRule(p *moduleParts, modsBeingMigrated []string) error {
+func (m *Migrate) replaceRules(p *moduleParts, modsBeingMigrated []string) error {
 	download := ""
 	var version string
 	var patches []string
+	var licences []string
 	var name = strings.ReplaceAll(p.module, "/", "_")
 
 	thirdPartyFile, err := m.graph.LoadFile(m.thirdPartyFolder)
@@ -198,19 +183,23 @@ func (m *Migrate) genRule(p *moduleParts, modsBeingMigrated []string) error {
 	// import path of the module e.g. for when we've forked a module similar to how replace works in go.mods.
 	if p.download != nil && p.module != p.download.rule.AttrString("module") {
 		download = labels.Shorten(generate.BuildTarget(p.download.rule.Name(), p.download.pkg, ""), m.thirdPartyFolder)
-		// Add the download rule back in as we still need this
-		thirdPartyFile.Stmt = append(thirdPartyFile.Stmt, p.download.rule.Call)
 		if len(p.parts) == 1 {
 			name = p.parts[0].rule.Name()
 		}
+	} else if p.download != nil {
+		// Otherwise we don't need the download rule anymore
+		downloadIdx := ruleIdx(thirdPartyFile, p.download.rule)
+		thirdPartyFile.Stmt = append(thirdPartyFile.Stmt[:downloadIdx], thirdPartyFile.Stmt[downloadIdx+1:]...)
 	}
 
 	if p.download != nil {
 		version = p.download.rule.AttrString("version")
 		patches = p.download.rule.AttrStrings("patches")
+		licences = p.download.rule.AttrStrings("licences")
 	} else if len(p.parts) > 0 {
 		if len(p.parts) == 1 {
 			patches = p.parts[0].rule.AttrStrings("patches")
+			licences = p.parts[0].rule.AttrStrings("licences")
 		}
 		for _, p := range p.parts {
 			v := p.rule.AttrString("version")
@@ -230,7 +219,10 @@ func (m *Migrate) genRule(p *moduleParts, modsBeingMigrated []string) error {
 		}
 	}
 
-	if len(p.parts) == 1 && p.parts[0].pkg == m.thirdPartyFolder {
+	// When we have just one part, and that part is in the third party folder, we don't need to use filegroups for
+	// aliases. We can directly replace the module part with the go_repo rule.
+	shouldReplaceFirstPartWithRepoRule := len(p.parts) == 1 && p.parts[0].pkg == m.thirdPartyFolder
+	if shouldReplaceFirstPartWithRepoRule {
 		name = p.parts[0].rule.Name()
 	}
 
@@ -239,7 +231,7 @@ func (m *Migrate) genRule(p *moduleParts, modsBeingMigrated []string) error {
 		return err
 	}
 
-	thirdPartyFile.Stmt = append(thirdPartyFile.Stmt, newGoRepoRule(
+	repoRule := newGoRepoRule(
 		p.module,
 		version,
 		download,
@@ -247,13 +239,23 @@ func (m *Migrate) genRule(p *moduleParts, modsBeingMigrated []string) error {
 		p.installs(),
 		patches,
 		deps,
-	).Call)
+		licences,
+	)
+	if shouldReplaceFirstPartWithRepoRule {
+		idx := ruleIdx(thirdPartyFile, p.parts[0].rule)
+		thirdPartyFile.Stmt[idx] = repoRule.Call
+	} else {
+		idx := ruleIdx(thirdPartyFile, append(p.parts, p.binaryParts...)[0].rule)
+		thirdPartyFile.Stmt = append(append(thirdPartyFile.Stmt[:idx], repoRule.Call), thirdPartyFile.Stmt[idx:]...)
+	}
 
-	if err := m.writeAliases(p); err != nil {
+	thirdPartyFile.Stmt = append(thirdPartyFile.Stmt)
+
+	if err := m.replacePartsWithAliases(p); err != nil {
 		return err
 	}
 
-	return m.writeBinaryAliases(p)
+	return m.replaceBinaryWithAliases(p)
 }
 
 // modDeps returns any dependencies of this rule that are go_modules
@@ -291,7 +293,7 @@ func (m *Migrate) modDeps(deps, modsBeingMigrated []string) ([]string, error) {
 	return goModDeps, nil
 }
 
-func (m *Migrate) writeAliases(p *moduleParts) error {
+func (m *Migrate) replacePartsWithAliases(p *moduleParts) error {
 	if len(p.parts) == 1 && p.parts[0].pkg == m.thirdPartyFolder {
 		return nil
 	}
@@ -310,12 +312,12 @@ func (m *Migrate) writeAliases(p *moduleParts) error {
 			return err
 		}
 
-		f.Stmt = append(f.Stmt, rule.Call)
+		f.Stmt[ruleIdx(f, part.rule)] = rule.Call
 	}
 	return nil
 }
 
-func (m *Migrate) writeBinaryAliases(p *moduleParts) error {
+func (m *Migrate) replaceBinaryWithAliases(p *moduleParts) error {
 	for _, part := range p.binaryParts {
 		rule, err := binaryAlias(p.module, m.thirdPartyFolder, part)
 		if err != nil {
@@ -326,12 +328,12 @@ func (m *Migrate) writeBinaryAliases(p *moduleParts) error {
 			return err
 		}
 
-		f.Stmt = append(f.Stmt, rule.Call)
+		f.Stmt[ruleIdx(f, part.rule)] = rule.Call
 	}
 	return nil
 }
 
-func newGoRepoRule(module, version, download, name string, install, patches, deps []string) *build.Rule {
+func newGoRepoRule(module, version, download, name string, install, patches, deps []string, licences []string) *build.Rule {
 	expr := &build.CallExpr{
 		X: &build.Ident{Name: "go_repo"},
 		List: []build.Expr{
@@ -346,6 +348,9 @@ func newGoRepoRule(module, version, download, name string, install, patches, dep
 	}
 	if len(deps) != 0 {
 		expr.List = append(expr.List, edit.NewAssignExpr("deps", edit.NewStringList(deps)))
+	}
+	if len(licences) != 0 {
+		expr.List = append(expr.List, edit.NewAssignExpr("licences", edit.NewStringList(licences)))
 	}
 
 	if download != "" {
