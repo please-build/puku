@@ -129,13 +129,13 @@ func (m *Migrate) Migrate(write bool, modules []string, paths ...string) error {
 	}
 
 	// Now we can generate all the rules we need
-	if err := m.genRules(modules); err != nil {
+	if err := m.replaceRulesForModules(modules); err != nil {
 		return err
 	}
 	return m.graph.FormatFiles(write, os.Stdout)
 }
 
-func (m *Migrate) genRules(modules []string) error {
+func (m *Migrate) replaceRulesForModules(modules []string) error {
 	// If we're not migrating specific modules, do all of them
 	if len(modules) == 0 {
 		for _, parts := range m.moduleRules {
@@ -246,10 +246,10 @@ func (m *Migrate) replaceRules(p *moduleParts, modsBeingMigrated []string) error
 		thirdPartyFile.Stmt[idx] = repoRule.Call
 	} else {
 		idx := ruleIdx(thirdPartyFile, append(p.parts, p.binaryParts...)[0].rule)
-		thirdPartyFile.Stmt = append(append(thirdPartyFile.Stmt[:idx], repoRule.Call), thirdPartyFile.Stmt[idx:]...)
+		var stmts []build.Expr // Make sure this is a new slice otherwise we'll modify the underlying slice
+		stmts = append(append(stmts, thirdPartyFile.Stmt[:idx]...), repoRule.Call)
+		thirdPartyFile.Stmt = append(stmts, thirdPartyFile.Stmt[idx:]...)
 	}
-
-	thirdPartyFile.Stmt = append(thirdPartyFile.Stmt)
 
 	if err := m.replacePartsWithAliases(p); err != nil {
 		return err
@@ -327,8 +327,8 @@ func (m *Migrate) replaceBinaryWithAliases(p *moduleParts) error {
 		if err != nil {
 			return err
 		}
-
-		f.Stmt[ruleIdx(f, part.rule)] = rule.Call
+		idx := ruleIdx(f, part.rule)
+		f.Stmt[idx] = rule.Call
 	}
 	return nil
 }
