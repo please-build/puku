@@ -245,10 +245,15 @@ func (m *Migrate) replaceRules(p *moduleParts, modsBeingMigrated []string) error
 		idx := ruleIdx(thirdPartyFile, p.parts[0].rule)
 		thirdPartyFile.Stmt[idx] = repoRule.Call
 	} else {
-		idx := ruleIdx(thirdPartyFile, append(p.parts, p.binaryParts...)[0].rule)
-		var stmts []build.Expr // Make sure this is a new slice otherwise we'll modify the underlying slice
-		stmts = append(append(stmts, thirdPartyFile.Stmt[:idx]...), repoRule.Call)
-		thirdPartyFile.Stmt = append(stmts, thirdPartyFile.Stmt[idx:]...)
+		part := append(p.parts, p.binaryParts...)[0]
+		if part.pkg == m.thirdPartyFolder {
+			idx := ruleIdx(thirdPartyFile, part.rule)
+			var stmts []build.Expr // Make sure this is a new slice otherwise we'll modify the underlying slice
+			stmts = append(append(stmts, thirdPartyFile.Stmt[:idx]...), repoRule.Call)
+			thirdPartyFile.Stmt = append(stmts, thirdPartyFile.Stmt[idx:]...)
+		} else {
+			thirdPartyFile.Stmt = append(thirdPartyFile.Stmt, repoRule.Call)
+		}
 	}
 
 	if err := m.replacePartsWithAliases(p); err != nil {
