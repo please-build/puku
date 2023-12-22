@@ -7,6 +7,9 @@ go_library(
         "//licences:all",
         "//migrate:all",
         "//modfile:all",
+        "//cmd/puku:all",
+        "//sync:all",
+        "//sync/integration/syncmod:all",
     ],
     deps = [
         "///third_party/go/github.com_please-build_buildtools//build",

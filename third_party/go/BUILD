@@ -44,7 +44,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/term",
-    version = "v0.13.0",
+    version = "v0.15.0",
 )
 
 go_repo(
@@ -137,7 +137,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/sys",
-    version = "v0.14.0",
+    version = "v0.15.0",
 )
 
 go_repo(
@@ -155,7 +155,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/net",
-    version = "v0.17.0",
+    version = "v0.19.0",
 )
 
 go_repo(
@@ -185,6 +185,7 @@ go_repo(
         "//migrate:all",
         "//trie:all",
         "//work:all",
+        "//sync/integration/syncmod:all",
     ],
 )
 
@@ -215,7 +216,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/tools",
-    version = "v0.14.0",
+    version = "v0.16.1",
 )
 
 go_repo(
@@ -281,7 +282,7 @@ go_repo(
 go_repo(
     licences = ["Apache-2.0"],
     module = "github.com/go-logr/logr",
-    version = "v1.3.0",
+    version = "v1.4.1",
 )
 
 go_repo(

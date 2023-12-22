@@ -10,6 +10,7 @@ go_library(
         "//graph:all",
         "//licences:all",
         "//migrate:all",
+        "//sync:all",
     ],
     deps = [
         "///third_party/go/github.com_please-build_buildtools//build",

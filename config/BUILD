@@ -10,6 +10,8 @@ go_library(
         "//graph:all",
         "//migrate:all",
         "//work:all",
+        "//sync:all",
+        "//sync/integration/syncmod:all",
     ],
     deps = ["//kinds"],
 )
