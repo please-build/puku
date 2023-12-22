@@ -1,3 +1,9 @@
+Version 1.4.0
+------------
+    * Migrate now inserts rules in the same place as the rules it's replacing (#90)
+    * Sync now works with multiple third party folders, only sycing modules to the
+      main third party build file (#89)
+
 Version 1.3.3
 ------------
     * Fix check for detecting if we're using go_module (#87)
