@@ -20,7 +20,6 @@ import (
 	"github.com/please-build/puku/logging"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/proxy"
-	"github.com/please-build/puku/sync"
 	"github.com/please-build/puku/trie"
 )
 
@@ -47,7 +46,6 @@ type Update struct {
 
 	proxy    Proxy
 	licences *licences.Licenses
-	sync     *sync.Sync
 }
 
 func NewUpdate(write bool, plzConf *please.Config) *Update {
@@ -67,7 +65,6 @@ func NewUpdateWithGraph(write bool, conf *please.Config, g *graph.Graph) *Update
 		plzConf:         conf,
 		eval:            eval.New(glob.New()),
 		graph:           g,
-		sync:            sync.New(conf, g, l, write),
 	}
 }
 
@@ -86,10 +83,6 @@ func (u *Update) Update(paths ...string) error {
 
 	if err := u.update(conf); err != nil {
 		return err
-	}
-
-	if err := u.sync.Sync(); err != nil {
-		return fmt.Errorf("failed to sync go.mod: %w", err)
 	}
 
 	return u.graph.FormatFiles(u.write, os.Stdout)
