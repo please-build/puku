@@ -2,8 +2,6 @@ package migrate
 
 import (
 	"fmt"
-	"github.com/please-build/puku/licences"
-	"github.com/please-build/puku/proxy"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +14,9 @@ import (
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/generate"
 	"github.com/please-build/puku/graph"
+	"github.com/please-build/puku/licences"
 	"github.com/please-build/puku/please"
+	"github.com/please-build/puku/proxy"
 )
 
 func New(conf *config.Config, plzConf *please.Config) *Migrate {
