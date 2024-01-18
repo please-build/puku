@@ -29,7 +29,6 @@ go_library(
         "//please",
         "//proxy",
         "//trie",
-        "//sync",
     ],
 )
 

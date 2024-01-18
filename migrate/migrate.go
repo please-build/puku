@@ -241,7 +241,7 @@ func (m *Migrate) replaceRules(p *moduleParts, modsBeingMigrated []string) error
 		return err
 	}
 
-	if len(licences) == 0 {
+	if len(licences) == 0 && m.licences != nil {
 		licences, _ = m.licences.Get(p.module, version)
 	}
 
