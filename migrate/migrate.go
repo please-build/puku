@@ -95,7 +95,7 @@ func (p *moduleParts) deps() []string {
 		ds := part.rule.AttrStrings("deps")
 		for _, dep := range ds {
 			if _, ok := done[dep]; !ok {
-				deps = append(deps, dep)
+				deps = append(deps, labels.ParseRelative(dep, part.pkg).Format())
 				done[dep] = struct{}{}
 			}
 		}
@@ -146,23 +146,36 @@ func (m *Migrate) replaceRulesForModules(modules []string) error {
 	// If we're not migrating specific modules, do all of them
 	if len(modules) == 0 {
 		for _, parts := range m.moduleRules {
-			if err := m.replaceRules(parts, nil); err != nil {
+			if err := m.replaceRules(parts); err != nil {
 				return err
 			}
 		}
 	}
 
-	for _, mod := range modules {
-		parts, ok := m.moduleRules[mod]
-		if !ok {
-			return fmt.Errorf("couldn't find go_module rules for %v", mod)
-		}
-		if err := m.replaceRules(parts, modules); err != nil {
-			return err
-		}
+	// Otherwise migrate the targeted modules, and their dependencies
+	return m.migrateTransitively(modules)
+}
+
+func (m *Migrate) migrateTransitively(mods []string) error {
+	if len(mods) == 0 {
+		return nil
 	}
 
-	return nil
+	parts, ok := m.moduleRules[mods[0]]
+	if !ok {
+		return fmt.Errorf("couldn't find go_module rules for %v", mods[0])
+	}
+
+	if err := m.replaceRules(parts); err != nil {
+		return err
+	}
+
+	// Get any modules that this module depends on that are still go_module targets
+	deps, err := m.goModuleDepsModName(parts.deps(), mods)
+	if err != nil {
+		return err
+	}
+	return m.migrateTransitively(append(mods[1:], deps...))
 }
 
 func ruleIdx(file *build.File, rule *build.Rule) int {
@@ -174,7 +187,7 @@ func ruleIdx(file *build.File, rule *build.Rule) int {
 	return -1
 }
 
-func (m *Migrate) replaceRules(p *moduleParts, modsBeingMigrated []string) error {
+func (m *Migrate) replaceRules(p *moduleParts) error {
 	download := ""
 	var version string
 	var patches []string
@@ -236,10 +249,6 @@ func (m *Migrate) replaceRules(p *moduleParts, modsBeingMigrated []string) error
 		name = p.parts[0].rule.Name()
 	}
 
-	deps, err := m.modDeps(p.deps(), modsBeingMigrated)
-	if err != nil {
-		return err
-	}
 
 	if len(licences) == 0 && m.licences != nil {
 		licences, _ = m.licences.Get(p.module, version)
@@ -253,7 +262,6 @@ func (m *Migrate) replaceRules(p *moduleParts, modsBeingMigrated []string) error
 			name,
 			p.installs(),
 			patches,
-			deps,
 			licences,
 		)
 		if shouldReplaceFirstPartWithRepoRule {
@@ -279,9 +287,9 @@ func (m *Migrate) replaceRules(p *moduleParts, modsBeingMigrated []string) error
 	return m.replaceBinaryWithAliases(p)
 }
 
-// modDeps returns any dependencies of this rule that are go_modules
-func (m *Migrate) modDeps(deps, modsBeingMigrated []string) ([]string, error) {
-	// If we don't pass any mods then we are migrating all modules so we shouldn't have any deps
+// goModuleDepsModName returns the module names of any dependencies of this rule that still go_modules
+func (m *Migrate) goModuleDepsModName(deps, modsBeingMigrated []string) ([]string, error) {
+	// If we don't pass any mods then we are migrating all transitiveModules so we shouldn't have any deps
 	if len(modsBeingMigrated) == 0 {
 		return nil, nil
 	}
@@ -304,11 +312,13 @@ func (m *Migrate) modDeps(deps, modsBeingMigrated []string) ([]string, error) {
 			continue
 		}
 		if rule.Kind() == "go_module" {
+			modName := rule.AttrString("module")
 			// Check if this guy is going to be rewritten as a go_repo by the end of this
-			if _, ok := modsInScope[rule.AttrString("module")]; ok {
+			if _, ok := modsInScope[modName]; ok {
 				continue
 			}
-			goModDeps = append(goModDeps, label.FormatRelative(m.thirdPartyFolder))
+			modsInScope[modName] = struct{}{}
+			goModDeps = append(goModDeps, modName)
 		}
 	}
 	return goModDeps, nil
@@ -354,7 +364,7 @@ func (m *Migrate) replaceBinaryWithAliases(p *moduleParts) error {
 	return nil
 }
 
-func newGoRepoRule(module, version, download, name string, install, patches, deps []string, licences []string) *build.Rule {
+func newGoRepoRule(module, version, download, name string, install, patches, licences []string) *build.Rule {
 	expr := &build.CallExpr{
 		X: &build.Ident{Name: "go_repo"},
 		List: []build.Expr{
@@ -366,9 +376,6 @@ func newGoRepoRule(module, version, download, name string, install, patches, dep
 	}
 	if len(install) != 0 {
 		expr.List = append(expr.List, edit.NewAssignExpr("install", edit.NewStringList(install)))
-	}
-	if len(deps) != 0 {
-		expr.List = append(expr.List, edit.NewAssignExpr("deps", edit.NewStringList(deps)))
 	}
 	if len(licences) != 0 {
 		expr.List = append(expr.List, edit.NewAssignExpr("licences", edit.NewStringList(licences)))
