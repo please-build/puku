@@ -284,16 +284,16 @@ func (m *Migrate) replaceRules(p *moduleParts) error {
 		}
 	}
 
+	if len(licences) == 0 && m.licences != nil {
+		licences, _ = m.licences.Get(p.module, version)
+	}
+
 	// Add a go_repo rule unless we already had a go_repo target. This can happen when there are duplicate targets for
 	// the same module that don't share a download rule.
 	if _, ok := m.existingRepoRules[p.module]; !ok {
 		if err := m.addNewRepoRule(name, version, download, patches, licences, p); err != nil {
 			return err
 		}
-	}
-
-	if len(licences) == 0 && m.licences != nil {
-		licences, _ = m.licences.Get(p.module, version)
 	}
 
 	if err := m.replacePartsWithAliases(p); err != nil {
