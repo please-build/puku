@@ -1,3 +1,12 @@
+Version 1.5.0
+------------
+    * Migrate: Avoid duplicating `go_repo()` targets when migrating a module where
+      we already have a `go_repo()` target for whatever reason (#93)
+    * Migrate: When migrating a `go_module()` that depends on other `go_module()`
+      targets, just migrate those modules as well, rather than trying to set `deps`
+      on `go_repo()`. The `deps` approach didn't work as well as hoped, and is not
+      recommended. (#94)
+
 Version 1.4.1
 ------------
     * Don't sync go.mod on save
