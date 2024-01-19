@@ -145,7 +145,7 @@ func (m *Migrate) replaceRulesForModules(modules []string) error {
 		}
 	}
 
-	// Otherwise migrate the targetted modules, and their depdendencies
+	// Otherwise migrate the targeted modules, and their dependencies
 	return m.migrateTransitively(modules)
 }
 
