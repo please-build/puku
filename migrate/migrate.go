@@ -14,22 +14,29 @@ import (
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/generate"
 	"github.com/please-build/puku/graph"
+	"github.com/please-build/puku/licences"
 	"github.com/please-build/puku/please"
+	"github.com/please-build/puku/proxy"
 )
 
 func New(conf *config.Config, plzConf *please.Config) *Migrate {
+	g := graph.New(plzConf.BuildFileNames())
 	return &Migrate{
-		graph:            graph.New(plzConf.BuildFileNames()),
-		thirdPartyFolder: conf.GetThirdPartyDir(),
-		moduleRules:      map[string]*moduleParts{},
+		graph:             g,
+		thirdPartyFolder:  conf.GetThirdPartyDir(),
+		moduleRules:       map[string]*moduleParts{},
+		licences:          licences.New(proxy.New(proxy.DefaultURL), g),
+		existingRepoRules: map[string]*build.Rule{},
 	}
 }
 
 // Migrate replaces go_module rules with the equivalent go_repo rules, generating filegroup replacePartsWithAliases where appropriate
 type Migrate struct {
-	graph            *graph.Graph
-	thirdPartyFolder string
-	moduleRules      map[string]*moduleParts
+	graph             *graph.Graph
+	thirdPartyFolder  string
+	moduleRules       map[string]*moduleParts
+	existingRepoRules map[string]*build.Rule
+	licences          *licences.Licenses
 }
 
 // pkgRule represents the rule expr in a pkg
@@ -180,6 +187,48 @@ func ruleIdx(file *build.File, rule *build.Rule) int {
 	return -1
 }
 
+func (m *Migrate) addNewRepoRule(name, version, download string, patches, licences []string, p *moduleParts) error {
+	thirdPartyFile, err := m.graph.LoadFile(m.thirdPartyFolder)
+	if err != nil {
+		return err
+	}
+
+	// When we have just one part, and that part is in the third party folder, we don't need to use filegroups for
+	// aliases. We can directly replace the module part with the go_repo rule.
+	shouldReplaceFirstPartWithRepoRule := len(p.parts) == 1 && p.parts[0].pkg == m.thirdPartyFolder
+	if shouldReplaceFirstPartWithRepoRule {
+		name = p.parts[0].rule.Name()
+	}
+
+	repoRule := newGoRepoRule(
+		p.module,
+		version,
+		download,
+		name,
+		p.installs(),
+		patches,
+		licences,
+	)
+
+	if shouldReplaceFirstPartWithRepoRule {
+		idx := ruleIdx(thirdPartyFile, p.parts[0].rule)
+		thirdPartyFile.Stmt[idx] = repoRule.Call
+		return nil
+	}
+
+	part := append(p.parts, p.binaryParts...)[0]
+	if part.pkg != m.thirdPartyFolder {
+		thirdPartyFile.Stmt = append(thirdPartyFile.Stmt, repoRule.Call)
+		return nil
+	}
+
+	idx := ruleIdx(thirdPartyFile, part.rule)
+	var stmts []build.Expr // Make sure this is a new slice otherwise we'll modify the underlying slice
+	stmts = append(append(stmts, thirdPartyFile.Stmt[:idx]...), repoRule.Call)
+	thirdPartyFile.Stmt = append(stmts, thirdPartyFile.Stmt[idx:]...)
+	return nil
+}
+
 func (m *Migrate) replaceRules(p *moduleParts) error {
 	download := ""
 	var version string
@@ -202,7 +251,10 @@ func (m *Migrate) replaceRules(p *moduleParts) error {
 	} else if p.download != nil {
 		// Otherwise we don't need the download rule anymore
 		downloadIdx := ruleIdx(thirdPartyFile, p.download.rule)
-		thirdPartyFile.Stmt = append(thirdPartyFile.Stmt[:downloadIdx], thirdPartyFile.Stmt[downloadIdx+1:]...)
+		// The rule might've been removed already
+		if downloadIdx != -1 {
+			thirdPartyFile.Stmt = append(thirdPartyFile.Stmt[:downloadIdx], thirdPartyFile.Stmt[downloadIdx+1:]...)
+		}
 	}
 
 	if p.download != nil {
@@ -232,34 +284,15 @@ func (m *Migrate) replaceRules(p *moduleParts) error {
 		}
 	}
 
-	// When we have just one part, and that part is in the third party folder, we don't need to use filegroups for
-	// aliases. We can directly replace the module part with the go_repo rule.
-	shouldReplaceFirstPartWithRepoRule := len(p.parts) == 1 && p.parts[0].pkg == m.thirdPartyFolder
-	if shouldReplaceFirstPartWithRepoRule {
-		name = p.parts[0].rule.Name()
+	if len(licences) == 0 && m.licences != nil {
+		licences, _ = m.licences.Get(p.module, version)
 	}
 
-	repoRule := newGoRepoRule(
-		p.module,
-		version,
-		download,
-		name,
-		p.installs(),
-		patches,
-		licences,
-	)
-	if shouldReplaceFirstPartWithRepoRule {
-		idx := ruleIdx(thirdPartyFile, p.parts[0].rule)
-		thirdPartyFile.Stmt[idx] = repoRule.Call
-	} else {
-		part := append(p.parts, p.binaryParts...)[0]
-		if part.pkg == m.thirdPartyFolder {
-			idx := ruleIdx(thirdPartyFile, part.rule)
-			var stmts []build.Expr // Make sure this is a new slice otherwise we'll modify the underlying slice
-			stmts = append(append(stmts, thirdPartyFile.Stmt[:idx]...), repoRule.Call)
-			thirdPartyFile.Stmt = append(stmts, thirdPartyFile.Stmt[idx:]...)
-		} else {
-			thirdPartyFile.Stmt = append(thirdPartyFile.Stmt, repoRule.Call)
+	// Add a go_repo rule unless we already had a go_repo target. This can happen when there are duplicate targets for
+	// the same module that don't share a download rule.
+	if _, ok := m.existingRepoRules[p.module]; !ok {
+		if err := m.addNewRepoRule(name, version, download, patches, licences, p); err != nil {
+			return err
 		}
 	}
 
@@ -420,6 +453,9 @@ func (m *Migrate) readModuleRules(f *build.File, pkg string) error {
 		} else {
 			mod.parts = append(mod.parts, &pkgRule{pkg: pkg, rule: rule})
 		}
+	}
+	for _, rule := range f.Rules("go_repo") {
+		m.existingRepoRules[rule.AttrString("module")] = rule
 	}
 	return nil
 }

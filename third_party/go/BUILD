@@ -44,7 +44,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/term",
-    version = "v0.15.0",
+    version = "v0.16.0",
 )
 
 go_repo(
@@ -56,7 +56,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "google.golang.org/protobuf",
-    version = "v1.31.0",
+    version = "v1.32.0",
 )
 
 go_repo(
@@ -137,7 +137,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/sys",
-    version = "v0.15.0",
+    version = "v0.16.0",
 )
 
 go_repo(
@@ -155,7 +155,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/net",
-    version = "v0.19.0",
+    version = "v0.20.0",
 )
 
 go_repo(
@@ -193,7 +193,7 @@ go_mod_download(
     name = "build_tools_dl",
     licences = ["Apache-2.0"],
     module = "github.com/peterebden/buildtools",
-    version = "v0.0.0-20231122153602-22bdf3fe4f1d",
+    version = "v0.0.0-20240111140234-77ffe55926d9",
 )
 
 go_repo(
@@ -216,7 +216,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/tools",
-    version = "v0.16.1",
+    version = "v0.17.0",
 )
 
 go_repo(
@@ -228,7 +228,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/sync",
-    version = "v0.5.0",
+    version = "v0.6.0",
 )
 
 go_repo(
@@ -312,5 +312,5 @@ go_repo(
 go_repo(
     licences = ["Apache-2.0"],
     module = "k8s.io/klog/v2",
-    version = "v2.110.1",
+    version = "v2.120.1",
 )

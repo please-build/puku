@@ -6,6 +6,7 @@ go_library(
         "//generate:all",
         "//sync:all",
         "//sync/integration/syncmod:all",
+        "//migrate:all",
     ],
     deps = [
         "///third_party/go/github.com_google_go-licenses//licenses",
