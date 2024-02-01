@@ -249,7 +249,7 @@ func (m *Migrate) addModuleToGoMod(module string) error {
 	}
 
 	if len(outs) != 1 {
-		return fmt.Errorf("expected exacly one out from Plugin.Go.Modfile, got %v", len(outs))
+		return fmt.Errorf("expected exactly one out from Plugin.Go.Modfile, got %v", len(outs))
 	}
 
 	modFile := strings.TrimPrefix(outs[0], "plz-out/gen/")

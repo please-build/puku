@@ -65,7 +65,7 @@ func (s *Sync) syncModFile(conf *config.Config, file *build.File, exitingRules m
 	}
 
 	if len(outs) != 1 {
-		return fmt.Errorf("expected exacly one out from Plugin.Go.Modfile, got %v", len(outs))
+		return fmt.Errorf("expected exactly one out from Plugin.Go.Modfile, got %v", len(outs))
 	}
 
 	modFile := outs[0]
