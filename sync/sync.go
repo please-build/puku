@@ -83,8 +83,11 @@ func (s *Sync) syncModFile(conf *config.Config, file *build.File, exitingRules m
 		var replace *modfile.Replace
 		for _, r := range f.Replace {
 			if r.Old.Path == req.Mod.Path {
+				reqVersion = r.New.Version
+				if r.New.Path == req.Mod.Path { // we are just replacing version so don't need a replace
+					continue
+				}
 				replace = r
-				reqVersion = replace.New.Version
 			}
 		}
 
