@@ -31,7 +31,7 @@ go_module(
 	}
 	m.graph.SetFile("third_party/go", thirdPartyFile)
 
-	err = m.Migrate(false, nil, "third_party/go")
+	err = m.Migrate(false, false, nil, "third_party/go")
 	require.NoError(t, err)
 
 	rule := edit.FindTargetByName(thirdPartyFile, "test")
@@ -97,7 +97,7 @@ go_module(
 	}
 	m.graph.SetFile("third_party/go", thirdPartyFile)
 
-	err = m.Migrate(false, nil, "third_party/go")
+	err = m.Migrate(false, false, nil, "third_party/go")
 	require.NoError(t, err)
 
 	repoRules := thirdPartyFile.Rules("go_repo")
@@ -150,7 +150,7 @@ go_module(
 	}
 	m.graph.SetFile("third_party/go", thirdPartyFile)
 
-	err = m.Migrate(false, nil, "third_party/go")
+	err = m.Migrate(false, false, nil, "third_party/go")
 	require.NoError(t, err)
 
 	repoRule := edit.FindTargetByName(thirdPartyFile, "test")
@@ -189,7 +189,7 @@ go_module(
 	}
 	m.graph.SetFile("third_party/go", thirdPartyFile)
 
-	err = m.Migrate(false, nil, "third_party/go", "third_party/go/kubernetes")
+	err = m.Migrate(false, false, nil, "third_party/go", "third_party/go/kubernetes")
 	require.NoError(t, err)
 
 	repoRule := edit.FindTargetByName(thirdPartyFile, "k8s.io_api")
@@ -238,7 +238,7 @@ go_module(
 
 	m.graph.SetFile("third_party/go", thirdPartyFile)
 
-	err = m.Migrate(false, []string{"k8s.io/api"}, "third_party/go")
+	err = m.Migrate(false, false, []string{"k8s.io/api"}, "third_party/go")
 	require.NoError(t, err)
 
 	apiRule := edit.FindTargetByName(thirdPartyFile, "api")

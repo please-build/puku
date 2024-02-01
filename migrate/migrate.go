@@ -139,13 +139,13 @@ func (m *Migrate) Migrate(write bool, updateGoMod bool, modules []string, paths 
 	}
 
 	// Now we can generate all the rules we need
-	if err := m.replaceRulesForModules(write, updateGoMod, modules); err != nil {
+	if err := m.replaceRulesForModules(updateGoMod, modules); err != nil {
 		return err
 	}
 	return m.graph.FormatFiles(write, os.Stdout)
 }
 
-func (m *Migrate) replaceRulesForModules(write, updateGoMod bool, modules []string) error {
+func (m *Migrate) replaceRulesForModules(updateGoMod bool, modules []string) error {
 	// If we're not migrating specific modules, do all of them
 	if len(modules) == 0 {
 		for _, parts := range m.moduleRules {
