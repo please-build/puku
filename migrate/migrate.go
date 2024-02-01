@@ -234,17 +234,22 @@ func (m *Migrate) addNewRepoRule(name, version, download string, patches, licenc
 
 func (m *Migrate) addModuleToGoMod(module string) error {
 	if m.plzConf == nil {
-		return fmt.Errorf("No plzconfig found.")
+		return fmt.Errorf("no plzconfig found.")
+	}
+
+	modFileTarget := m.plzConf.ModFile()
+	if modFileTarget == "" {
+		return fmt.Errorf("couldn't find a Modfile target. go.mod file should be exposed as a build target, and then specified in the plzconfig under Plugin.Go.Modfile")
 	}
 
 	var conf config.Config
 	outs, err := please.Build(conf.GetPlzPath(), m.plzConf.ModFile())
 	if err != nil {
-		return fmt.Errorf("Could not find go mod file: %w", err)
+		return fmt.Errorf("failed to build Modfile target %s: %w", m.plzConf.ModFile(), err)
 	}
 
 	if len(outs) != 1 {
-		return fmt.Errorf("Expected exacly one out from Plugin.Go.Modfile, got %v", len(outs))
+		return fmt.Errorf("expected exacly one out from Plugin.Go.Modfile, got %v", len(outs))
 	}
 
 	modFile := strings.TrimPrefix(outs[0], "plz-out/gen/")
@@ -264,7 +269,7 @@ func (m *Migrate) replaceRules(updateGoMod bool, p *moduleParts) error {
 
 	if updateGoMod {
 		if err := m.addModuleToGoMod(p.module); err != nil {
-			return fmt.Errorf("Error while trying to add module %s to go mod: %w", p.module, err)
+			return fmt.Errorf("error while trying to add module %s to go mod: %w", p.module, err)
 		}
 	}
 
