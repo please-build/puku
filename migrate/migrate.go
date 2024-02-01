@@ -234,7 +234,7 @@ func (m *Migrate) addNewRepoRule(name, version, download string, patches, licenc
 
 func (m *Migrate) addModuleToGoMod(module string) error {
 	if m.plzConf == nil {
-		return fmt.Errorf("no plzconfig found.")
+		return fmt.Errorf("no plzconfig found")
 	}
 
 	modFileTarget := m.plzConf.ModFile()
