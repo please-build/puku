@@ -145,21 +145,52 @@ func (m *Migrate) Migrate(write bool, updateGoMod bool, modules []string, paths 
 	return m.graph.FormatFiles(write, os.Stdout)
 }
 
+// replaceRulesForModules takes a list of modules and replaces those modules and their dependencies
+// with go_repo rules. We might get 0, 1, or multiple modules passed in on the command line.
+//
+// If 0, we'll do a go get on any modules that we find that are defined as go_modules (we'll pass
+// them all to go get at once to allow go to do its thing), and then migrate them to go_repo.
+//
+// If 1, we will try to pick up the version that is specified in the BUILD file, go get the module
+// @ that version (thereby adding all dependencies to the go.mod as well), and then migrate that
+// module as well as its dependencies in the BUILD file.
+//
+// If multiple, we will do a go get on all of the passed-in modules at once to allow go get to weave
+// its version resolution magic, then we'll migrate all of the command-line modules and their
+// dependencies to go_repo.
 func (m *Migrate) replaceRulesForModules(updateGoMod bool, modules []string) error {
 	// If we're not migrating specific modules, do all of them
 	if len(modules) == 0 {
-		for _, parts := range m.moduleRules {
-			if err := m.replaceRules(updateGoMod, parts); err != nil {
-				return err
+		if updateGoMod {
+			var modules []string
+			for _, parts := range m.moduleRules {
+				modules = append(modules, parts.module)
 			}
+
+			if err := m.addModulesToGoMod(modules); err != nil {
+				return fmt.Errorf("error while adding modules to go mod: %w", err)
+			}
+		}
+
+		for _, parts := range m.moduleRules {
+			if err := m.replaceRules(parts); err != nil {
+				return fmt.Errorf("error replacing rule for module %s: %w", parts.module, err)
+			}
+		}
+
+	}
+
+	if updateGoMod {
+		if err := m.addModulesToGoMod(modules); err != nil {
+			return fmt.Errorf("error while adding modules to go mod: %w", err)
 		}
 	}
 
-	// Otherwise migrate the targeted modules, and their dependencies
-	return m.migrateTransitively(updateGoMod, modules)
+	return m.migrateTransitively(modules)
+
 }
 
-func (m *Migrate) migrateTransitively(updateGoMod bool, mods []string) error {
+func (m *Migrate) migrateTransitively(mods []string) error {
 	if len(mods) == 0 {
 		return nil
 	}
@@ -169,7 +200,7 @@ func (m *Migrate) migrateTransitively(updateGoMod bool, mods []string) error {
 		return fmt.Errorf("couldn't find go_module rules for %v", mods[0])
 	}
 
-	if err := m.replaceRules(updateGoMod, parts); err != nil {
+	if err := m.replaceRules(parts); err != nil {
 		return err
 	}
 
@@ -178,7 +209,7 @@ func (m *Migrate) migrateTransitively(updateGoMod bool, mods []string) error {
 	if err != nil {
 		return err
 	}
-	return m.migrateTransitively(updateGoMod, append(mods[1:], deps...))
+	return m.migrateTransitively(append(mods[1:], deps...))
 }
 
 func ruleIdx(file *build.File, rule *build.Rule) int {
@@ -232,7 +263,7 @@ func (m *Migrate) addNewRepoRule(name, version, download string, patches, licenc
 	return nil
 }
 
-func (m *Migrate) addModuleToGoMod(module string) error {
+func (m *Migrate) addModulesToGoMod(modules []string) error {
 	if m.plzConf == nil {
 		return fmt.Errorf("no plzconfig found")
 	}
@@ -254,24 +285,22 @@ func (m *Migrate) addModuleToGoMod(module string) error {
 
 	modFile := strings.TrimPrefix(outs[0], "plz-out/gen/")
 
-	cmd := exec.Command("go", "get", module)
+	modules = append([]string{"get"}, modules...)
+
+	cmd := exec.Command("go", modules...)
 	cmd.Dir = filepath.Dir(modFile)
 
 	return cmd.Run()
 }
 
-func (m *Migrate) replaceRules(updateGoMod bool, p *moduleParts) error {
+// replaceRules takes a module and replaces the corresponding go_module target (if it exists), with
+// a go_repo target.
+func (m *Migrate) replaceRules(p *moduleParts) error {
 	download := ""
 	var version string
 	var patches []string
 	var licences []string
 	var name = strings.ReplaceAll(p.module, "/", "_")
-
-	if updateGoMod {
-		if err := m.addModuleToGoMod(p.module); err != nil {
-			return fmt.Errorf("error while trying to add module %s to go mod: %w", p.module, err)
-		}
-	}
 
 	thirdPartyFile, err := m.graph.LoadFile(m.thirdPartyFolder)
 	if err != nil {
