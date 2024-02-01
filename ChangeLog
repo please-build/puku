@@ -1,3 +1,9 @@
+Version 1.5.1
+------------
+    * Sync: if we encounter a replace directive where the old path and new
+      path are the same don't delete the target as we can just update the
+      version.
+
 Version 1.5.0
 ------------
     * Migrate: Avoid duplicating `go_repo()` targets when migrating a module where
