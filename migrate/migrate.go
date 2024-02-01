@@ -264,7 +264,7 @@ func (m *Migrate) replaceRules(updateGoMod bool, p *moduleParts) error {
 
 	if updateGoMod {
 		if err := m.addModuleToGoMod(p.module); err != nil {
-			return fmt.Errorf("`go get` failed: %w", err)
+			return fmt.Errorf("Error while trying to add module %s to go mod: %w", p.module, err)
 		}
 	}
 
