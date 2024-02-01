@@ -3,6 +3,7 @@ package migrate
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -22,6 +23,7 @@ import (
 func New(conf *config.Config, plzConf *please.Config) *Migrate {
 	g := graph.New(plzConf.BuildFileNames())
 	return &Migrate{
+		plzConf:           plzConf,
 		graph:             g,
 		thirdPartyFolder:  conf.GetThirdPartyDir(),
 		moduleRules:       map[string]*moduleParts{},
@@ -32,6 +34,7 @@ func New(conf *config.Config, plzConf *please.Config) *Migrate {
 
 // Migrate replaces go_module rules with the equivalent go_repo rules, generating filegroup replacePartsWithAliases where appropriate
 type Migrate struct {
+	plzConf           *please.Config
 	graph             *graph.Graph
 	thirdPartyFolder  string
 	moduleRules       map[string]*moduleParts
@@ -120,7 +123,7 @@ func binaryAlias(module, thirdPartyDir string, part *pkgRule) (*build.Rule, erro
 	return rule, nil
 }
 
-func (m *Migrate) Migrate(write bool, modules []string, paths ...string) error {
+func (m *Migrate) Migrate(write bool, updateGoMod bool, modules []string, paths ...string) error {
 	// Read all the BUILD files under the provided paths to find go_module and go_mod_download rules
 	for _, path := range paths {
 		f, err := m.graph.LoadFile(path)
@@ -136,27 +139,27 @@ func (m *Migrate) Migrate(write bool, modules []string, paths ...string) error {
 	}
 
 	// Now we can generate all the rules we need
-	if err := m.replaceRulesForModules(modules); err != nil {
+	if err := m.replaceRulesForModules(write, updateGoMod, modules); err != nil {
 		return err
 	}
 	return m.graph.FormatFiles(write, os.Stdout)
 }
 
-func (m *Migrate) replaceRulesForModules(modules []string) error {
+func (m *Migrate) replaceRulesForModules(write, updateGoMod bool, modules []string) error {
 	// If we're not migrating specific modules, do all of them
 	if len(modules) == 0 {
 		for _, parts := range m.moduleRules {
-			if err := m.replaceRules(parts); err != nil {
+			if err := m.replaceRules(updateGoMod, parts); err != nil {
 				return err
 			}
 		}
 	}
 
 	// Otherwise migrate the targeted modules, and their dependencies
-	return m.migrateTransitively(modules)
+	return m.migrateTransitively(updateGoMod, modules)
 }
 
-func (m *Migrate) migrateTransitively(mods []string) error {
+func (m *Migrate) migrateTransitively(updateGoMod bool, mods []string) error {
 	if len(mods) == 0 {
 		return nil
 	}
@@ -166,7 +169,7 @@ func (m *Migrate) migrateTransitively(mods []string) error {
 		return fmt.Errorf("couldn't find go_module rules for %v", mods[0])
 	}
 
-	if err := m.replaceRules(parts); err != nil {
+	if err := m.replaceRules(updateGoMod, parts); err != nil {
 		return err
 	}
 
@@ -175,7 +178,7 @@ func (m *Migrate) migrateTransitively(mods []string) error {
 	if err != nil {
 		return err
 	}
-	return m.migrateTransitively(append(mods[1:], deps...))
+	return m.migrateTransitively(updateGoMod, append(mods[1:], deps...))
 }
 
 func ruleIdx(file *build.File, rule *build.Rule) int {
@@ -229,12 +232,41 @@ func (m *Migrate) addNewRepoRule(name, version, download string, patches, licenc
 	return nil
 }
 
-func (m *Migrate) replaceRules(p *moduleParts) error {
+func (m *Migrate) addModuleToGoMod(module string) error {
+	if m.plzConf == nil {
+		return fmt.Errorf("No plzconfig found.")
+	}
+
+	var conf config.Config
+	outs, err := please.Build(conf.GetPlzPath(), m.plzConf.ModFile())
+	if err != nil {
+		return fmt.Errorf("Error while trying to locate go mod: %w", err)
+	}
+
+	if len(outs) != 1 {
+		return fmt.Errorf("Expected exacly one out from Plugin.Go.Modfile, got %v", len(outs))
+	}
+
+	modFile := strings.TrimPrefix(outs[0], "plz-out/gen/")
+
+	cmd := exec.Command("go", "get", module)
+	cmd.Dir = filepath.Dir(modFile)
+
+	return cmd.Run()
+}
+
+func (m *Migrate) replaceRules(updateGoMod bool, p *moduleParts) error {
 	download := ""
 	var version string
 	var patches []string
 	var licences []string
 	var name = strings.ReplaceAll(p.module, "/", "_")
+
+	if updateGoMod {
+		if err := m.addModuleToGoMod(p.module); err != nil {
+			return fmt.Errorf("`go get` failed: %w", err)
+		}
+	}
 
 	thirdPartyFile, err := m.graph.LoadFile(m.thirdPartyFolder)
 	if err != nil {
