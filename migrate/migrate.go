@@ -240,7 +240,7 @@ func (m *Migrate) addModuleToGoMod(module string) error {
 	var conf config.Config
 	outs, err := please.Build(conf.GetPlzPath(), m.plzConf.ModFile())
 	if err != nil {
-		return fmt.Errorf("Error while trying to locate go mod: %w", err)
+		return fmt.Errorf("Could not find go mod file: %w", err)
 	}
 
 	if len(outs) != 1 {
