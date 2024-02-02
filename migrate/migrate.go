@@ -167,7 +167,7 @@ func (m *Migrate) replaceRulesForModules(updateGoMod bool, modules []string) err
 				modules = append(modules, parts.module)
 			}
 
-			if err := m.addModulesToGoMod(modules); err != nil {
+			if err := m.addModulesToGoMod(modules, nil); err != nil {
 				return fmt.Errorf("error while adding modules to go mod: %w", err)
 			}
 		}
@@ -181,7 +181,16 @@ func (m *Migrate) replaceRulesForModules(updateGoMod bool, modules []string) err
 	}
 
 	if updateGoMod {
-		if err := m.addModulesToGoMod(modules); err != nil {
+		var version *string
+		if len(modules) == 1 {
+			// Check if we can find a version on an existing go_module rule
+			if mod, ok := m.moduleRules[modules[0]]; ok {
+				v := mod.parts[0].rule.AttrString("version")
+				version = &v
+			}
+		}
+
+		if err := m.addModulesToGoMod(modules, version); err != nil {
 			return fmt.Errorf("error while adding modules to go mod: %w", err)
 		}
 	}
@@ -263,7 +272,7 @@ func (m *Migrate) addNewRepoRule(name, version, download string, patches, licenc
 	return nil
 }
 
-func (m *Migrate) addModulesToGoMod(modules []string) error {
+func (m *Migrate) addModulesToGoMod(modules []string, version *string) error {
 	if m.plzConf == nil {
 		return fmt.Errorf("no plzconfig found")
 	}
@@ -284,6 +293,15 @@ func (m *Migrate) addModulesToGoMod(modules []string) error {
 	}
 
 	modFile := strings.TrimPrefix(outs[0], "plz-out/gen/")
+
+	// if there's exactly one module, go get that module at the version passed in
+	if len(modules) == 1 && version != nil {
+		fmt.Printf("command: go %s\nin dir %s\n", fmt.Sprintf("get %s@%s", modules[0], *version), filepath.Dir(modFile))
+		cmd := exec.Command("go", fmt.Sprintf("get %s@%s", modules[0], *version))
+		cmd.Dir = filepath.Dir(modFile)
+
+		return cmd.Run()
+	}
 
 	modules = append([]string{"get"}, modules...)
 
