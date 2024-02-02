@@ -245,7 +245,7 @@ func (u *Update) addNewModules(conf *config.Config) error {
 // the source doesn't actually exist. In which case, this should be removed from the rule, as the user likely deleted
 // the file.
 func (u *Update) allSources(conf *config.Config, r *rule, sourceMap map[string]*GoFile) (passedSources []string, goFiles map[string]*GoFile, err error) {
-	srcs, err := u.eval.BuildSources(conf.GetPlzPath(), r.dir, r.Rule)
+	srcs, err := u.eval.BuildSources(conf.GetPlzPath(), r.dir, r.Rule, r.SrcsAttr())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -486,7 +486,7 @@ func (u *Update) unallocatedSources(srcs map[string]*GoFile, rules []*rule) ([]s
 				break
 			}
 
-			ruleSrcs, err := u.eval.EvalGlobs(rule.dir, rule.Rule)
+			ruleSrcs, err := u.eval.EvalGlobs(rule.dir, rule.Rule, rule.SrcsAttr())
 			if err != nil {
 				return nil, err
 			}

@@ -61,20 +61,26 @@ func (rule *rule) isTest() bool {
 	return rule.kind.Type == kinds.Test
 }
 
+func (rule *rule) SrcsAttr() string {
+	return rule.kind.SrcsAttr
+}
+
 func (rule *rule) addSrc(src string) {
-	srcs := rule.AttrStrings("srcs")
-	rule.setOrDeleteAttr("srcs", append(srcs, src))
+	srcsAttr := rule.SrcsAttr()
+	srcs := rule.AttrStrings(srcsAttr)
+	rule.setOrDeleteAttr(srcsAttr, append(srcs, src))
 }
 
 func (rule *rule) removeSrc(rem string) {
-	srcs := rule.AttrStrings("srcs")
+	srcsAttr := rule.SrcsAttr()
+	srcs := rule.AttrStrings(srcsAttr)
 	set := make([]string, 0, len(srcs))
 	for _, src := range srcs {
 		if src != rem {
 			set = append(set, src)
 		}
 	}
-	rule.setOrDeleteAttr("srcs", set)
+	rule.setOrDeleteAttr(srcsAttr, set)
 }
 
 func (rule *rule) setExternal() {
