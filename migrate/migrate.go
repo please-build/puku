@@ -149,15 +149,15 @@ func (m *Migrate) Migrate(write bool, updateGoMod bool, modules []string, paths 
 // with go_repo rules. We might get 0, 1, or multiple modules passed in on the command line.
 //
 // If 0, we'll do a go get on any modules that we find that are defined as go_modules (we'll pass
-// them all to go get at once to allow go to do its thing), and then migrate them to go_repo.
+// them all to go get at once to allow go to weave its version resolution magic), and then migrate
+// them to go_repo.
 //
-// If 1, we will try to pick up the version that is specified in the BUILD file, go get the module
-// @ that version (thereby adding all dependencies to the go.mod as well), and then migrate that
-// module as well as its dependencies in the BUILD file.
+// If 1, we will look to see if there is a version specified in the BUILD file under a corresponding
+// go_module, go get the module @ that version (thereby adding all dependencies to the go.mod as
+// well), and then migrate that module as well as its dependencies in the BUILD file.
 //
-// If multiple, we will do a go get on all of the passed-in modules at once to allow go get to weave
-// its version resolution magic, then we'll migrate all of the command-line modules and their
-// dependencies to go_repo.
+// If multiple, we will do a go get on all of the passed-in modules at once to allow go get to do
+// its thing, then we'll migrate all of the command-line modules and their dependencies to go_repo.
 func (m *Migrate) replaceRulesForModules(updateGoMod bool, modules []string) error {
 	// If we're not migrating specific modules, do all of them
 	if len(modules) == 0 {
@@ -177,9 +177,10 @@ func (m *Migrate) replaceRulesForModules(updateGoMod bool, modules []string) err
 				return fmt.Errorf("error replacing rule for module %s: %w", parts.module, err)
 			}
 		}
-
 	}
 
+	// The 1 module and multiple modules cases are handled together here because
+	// these both involve calls to migrateTransitively while the 0 modules case doesn't
 	if updateGoMod {
 		var version *string
 		if len(modules) == 1 {
@@ -196,7 +197,6 @@ func (m *Migrate) replaceRulesForModules(updateGoMod bool, modules []string) err
 	}
 
 	return m.migrateTransitively(modules)
-
 }
 
 func (m *Migrate) migrateTransitively(mods []string) error {

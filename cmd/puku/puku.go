@@ -45,7 +45,7 @@ var opts = struct {
 	Migrate struct {
 		Write          bool     `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
 		ThirdPartyDirs []string `long:"third_party_dir" description:"Directories to find go_module rules to migrate"`
-		UpdateGoMod    bool     `short:"g" long:"update_go_mod" description:"Update the go mod with the module that is being migrated"`
+		UpdateGoMod    bool     `short:"g" long:"update_go_mod" description:"Update the go mod with the module(s) being migrated"`
 		Args           struct {
 			Modules []string `positional-arg-name:"modules" description:"The modules to migrate to go_repo"`
 		} `positional-args:"true"`
