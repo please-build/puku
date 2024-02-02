@@ -74,8 +74,8 @@ func TestAddingLibDepToTest(t *testing.T) {
 		},
 	}
 
-	foo.SetAttr("srcs", edit.NewStringList([]string{"foo.go"}))
-	fooTest.SetAttr("srcs", edit.NewStringList([]string{"foo_test.go"}))
+	foo.SetAttr(foo.SrcsAttr(), edit.NewStringList([]string{"foo.go"}))
+	fooTest.SetAttr(fooTest.SrcsAttr(), edit.NewStringList([]string{"foo_test.go"}))
 
 	u := &Update{plzConf: new(please.Config)}
 	conf := &config.Config{PleasePath: "plz"}
@@ -87,8 +87,9 @@ func TestAddingLibDepToTest(t *testing.T) {
 
 func TestAllocateSourcesToCustomKind(t *testing.T) {
 	exampleKind := &kinds.Kind{
-		Name: "go_example_lib",
-		Type: kinds.Lib,
+		Name:     "go_example_lib",
+		Type:     kinds.Lib,
+		SrcsAttr: "go_srcs",
 	}
 
 	satKind := &kinds.Kind{
@@ -131,6 +132,7 @@ func TestAllocateSourcesToCustomKind(t *testing.T) {
 	assert.Len(t, newRules, 0)
 
 	assert.ElementsMatch(t, []string{"foo.go", "bar.go"}, mustGetSources(t, u, rules[0]))
+	assert.Equal(t, rules[0].SrcsAttr(), exampleKind.SrcsAttr)
 	assert.ElementsMatch(t, []string{"foo_test.go", "bar_test.go"}, mustGetSources(t, u, rules[1]))
 }
 
@@ -296,7 +298,7 @@ func TestUpdateDeps(t *testing.T) {
 			err := u.updateRuleDeps(conf, r, []*rule{}, files)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, tc.expectedDeps, r.AttrStrings("deps"))
-			assert.ElementsMatch(t, srcNames, r.AttrStrings("srcs"))
+			assert.ElementsMatch(t, srcNames, r.AttrStrings(r.SrcsAttr()))
 		})
 	}
 }
@@ -304,7 +306,7 @@ func TestUpdateDeps(t *testing.T) {
 func mustGetSources(t *testing.T, u *Update, rule *rule) []string {
 	t.Helper()
 
-	srcs, err := u.eval.EvalGlobs(rule.dir, rule.Rule)
+	srcs, err := u.eval.EvalGlobs(rule.dir, rule.Rule, rule.SrcsAttr())
 	require.NoError(t, err)
 	return srcs
 }

@@ -1,3 +1,8 @@
+Version 1.6.0
+------------
+    * Known kinds can now specify a srcsArg which tells puku which arg on the
+      build rule go srcs should be added to.
+
 Version 1.5.1
 ------------
     * Sync: if we encounter a replace directive where the old path and new

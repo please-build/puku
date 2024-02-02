@@ -17,6 +17,14 @@ type KindConfig struct {
 	NonGoSources      bool     `json:"nonGoSources"`
 	ProvidedDeps      []string `json:"providedDeps"`
 	DefaultVisibility []string `json:"defaultVisibility"`
+	SrcsArg           string   `json:"srcsArg"`
+}
+
+func (kc *KindConfig) srcsArg() string {
+	if kc.SrcsArg == "" {
+		return "srcs"
+	}
+	return kc.SrcsArg
 }
 
 // Config represents a puku.json file discovered in the repo. These are loaded for each directory, and form a chain of
@@ -163,6 +171,7 @@ func (c *Config) GetKind(kind string) *kinds.Kind {
 			Name:              kind,
 			Type:              kinds.Lib,
 			ProvidedDeps:      k.ProvidedDeps,
+			SrcsAttr:          k.srcsArg(),
 			DefaultVisibility: k.DefaultVisibility,
 			NonGoSources:      k.NonGoSources,
 		}
@@ -172,6 +181,7 @@ func (c *Config) GetKind(kind string) *kinds.Kind {
 			Name:         kind,
 			Type:         kinds.Test,
 			ProvidedDeps: k.ProvidedDeps,
+			SrcsAttr:     k.srcsArg(),
 			NonGoSources: k.NonGoSources,
 		}
 	}
@@ -180,6 +190,7 @@ func (c *Config) GetKind(kind string) *kinds.Kind {
 			Name:         kind,
 			Type:         kinds.Bin,
 			ProvidedDeps: k.ProvidedDeps,
+			SrcsAttr:     k.srcsArg(),
 			NonGoSources: k.NonGoSources,
 		}
 	}
