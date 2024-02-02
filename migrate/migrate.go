@@ -296,8 +296,9 @@ func (m *Migrate) addModulesToGoMod(modules []string, version *string) error {
 
 	// if there's exactly one module, go get that module at the version passed in
 	if len(modules) == 1 && version != nil {
-		fmt.Printf("command: go %s\nin dir %s\n", fmt.Sprintf("get %s@%s", modules[0], *version), filepath.Dir(modFile))
-		cmd := exec.Command("go", fmt.Sprintf("get %s@%s", modules[0], *version))
+		versionStr := strings.TrimSpace(*version)
+
+		cmd := exec.Command("go", "get", fmt.Sprintf("%s@%s", modules[0], versionStr))
 		cmd.Dir = filepath.Dir(modFile)
 
 		return cmd.Run()
