@@ -107,7 +107,7 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 			paths = []string{conf.GetThirdPartyDir()}
 		}
 		paths = work.MustExpandPaths(orignalWD, paths)
-		if err := migrate.New(conf, plzConf).Migrate(opts.Migrate.Write, opts.Migrate.UpdateGoMod, opts.Migrate.Args.Modules, paths...); err != nil {
+		if err := migrate.Migrate(conf, plzConf, opts.Migrate.Write, opts.Migrate.UpdateGoMod, opts.Migrate.Args.Modules, paths); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
