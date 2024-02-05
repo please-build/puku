@@ -39,9 +39,14 @@ func (c *Config) BuildFileNames() []string {
 }
 
 func (c *Config) ModFile() string {
+	if c == nil {
+		return ""
+	}
+
 	if len(c.Plugin.Go.Modfile) == 0 {
 		return ""
 	}
+
 	return c.Plugin.Go.Modfile[0]
 }
 
