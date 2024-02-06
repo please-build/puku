@@ -18,7 +18,7 @@ import (
 // the go sdk. Otherwise, it will return the build target for that dependency, or an error if it can't be resolved. If
 // the target can be resolved to a module that isn't currently added to this project, it will return the build target,
 // and record the new module in `u.newModules`. These should later be written to the build graph.
-func (u *Update) resolveImport(conf *config.Config, i string) (string, error) {
+func (u *updater) resolveImport(conf *config.Config, i string) (string, error) {
 	if t, ok := u.resolvedImports[i]; ok {
 		return t, nil
 	}
@@ -35,7 +35,7 @@ func (u *Update) resolveImport(conf *config.Config, i string) (string, error) {
 }
 
 // reallyResolveImport actually does the resolution of an import path to a build target.
-func (u *Update) reallyResolveImport(conf *config.Config, i string) (string, error) {
+func (u *updater) reallyResolveImport(conf *config.Config, i string) (string, error) {
 	if knownimports.IsInGoRoot(i) {
 		return "", nil
 	}
@@ -102,7 +102,7 @@ func (u *Update) reallyResolveImport(conf *config.Config, i string) (string, err
 
 // isInScope returns true when the given path is in scope of the current run i.e. if we are going to format the BUILD
 // file there.
-func (u *Update) isInScope(path string) bool {
+func (u *updater) isInScope(path string) bool {
 	for _, p := range u.paths {
 		if p == path {
 			return true
@@ -113,7 +113,7 @@ func (u *Update) isInScope(path string) bool {
 
 // localDep finds a dependency local to this repository, checking the BUILD file for a go_library target. Returns an
 // empty string when no target is found.
-func (u *Update) localDep(importPath string) (string, error) {
+func (u *updater) localDep(importPath string) (string, error) {
 	path := strings.Trim(strings.TrimPrefix(importPath, u.plzConf.ImportPath()), "/")
 	// If we're using GOPATH based resolution, we don't have a prefix to base whether a path is package local or not. In
 	// this case, we need to check if the directory exists. If it doesn't it's not a local import.

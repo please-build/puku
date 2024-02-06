@@ -46,7 +46,7 @@ func TestAllocateSources(t *testing.T) {
 		},
 	}
 
-	u := &Update{plzConf: new(please.Config)}
+	u := &updater{plzConf: new(please.Config)}
 	conf := &config.Config{PleasePath: "plz"}
 	newRules, err := u.allocateSources(conf, "foo", files, rules)
 	require.NoError(t, err)
@@ -77,7 +77,7 @@ func TestAddingLibDepToTest(t *testing.T) {
 	foo.SetAttr(foo.SrcsAttr(), edit.NewStringList([]string{"foo.go"}))
 	fooTest.SetAttr(fooTest.SrcsAttr(), edit.NewStringList([]string{"foo_test.go"}))
 
-	u := &Update{plzConf: new(please.Config)}
+	u := &updater{plzConf: new(please.Config)}
 	conf := &config.Config{PleasePath: "plz"}
 	err := u.updateRuleDeps(conf, fooTest, []*rule{foo, fooTest}, files)
 	require.NoError(t, err)
@@ -124,7 +124,7 @@ func TestAllocateSourcesToCustomKind(t *testing.T) {
 		},
 	}
 
-	u := new(Update)
+	u := new(updater)
 	conf := &config.Config{PleasePath: "plz"}
 	newRules, err := u.allocateSources(conf, "foo", files, rules)
 	require.NoError(t, err)
@@ -154,7 +154,7 @@ func TestAllocateSourcesToNonGoKind(t *testing.T) {
 		},
 	}
 
-	u := new(Update)
+	u := new(updater)
 	u.plzConf = &please.Config{}
 	newRules, err := u.allocateSources(new(config.Config), "foo", files, rules)
 	require.NoError(t, err)
@@ -265,7 +265,7 @@ func TestUpdateDeps(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			plzConf := new(please.Config)
 			plzConf.Plugin.Go.ImportPath = []string{"github.com/this/module"}
-			u := &Update{
+			u := &updater{
 				modules:         tc.modules,
 				plzConf:         plzConf,
 				installs:        trie.New(),
@@ -303,7 +303,7 @@ func TestUpdateDeps(t *testing.T) {
 	}
 }
 
-func mustGetSources(t *testing.T, u *Update, rule *rule) []string {
+func mustGetSources(t *testing.T, u *updater, rule *rule) []string {
 	t.Helper()
 
 	srcs, err := u.eval.EvalGlobs(rule.dir, rule.Rule, rule.SrcsAttr())

@@ -32,7 +32,7 @@ func TestModSync(t *testing.T) {
 	err = sync.Sync(plzConf, g, false)
 	require.NoError(t, err)
 
-	thirdPartyBuildFile, err := graph.New(plzConf.BuildFileNames()).LoadFile(conf.GetThirdPartyDir())
+	thirdPartyBuildFile, err := g.LoadFile(conf.GetThirdPartyDir())
 	require.NoError(t, err)
 
 	expectedVers := readModFileVersions()

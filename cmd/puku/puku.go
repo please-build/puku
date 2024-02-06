@@ -69,7 +69,7 @@ var log = logging.GetLogger()
 var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignalWD string) int{
 	"fmt": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
 		paths := work.MustExpandPaths(orignalWD, opts.Fmt.Args.Paths)
-		if err := generate.NewUpdate(true, plzConf).Update(paths...); err != nil {
+		if err := generate.Update(true, plzConf, paths...); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
@@ -83,14 +83,14 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 	},
 	"lint": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
 		paths := work.MustExpandPaths(orignalWD, opts.Lint.Args.Paths)
-		if err := generate.NewUpdate(false, plzConf).Update(paths...); err != nil {
+		if err := generate.Update(false, plzConf, paths...); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
 	},
 	"watch": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
 		paths := work.MustExpandPaths(orignalWD, opts.Watch.Args.Paths)
-		if err := generate.NewUpdate(true, plzConf).Update(paths...); err != nil {
+		if err := generate.Update(true, plzConf, paths...); err != nil {
 			log.Fatalf("%v", err)
 		}
 
