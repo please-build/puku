@@ -14,5 +14,7 @@ go_binary(
         "//proxy",
         "//watch",
         "//work",
+        "//graph",
+        "//sync",
     ],
 )

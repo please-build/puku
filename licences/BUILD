@@ -4,6 +4,9 @@ go_library(
     visibility = [
         "//cmd/puku:all",
         "//generate:all",
+        "//sync:all",
+        "//sync/integration/syncmod:all",
+        "//migrate:all",
     ],
     deps = [
         "///third_party/go/github.com_google_go-licenses//licenses",
@@ -11,7 +14,6 @@ go_library(
         "///third_party/go/github.com_please-build_buildtools//build",
         "//edit",
         "//graph",
-        "//please",
         "//proxy",
     ],
 )

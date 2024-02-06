@@ -30,16 +30,16 @@ func LookLikeBuildLabel(l string) bool {
 	return strings.HasPrefix("//", l)
 }
 
-func (e *Eval) EvalGlobs(dir string, rule *build.Rule) ([]string, error) {
-	globArgs := parseGlob(rule.Attr("srcs"))
+func (e *Eval) EvalGlobs(dir string, rule *build.Rule, attrName string) ([]string, error) {
+	globArgs := parseGlob(rule.Attr(attrName))
 	if globArgs != nil {
 		return e.globber.Glob(dir, globArgs)
 	}
-	return rule.AttrStrings("srcs"), nil
+	return rule.AttrStrings(attrName), nil
 }
 
-func (e *Eval) BuildSources(plzPath, dir string, rule *build.Rule) ([]string, error) {
-	srcs, err := e.EvalGlobs(dir, rule)
+func (e *Eval) BuildSources(plzPath, dir string, rule *build.Rule, srcsArg string) ([]string, error) {
+	srcs, err := e.EvalGlobs(dir, rule, srcsArg)
 	if err != nil {
 		return nil, err
 	}

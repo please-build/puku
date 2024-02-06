@@ -1,3 +1,42 @@
+Version 1.6.0
+------------
+    * Known kinds can now specify a srcsArg which tells puku which arg on the
+      build rule go srcs should be added to.
+
+Version 1.5.1
+------------
+    * Sync: if we encounter a replace directive where the old path and new
+      path are the same don't delete the target as we can just update the
+      version.
+
+Version 1.5.0
+------------
+    * Migrate: Avoid duplicating `go_repo()` targets when migrating a module where
+      we already have a `go_repo()` target for whatever reason (#93)
+    * Migrate: When migrating a `go_module()` that depends on other `go_module()`
+      targets, just migrate those modules as well, rather than trying to set `deps`
+      on `go_repo()`. The `deps` approach didn't work as well as hoped, and is not
+      recommended. (#94)
+
+Version 1.4.1
+------------
+    * Don't sync go.mod on save
+
+Version 1.4.0
+------------
+    * Migrate now inserts rules in the same place as the rules it's replacing (#90)
+    * Sync now works with multiple third party folders, only sycing modules to the
+      main third party build file (#89)
+
+Version 1.3.3
+------------
+    * Fix check for detecting if we're using go_module (#87)
+
+Version 1.3.2
+------------
+    * Keep the existing expressions from attribute lists where possible to avoid noise
+      and keep comments (#85)
+
 Version 1.3.1
 ------------
     * Treat paths passed as labels (e.g. `//foo/bar`) as relative to the repo root (#83)

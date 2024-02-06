@@ -9,7 +9,6 @@ import (
 
 	"github.com/please-build/buildtools/build"
 	"github.com/please-build/buildtools/labels"
-	"golang.org/x/mod/modfile"
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
@@ -56,7 +55,7 @@ func NewUpdate(write bool, plzConf *please.Config) *Update {
 // NewUpdateWithGraph is like NewUpdate but lets us inject a graph which is useful to do testing.
 func NewUpdateWithGraph(write bool, conf *please.Config, g *graph.Graph) *Update {
 	p := proxy.New(proxy.DefaultURL)
-	l := licences.New(conf, p)
+	l := licences.New(p, g)
 	return &Update{
 		proxy:           p,
 		licences:        l,
@@ -85,84 +84,8 @@ func (u *Update) Update(paths ...string) error {
 	if err := u.update(conf); err != nil {
 		return err
 	}
-	return u.graph.FormatFiles(u.write, os.Stdout, paths)
-}
 
-func (u *Update) Sync() error {
-	conf, err := config.ReadConfig(".")
-	if err != nil {
-		return err
-	}
-
-	if err := u.readAllModules(conf); err != nil {
-		return fmt.Errorf("failed to read third party rules: %v", err)
-	}
-
-	return u.graph.FormatFiles(u.write, os.Stdout, []string{})
-}
-
-func (u *Update) syncModFile(conf *config.Config, file *build.File, exitingRules map[string]*build.Rule) error {
-	outs, err := please.Build(conf.GetPlzPath(), u.plzConf.ModFile())
-	if err != nil {
-		return err
-	}
-
-	if len(outs) != 1 {
-		return fmt.Errorf("expected exacly one out from Plugin.Go.Modfile, got %v", len(outs))
-	}
-
-	modFile := outs[0]
-	bs, err := os.ReadFile(modFile)
-	if err != nil {
-		return err
-	}
-	f, err := modfile.Parse(modFile, bs, nil)
-	if err != nil {
-		return err
-	}
-
-	for _, req := range f.Require {
-		reqVersion := req.Mod.Version
-		var replace *modfile.Replace
-		for _, r := range f.Replace {
-			if r.Old.Path == req.Mod.Path {
-				replace = r
-				reqVersion = replace.New.Version
-			}
-		}
-
-		// Existing rule will point to the go_mod_download with the version on it so we should use the original path
-		r, ok := exitingRules[req.Mod.Path]
-		if ok {
-			if replace != nil && r.Kind() == "go_repo" {
-				// Looks like we've added in a replace for this module so we need to delete the old go_repo rule
-				// and regen with a go_mod_download and a go_repo.
-				edit.RemoveTarget(file, r)
-			} else {
-				// Make sure the version is up-to-date
-				r.SetAttr("version", edit.NewStringExpr(reqVersion))
-				continue
-			}
-		}
-
-		u.modules = append(u.modules, req.Mod.Path)
-
-		ls, err := u.licences.Get(req.Mod.Path, req.Mod.Version)
-		if err != nil {
-			return fmt.Errorf("failed to get licences for %v: %v", req.Mod.Path, err)
-		}
-
-		if replace == nil {
-			file.Stmt = append(file.Stmt, newGoRepoRule(req.Mod.Path, reqVersion, "", ls))
-			continue
-		}
-
-		dl, dlName := newModDownloadRule(replace.New.Path, replace.New.Version, ls)
-		file.Stmt = append(file.Stmt, dl)
-		file.Stmt = append(file.Stmt, newGoRepoRule(req.Mod.Path, "", dlName, nil))
-	}
-
-	return nil
+	return u.graph.FormatFiles(u.write, os.Stdout)
 }
 
 func (u *Update) readAllModules(conf *config.Config) error {
@@ -174,7 +97,7 @@ func (u *Update) readAllModules(conf *config.Config) error {
 					return err
 				}
 
-				if err := u.readModules(conf, file); err != nil {
+				if err := u.readModules(file); err != nil {
 					return err
 				}
 			}
@@ -184,7 +107,7 @@ func (u *Update) readAllModules(conf *config.Config) error {
 }
 
 // readModules returns the defined third party modules in this project
-func (u *Update) readModules(conf *config.Config, file *build.File) error {
+func (u *Update) readModules(file *build.File) error {
 	addInstalls := func(targetName, modName string, installs []string) {
 		for _, install := range installs {
 			path := filepath.Join(modName, install)
@@ -193,9 +116,6 @@ func (u *Update) readModules(conf *config.Config, file *build.File) error {
 		}
 	}
 
-	// existingRules contains the rules for modules. These are synced to the go.mod's version as necessary. For modules
-	// that use `go_mod_download`, this map will point to that rule as that is the rule that has the version field.
-	existingRules := make(map[string]*build.Rule)
 	for _, repoRule := range file.Rules("go_repo") {
 		module := repoRule.AttrString("module")
 		u.modules = append(u.modules, module)
@@ -204,22 +124,10 @@ func (u *Update) readModules(conf *config.Config, file *build.File) error {
 		if len(installs) > 0 {
 			addInstalls(repoRule.Name(), module, installs)
 		}
-
-		if repoRule.AttrString("version") != "" {
-			existingRules[repoRule.AttrString("module")] = repoRule
-		} else {
-			// If we're using a go_mod_download for this module, then find the download rule instead.
-			t := labels.ParseRelative(repoRule.AttrString("download"), file.Pkg)
-			f, err := u.graph.LoadFile(t.Package)
-			if err != nil {
-				return err
-			}
-			existingRules[repoRule.AttrString("module")] = edit.FindTargetByName(f, t.Target)
-		}
 	}
 
 	goMods := file.Rules("go_module")
-	u.usingGoModule = len(goMods) > 0
+	u.usingGoModule = len(goMods) > 0 || u.usingGoModule
 
 	for _, mod := range goMods {
 		module := mod.AttrString("module")
@@ -228,10 +136,6 @@ func (u *Update) readModules(conf *config.Config, file *build.File) error {
 			installs = []string{"."}
 		}
 		addInstalls(mod.Name(), module, installs)
-	}
-
-	if u.plzConf.ModFile() != "" {
-		return u.syncModFile(conf, file, existingRules)
 	}
 
 	return nil
@@ -326,38 +230,9 @@ func (u *Update) addNewModules(conf *config.Config) error {
 		if err != nil {
 			return fmt.Errorf("failed to get license for mod %v: %v", mod.Module, err)
 		}
-		file.Stmt = append(file.Stmt, newGoRepoRule(mod.Module, mod.Version, "", ls))
+		file.Stmt = append(file.Stmt, edit.NewGoRepoRule(mod.Module, mod.Version, "", ls))
 	}
 	return nil
-}
-
-func newGoRepoRule(mod, version, download string, licences []string) *build.CallExpr {
-	rule := build.NewRule(&build.CallExpr{
-		X:    &build.Ident{Name: "go_repo"},
-		List: []build.Expr{},
-	})
-	rule.SetAttr("module", edit.NewStringExpr(mod))
-	if version != "" {
-		rule.SetAttr("version", edit.NewStringExpr(version))
-	}
-	if download != "" {
-		rule.SetAttr("download", edit.NewStringExpr(":"+download))
-	}
-	if len(licences) != 0 {
-		rule.SetAttr("licences", edit.NewStringList(licences))
-	}
-	return rule.Call
-}
-
-func newModDownloadRule(mod, version string, licences []string) (*build.CallExpr, string) {
-	rule := edit.NewRuleExpr("go_mod_download", strings.ReplaceAll(mod, "/", "_")+"_dl")
-
-	rule.SetAttr("module", edit.NewStringExpr(mod))
-	rule.SetAttr("version", edit.NewStringExpr(version))
-	if len(licences) != 0 {
-		rule.SetAttr("licences", edit.NewStringList(licences))
-	}
-	return rule.Call, rule.Name()
 }
 
 // allSources calculates the sources for a target. It will evaluate the source list resolving globs, and building any
@@ -370,7 +245,7 @@ func newModDownloadRule(mod, version string, licences []string) (*build.CallExpr
 // the source doesn't actually exist. In which case, this should be removed from the rule, as the user likely deleted
 // the file.
 func (u *Update) allSources(conf *config.Config, r *rule, sourceMap map[string]*GoFile) (passedSources []string, goFiles map[string]*GoFile, err error) {
-	srcs, err := u.eval.BuildSources(conf.GetPlzPath(), r.dir, r.Rule)
+	srcs, err := u.eval.BuildSources(conf.GetPlzPath(), r.dir, r.Rule, r.SrcsAttr())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -611,7 +486,7 @@ func (u *Update) unallocatedSources(srcs map[string]*GoFile, rules []*rule) ([]s
 				break
 			}
 
-			ruleSrcs, err := u.eval.EvalGlobs(rule.dir, rule.Rule)
+			ruleSrcs, err := u.eval.EvalGlobs(rule.dir, rule.Rule, rule.SrcsAttr())
 			if err != nil {
 				return nil, err
 			}

@@ -14,6 +14,8 @@ go_library(
         "//generate",
         "//graph",
         "//please",
+        "//proxy",
+        "//licences",
     ],
 )
 

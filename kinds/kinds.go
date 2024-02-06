@@ -12,14 +12,12 @@ const (
 // Kind is a kind of build target, e.g. go_library. These can either be library, test or binaries. They can also provide
 // dependencies e.g. you could wrap go_test to add a common testing library, in which case, we should not add it as a
 // dep.
-//
-// Currently, puku assumes these use the same args for e.g. srcs, and deps as go_library, go_test and go_binary. This
-// may become configurable if the need arises.
 type Kind struct {
 	Name              string
 	Type              Type
 	ProvidedDeps      []string
 	DefaultVisibility []string
+	SrcsAttr          string
 	// NonGoSources indicates the puku that the sources to this rule are not go so we shouldn't try to parse them to
 	// infer their deps, for example, proto_library.
 	NonGoSources bool
@@ -39,20 +37,24 @@ func (k *Kind) IsProvided(i string) bool {
 // DefaultKinds are the base kinds that puku supports out of the box
 var DefaultKinds = map[string]*Kind{
 	"go_library": {
-		Name: "go_library",
-		Type: Lib,
+		Name:     "go_library",
+		Type:     Lib,
+		SrcsAttr: "srcs",
 	},
 	"go_binary": {
-		Name: "go_binary",
-		Type: Bin,
+		Name:     "go_binary",
+		Type:     Bin,
+		SrcsAttr: "srcs",
 	},
 	"go_test": {
-		Name: "go_test",
-		Type: Test,
+		Name:     "go_test",
+		Type:     Test,
+		SrcsAttr: "srcs",
 	},
 	"go_benchmark": {
-		Name: "go_benchmark",
-		Type: Test,
+		Name:     "go_benchmark",
+		Type:     Test,
+		SrcsAttr: "srcs",
 	},
 	"proto_library": {
 		Name:         "proto_library",
