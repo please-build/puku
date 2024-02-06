@@ -1,12 +1,11 @@
 package knownimports
 
 import (
+	_ "embed"
 	"go/build"
 	"os"
 	"path/filepath"
 	"strings"
-
-	_ "embed"
 )
 
 //go:embed go_root_packages
