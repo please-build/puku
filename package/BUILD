@@ -11,7 +11,7 @@ architectures = [
 go_toolchain(
     name = "release_toolchain",
     architectures = architectures,
-    version = "1.21.4",
+    version = CONFIG.GO_VERSION,
 )
 
 def cross_compile(version, arch):
