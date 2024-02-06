@@ -11,9 +11,7 @@ import (
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/graph"
-	"github.com/please-build/puku/licences"
 	"github.com/please-build/puku/please"
-	"github.com/please-build/puku/proxy"
 	"github.com/please-build/puku/sync"
 )
 
@@ -31,14 +29,10 @@ func TestModSync(t *testing.T) {
 	require.NoError(t, err)
 
 	g := graph.New(plzConf.BuildFileNames())
-
-	s := sync.New(plzConf, g, licences.New(proxy.New(proxy.DefaultURL), g), false)
+	err = sync.Sync(plzConf, g, false)
 	require.NoError(t, err)
 
-	err = s.Sync()
-	require.NoError(t, err)
-
-	thirdPartyBuildFile, err := g.LoadFile(conf.GetThirdPartyDir())
+	thirdPartyBuildFile, err := graph.New(plzConf.BuildFileNames()).LoadFile(conf.GetThirdPartyDir())
 	require.NoError(t, err)
 
 	expectedVers := readModFileVersions()

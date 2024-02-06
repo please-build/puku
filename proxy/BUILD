@@ -7,6 +7,7 @@ go_library(
         "//licences:all",
         "//sync/integration/syncmod:all",
         "//migrate:all",
+        "//sync:all",
     ],
     deps = [
         "///third_party/go/golang.org_x_mod//modfile",

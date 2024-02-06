@@ -76,9 +76,7 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 	},
 	"sync": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
 		g := graph.New(plzConf.BuildFileNames())
-		p := proxy.New(proxy.DefaultURL)
-		l := licences.New(p, g)
-		if err := sync.New(plzConf, g, l, opts.Sync.Write).Sync(); err != nil {
+		if err := sync.Sync(plzConf, g, opts.Sync.Write); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0

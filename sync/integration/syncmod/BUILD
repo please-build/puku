@@ -11,8 +11,6 @@ go_test(
         "//graph",
         "//please",
         "//third_party/go:testify",
-        "//licences",
-        "//proxy",
         "//sync",
     ],
 )
