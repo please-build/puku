@@ -12,7 +12,7 @@ import (
 )
 
 func TestMigrateGoModule(t *testing.T) {
-	m := &Migrate{
+	m := &migrator{
 		graph:            graph.New([]string{"BUILD"}),
 		thirdPartyFolder: "third_party/go",
 		moduleRules:      map[string]*moduleParts{},
@@ -31,7 +31,7 @@ go_module(
 	}
 	m.graph.SetFile("third_party/go", thirdPartyFile)
 
-	err = m.Migrate(false, false, nil, "third_party/go")
+	err = m.migrate(nil, []string{"third_party/go"}, false, false)
 	require.NoError(t, err)
 
 	rule := edit.FindTargetByName(thirdPartyFile, "test")
@@ -43,7 +43,7 @@ go_module(
 }
 
 func TestMigrateGoModuleWithParts(t *testing.T) {
-	m := &Migrate{
+	m := &migrator{
 		graph:            graph.New([]string{"BUILD"}),
 		thirdPartyFolder: "third_party/go",
 		moduleRules:      map[string]*moduleParts{},
@@ -97,7 +97,7 @@ go_module(
 	}
 	m.graph.SetFile("third_party/go", thirdPartyFile)
 
-	err = m.Migrate(false, false, nil, "third_party/go")
+	err = m.migrate(nil, []string{"third_party/go"}, false, false)
 	require.NoError(t, err)
 
 	repoRules := thirdPartyFile.Rules("go_repo")
@@ -125,7 +125,7 @@ go_module(
 }
 
 func TestModuleAlias(t *testing.T) {
-	m := &Migrate{
+	m := &migrator{
 		graph:            graph.New([]string{"BUILD"}),
 		thirdPartyFolder: "third_party/go",
 		moduleRules:      map[string]*moduleParts{},
@@ -150,7 +150,7 @@ go_module(
 	}
 	m.graph.SetFile("third_party/go", thirdPartyFile)
 
-	err = m.Migrate(false, false, nil, "third_party/go")
+	err = m.migrate(nil, []string{"third_party/go"}, false, false)
 	require.NoError(t, err)
 
 	repoRule := edit.FindTargetByName(thirdPartyFile, "test")
@@ -164,7 +164,7 @@ go_module(
 }
 
 func TestAliasesInOtherDirs(t *testing.T) {
-	m := &Migrate{
+	m := &migrator{
 		graph:            graph.New([]string{"BUILD"}),
 		thirdPartyFolder: "third_party/go",
 		moduleRules:      map[string]*moduleParts{},
@@ -189,7 +189,7 @@ go_module(
 	}
 	m.graph.SetFile("third_party/go", thirdPartyFile)
 
-	err = m.Migrate(false, false, nil, "third_party/go", "third_party/go/kubernetes")
+	err = m.migrate(nil, []string{"third_party/go", "third_party/go/kubernetes"}, false, false)
 	require.NoError(t, err)
 
 	repoRule := edit.FindTargetByName(thirdPartyFile, "k8s.io_api")
@@ -202,7 +202,7 @@ go_module(
 }
 
 func TestTransitiveMigration(t *testing.T) {
-	m := &Migrate{
+	m := &migrator{
 		graph:            graph.New([]string{"BUILD"}),
 		thirdPartyFolder: "third_party/go",
 		moduleRules:      map[string]*moduleParts{},
@@ -238,7 +238,7 @@ go_module(
 
 	m.graph.SetFile("third_party/go", thirdPartyFile)
 
-	err = m.Migrate(false, false, []string{"k8s.io/api"}, "third_party/go")
+	err = m.migrate([]string{"k8s.io/api"}, []string{"third_party/go"}, false, false)
 	require.NoError(t, err)
 
 	apiRule := edit.FindTargetByName(thirdPartyFile, "api")

@@ -69,30 +69,28 @@ var log = logging.GetLogger()
 var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignalWD string) int{
 	"fmt": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
 		paths := work.MustExpandPaths(orignalWD, opts.Fmt.Args.Paths)
-		if err := generate.NewUpdate(true, plzConf).Update(paths...); err != nil {
+		if err := generate.Update(true, plzConf, paths...); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
 	},
 	"sync": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
 		g := graph.New(plzConf.BuildFileNames())
-		p := proxy.New(proxy.DefaultURL)
-		l := licences.New(p, g)
-		if err := sync.New(plzConf, g, l, opts.Sync.Write).Sync(); err != nil {
+		if err := sync.Sync(plzConf, g, opts.Sync.Write); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
 	},
 	"lint": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
 		paths := work.MustExpandPaths(orignalWD, opts.Lint.Args.Paths)
-		if err := generate.NewUpdate(false, plzConf).Update(paths...); err != nil {
+		if err := generate.Update(false, plzConf, paths...); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
 	},
 	"watch": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
 		paths := work.MustExpandPaths(orignalWD, opts.Watch.Args.Paths)
-		if err := generate.NewUpdate(true, plzConf).Update(paths...); err != nil {
+		if err := generate.Update(true, plzConf, paths...); err != nil {
 			log.Fatalf("%v", err)
 		}
 
@@ -107,7 +105,7 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 			paths = []string{conf.GetThirdPartyDir()}
 		}
 		paths = work.MustExpandPaths(orignalWD, paths)
-		if err := migrate.New(conf, plzConf).Migrate(opts.Migrate.Write, opts.Migrate.UpdateGoMod, opts.Migrate.Args.Modules, paths...); err != nil {
+		if err := migrate.Migrate(conf, plzConf, opts.Migrate.Write, opts.Migrate.UpdateGoMod, opts.Migrate.Args.Modules, paths); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0

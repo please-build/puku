@@ -30,9 +30,9 @@ type Proxy interface {
 	ResolveDeps(mods, newMods []*proxy.Module) ([]*proxy.Module, error)
 }
 
-type Update struct {
-	plzConf              *please.Config
-	write, usingGoModule bool
+type updater struct {
+	plzConf       *please.Config
+	usingGoModule bool
 
 	graph *graph.Graph
 
@@ -48,29 +48,36 @@ type Update struct {
 	licences *licences.Licenses
 }
 
-func NewUpdate(write bool, plzConf *please.Config) *Update {
-	return NewUpdateWithGraph(write, plzConf, graph.New(plzConf.BuildFileNames()))
-}
-
-// NewUpdateWithGraph is like NewUpdate but lets us inject a graph which is useful to do testing.
-func NewUpdateWithGraph(write bool, conf *please.Config, g *graph.Graph) *Update {
-	p := proxy.New(proxy.DefaultURL)
-	l := licences.New(p, g)
-	return &Update{
-		proxy:           p,
-		licences:        l,
-		installs:        trie.New(),
-		write:           write,
-		resolvedImports: map[string]string{},
-		plzConf:         conf,
-		eval:            eval.New(glob.New()),
-		graph:           g,
+func newUpdaterWithGraph(g *graph.Graph, conf *please.Config) *updater {
+	return &updater{
+		plzConf: conf,
+		graph:   g,
 	}
 }
 
-// Update updates an existing Please project. It may create new BUILD files, however it tries to respect existing build
-// rules, updating them as appropriate.
-func (u *Update) Update(paths ...string) error {
+// newUpdater initialises a new updater struct. It's intended to be only used for testing (as is
+// newUpdaterWithGraph). In most instances the Update function should be called directly.
+func newUpdater(conf *please.Config) *updater {
+	g := graph.New(conf.BuildFileNames())
+
+	return newUpdaterWithGraph(g, conf)
+}
+
+func Update(write bool, plzConf *please.Config, paths ...string) error {
+	g := graph.New(plzConf.BuildFileNames())
+	p := proxy.New(proxy.DefaultURL)
+	l := licences.New(p, g)
+
+	u := &updater{
+		proxy:           p,
+		licences:        l,
+		installs:        trie.New(),
+		resolvedImports: map[string]string{},
+		plzConf:         plzConf,
+		eval:            eval.New(glob.New()),
+		graph:           g,
+	}
+
 	conf, err := config.ReadConfig(".")
 	if err != nil {
 		return err
@@ -85,10 +92,10 @@ func (u *Update) Update(paths ...string) error {
 		return err
 	}
 
-	return u.graph.FormatFiles(u.write, os.Stdout)
+	return u.graph.FormatFiles(write, os.Stdout)
 }
 
-func (u *Update) readAllModules(conf *config.Config) error {
+func (u *updater) readAllModules(conf *config.Config) error {
 	return filepath.WalkDir(conf.GetThirdPartyDir(), func(path string, info fs.DirEntry, err error) error {
 		for _, buildFileName := range u.plzConf.BuildFileNames() {
 			if info.Name() == buildFileName {
@@ -107,7 +114,7 @@ func (u *Update) readAllModules(conf *config.Config) error {
 }
 
 // readModules returns the defined third party modules in this project
-func (u *Update) readModules(file *build.File) error {
+func (u *updater) readModules(file *build.File) error {
 	addInstalls := func(targetName, modName string, installs []string) {
 		for _, install := range installs {
 			path := filepath.Join(modName, install)
@@ -142,7 +149,7 @@ func (u *Update) readModules(file *build.File) error {
 }
 
 // update loops through the provided paths, updating and creating any build rules it finds.
-func (u *Update) update(conf *config.Config) error {
+func (u *updater) update(conf *config.Config) error {
 	for _, path := range u.paths {
 		conf, err := config.ReadConfig(path)
 		if err != nil {
@@ -162,7 +169,7 @@ func (u *Update) update(conf *config.Config) error {
 	return u.addNewModules(conf)
 }
 
-func (u *Update) updateOne(conf *config.Config, path string) error {
+func (u *updater) updateOne(conf *config.Config, path string) error {
 	// Find all the files in the dir
 	sources, err := ImportDir(path)
 	if err != nil {
@@ -194,7 +201,7 @@ func (u *Update) updateOne(conf *config.Config, path string) error {
 	return u.updateDeps(conf, file, calls, rules, sources)
 }
 
-func (u *Update) addNewModules(conf *config.Config) error {
+func (u *updater) addNewModules(conf *config.Config) error {
 	file, err := u.graph.LoadFile(conf.GetThirdPartyDir())
 	if err != nil {
 		return err
@@ -244,7 +251,7 @@ func (u *Update) addNewModules(conf *config.Config) error {
 // goFiles contains a mapping of source files to their GoFile. This map might be missing entries from passedSources, if
 // the source doesn't actually exist. In which case, this should be removed from the rule, as the user likely deleted
 // the file.
-func (u *Update) allSources(conf *config.Config, r *rule, sourceMap map[string]*GoFile) (passedSources []string, goFiles map[string]*GoFile, err error) {
+func (u *updater) allSources(conf *config.Config, r *rule, sourceMap map[string]*GoFile) (passedSources []string, goFiles map[string]*GoFile, err error) {
 	srcs, err := u.eval.BuildSources(conf.GetPlzPath(), r.dir, r.Rule, r.SrcsAttr())
 	if err != nil {
 		return nil, nil, err
@@ -268,7 +275,7 @@ func (u *Update) allSources(conf *config.Config, r *rule, sourceMap map[string]*
 }
 
 // updateRuleDeps updates the dependencies of a build rule based on the imports of its sources
-func (u *Update) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, packageFiles map[string]*GoFile) error {
+func (u *updater) updateRuleDeps(conf *config.Config, rule *rule, rules []*rule, packageFiles map[string]*GoFile) error {
 	done := map[string]struct{}{}
 
 	// If the rule operates on non-go source files (e.g. *.proto for proto_library) then we should skip updating
@@ -367,7 +374,7 @@ func shorten(pkg, label string) string {
 }
 
 // readRulesFromFile reads the existing build rules from the BUILD file
-func (u *Update) readRulesFromFile(conf *config.Config, file *build.File, pkgDir string) ([]*rule, map[string]*build.Rule) {
+func (u *updater) readRulesFromFile(conf *config.Config, file *build.File, pkgDir string) ([]*rule, map[string]*build.Rule) {
 	ruleExprs := file.Rules("")
 	rules := make([]*rule, 0, len(ruleExprs))
 	calls := map[string]*build.Rule{}
@@ -386,7 +393,7 @@ func (u *Update) readRulesFromFile(conf *config.Config, file *build.File, pkgDir
 }
 
 // updateDeps updates the existing rules and creates any new rules in the BUILD file
-func (u *Update) updateDeps(conf *config.Config, file *build.File, ruleExprs map[string]*build.Rule, rules []*rule, sources map[string]*GoFile) error {
+func (u *updater) updateDeps(conf *config.Config, file *build.File, ruleExprs map[string]*build.Rule, rules []*rule, sources map[string]*GoFile) error {
 	for _, rule := range rules {
 		if _, ok := ruleExprs[rule.Name()]; !ok {
 			file.Stmt = append(file.Stmt, rule.Call)
@@ -400,7 +407,7 @@ func (u *Update) updateDeps(conf *config.Config, file *build.File, ruleExprs map
 
 // allocateSources allocates sources to rules. If there's no existing rule, a new rule will be created and returned
 // from this function
-func (u *Update) allocateSources(conf *config.Config, pkgDir string, sources map[string]*GoFile, rules []*rule) ([]*rule, error) {
+func (u *updater) allocateSources(conf *config.Config, pkgDir string, sources map[string]*GoFile, rules []*rule) ([]*rule, error) {
 	unallocated, err := u.unallocatedSources(sources, rules)
 	if err != nil {
 		return nil, err
@@ -456,7 +463,7 @@ func (u *Update) allocateSources(conf *config.Config, pkgDir string, sources map
 
 // rulePkg checks the first source it finds for a rule and returns the name from the "package name" directive at the top
 // of the file
-func (u *Update) rulePkg(conf *config.Config, srcs map[string]*GoFile, rule *rule) (string, error) {
+func (u *updater) rulePkg(conf *config.Config, srcs map[string]*GoFile, rule *rule) (string, error) {
 	// This is a safe bet if we can't use the source files to figure this out.
 	if rule.kind.NonGoSources {
 		return rule.Name(), nil
@@ -477,7 +484,7 @@ func (u *Update) rulePkg(conf *config.Config, srcs map[string]*GoFile, rule *rul
 }
 
 // unallocatedSources returns all the sources that don't already belong to a rule
-func (u *Update) unallocatedSources(srcs map[string]*GoFile, rules []*rule) ([]string, error) {
+func (u *updater) unallocatedSources(srcs map[string]*GoFile, rules []*rule) ([]string, error) {
 	var ret []string
 	for src := range srcs {
 		found := false

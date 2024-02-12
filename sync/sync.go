@@ -13,25 +13,31 @@ import (
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/licences"
 	"github.com/please-build/puku/please"
+	"github.com/please-build/puku/proxy"
 )
 
-type Sync struct {
+type syncer struct {
 	plzConf  *please.Config
 	graph    *graph.Graph
 	licences *licences.Licenses
-	write    bool
 }
 
-func New(conf *please.Config, g *graph.Graph, l *licences.Licenses, write bool) *Sync {
-	return &Sync{
-		plzConf:  conf,
+// Sync constructs the syncer struct and initiates the sync.
+// NB. the Graph is to be constructed in the calling code because it's useful
+// for it to be available outside the package for testing.
+func Sync(plzConf *please.Config, g *graph.Graph, write bool) error {
+	p := proxy.New(proxy.DefaultURL)
+	l := licences.New(p, g)
+	s := &syncer{
+		plzConf:  plzConf,
 		graph:    g,
 		licences: l,
-		write:    write,
 	}
+
+	return s.sync(write)
 }
 
-func (s *Sync) Sync() error {
+func (s *syncer) sync(write bool) error {
 	if s.plzConf.ModFile() == "" {
 		return nil
 	}
@@ -55,10 +61,10 @@ func (s *Sync) Sync() error {
 		return err
 	}
 
-	return s.graph.FormatFiles(s.write, os.Stdout)
+	return s.graph.FormatFiles(write, os.Stdout)
 }
 
-func (s *Sync) syncModFile(conf *config.Config, file *build.File, exitingRules map[string]*build.Rule) error {
+func (s *syncer) syncModFile(conf *config.Config, file *build.File, exitingRules map[string]*build.Rule) error {
 	outs, err := please.Build(conf.GetPlzPath(), s.plzConf.ModFile())
 	if err != nil {
 		return err
@@ -123,7 +129,7 @@ func (s *Sync) syncModFile(conf *config.Config, file *build.File, exitingRules m
 	return nil
 }
 
-func (s *Sync) readModules(file *build.File) (map[string]*build.Rule, error) {
+func (s *syncer) readModules(file *build.File) (map[string]*build.Rule, error) {
 	// existingRules contains the rules for modules. These are synced to the go.mod's version as necessary. For modules
 	// that use `go_mod_download`, this map will point to that rule as that is the rule that has the version field.
 	existingRules := make(map[string]*build.Rule)

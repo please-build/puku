@@ -52,8 +52,7 @@ func (d *debouncer) wait() {
 	for p := range d.paths {
 		paths = append(paths, p)
 	}
-	u := generate.NewUpdate(true, d.config)
-	if err := u.Update(paths...); err != nil {
+	if err := generate.Update(true, d.config, paths...); err != nil {
 		log.Warningf("failed to update: %v", err)
 	} else {
 		log.Infof("Updated paths: %v ", strings.Join(paths, ", "))

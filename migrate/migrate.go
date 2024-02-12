@@ -20,9 +20,19 @@ import (
 	"github.com/please-build/puku/proxy"
 )
 
-func New(conf *config.Config, plzConf *please.Config) *Migrate {
+// migrator contains the runtime state for a migration of go_module rules to go_repo rules
+type migrator struct {
+	plzConf           *please.Config
+	graph             *graph.Graph
+	thirdPartyFolder  string
+	moduleRules       map[string]*moduleParts
+	existingRepoRules map[string]*build.Rule
+	licences          *licences.Licenses
+}
+
+func Migrate(conf *config.Config, plzConf *please.Config, write, updateGoMod bool, modules, paths []string) error {
 	g := graph.New(plzConf.BuildFileNames())
-	return &Migrate{
+	m := &migrator{
 		plzConf:           plzConf,
 		graph:             g,
 		thirdPartyFolder:  conf.GetThirdPartyDir(),
@@ -30,16 +40,8 @@ func New(conf *config.Config, plzConf *please.Config) *Migrate {
 		licences:          licences.New(proxy.New(proxy.DefaultURL), g),
 		existingRepoRules: map[string]*build.Rule{},
 	}
-}
 
-// Migrate replaces go_module rules with the equivalent go_repo rules, generating filegroup replacePartsWithAliases where appropriate
-type Migrate struct {
-	plzConf           *please.Config
-	graph             *graph.Graph
-	thirdPartyFolder  string
-	moduleRules       map[string]*moduleParts
-	existingRepoRules map[string]*build.Rule
-	licences          *licences.Licenses
+	return m.migrate(modules, paths, write, updateGoMod)
 }
 
 // pkgRule represents the rule expr in a pkg
@@ -123,7 +125,7 @@ func binaryAlias(module, thirdPartyDir string, part *pkgRule) (*build.Rule, erro
 	return rule, nil
 }
 
-func (m *Migrate) Migrate(write bool, updateGoMod bool, modules []string, paths ...string) error {
+func (m *migrator) migrate(modules, paths []string, write, updateGoMod bool) error {
 	// Read all the BUILD files under the provided paths to find go_module and go_mod_download rules
 	for _, path := range paths {
 		f, err := m.graph.LoadFile(path)
@@ -158,7 +160,7 @@ func (m *Migrate) Migrate(write bool, updateGoMod bool, modules []string, paths 
 //
 // If multiple, we will do a go get on all of the passed-in modules at once to allow go get to do
 // its thing, then we'll migrate all of the command-line modules and their dependencies to go_repo.
-func (m *Migrate) replaceRulesForModules(updateGoMod bool, modules []string) error {
+func (m *migrator) replaceRulesForModules(updateGoMod bool, modules []string) error {
 	// If we're not migrating specific modules, do all of them
 	if len(modules) == 0 {
 		if updateGoMod {
@@ -199,7 +201,7 @@ func (m *Migrate) replaceRulesForModules(updateGoMod bool, modules []string) err
 	return m.migrateTransitively(modules)
 }
 
-func (m *Migrate) migrateTransitively(mods []string) error {
+func (m *migrator) migrateTransitively(mods []string) error {
 	if len(mods) == 0 {
 		return nil
 	}
@@ -230,7 +232,7 @@ func ruleIdx(file *build.File, rule *build.Rule) int {
 	return -1
 }
 
-func (m *Migrate) addNewRepoRule(name, version, download string, patches, licences []string, p *moduleParts) error {
+func (m *migrator) addNewRepoRule(name, version, download string, patches, licences []string, p *moduleParts) error {
 	thirdPartyFile, err := m.graph.LoadFile(m.thirdPartyFolder)
 	if err != nil {
 		return err
@@ -272,7 +274,7 @@ func (m *Migrate) addNewRepoRule(name, version, download string, patches, licenc
 	return nil
 }
 
-func (m *Migrate) addModulesToGoMod(modules []string, version *string) error {
+func (m *migrator) addModulesToGoMod(modules []string, version *string) error {
 	if m.plzConf == nil {
 		return fmt.Errorf("no plzconfig found")
 	}
@@ -314,7 +316,7 @@ func (m *Migrate) addModulesToGoMod(modules []string, version *string) error {
 
 // replaceRules takes a module and replaces the corresponding go_module target (if it exists), with
 // a go_repo target.
-func (m *Migrate) replaceRules(p *moduleParts) error {
+func (m *migrator) replaceRules(p *moduleParts) error {
 	download := ""
 	var version string
 	var patches []string
@@ -389,7 +391,7 @@ func (m *Migrate) replaceRules(p *moduleParts) error {
 }
 
 // goModuleDepsModName returns the module names of any dependencies of this rule that still go_modules
-func (m *Migrate) goModuleDepsModName(deps, modsBeingMigrated []string) ([]string, error) {
+func (m *migrator) goModuleDepsModName(deps, modsBeingMigrated []string) ([]string, error) {
 	// If we don't pass any mods then we are migrating all transitiveModules so we shouldn't have any deps
 	if len(modsBeingMigrated) == 0 {
 		return nil, nil
@@ -425,7 +427,7 @@ func (m *Migrate) goModuleDepsModName(deps, modsBeingMigrated []string) ([]strin
 	return goModDeps, nil
 }
 
-func (m *Migrate) replacePartsWithAliases(p *moduleParts) error {
+func (m *migrator) replacePartsWithAliases(p *moduleParts) error {
 	if len(p.parts) == 1 && p.parts[0].pkg == m.thirdPartyFolder {
 		return nil
 	}
@@ -449,7 +451,7 @@ func (m *Migrate) replacePartsWithAliases(p *moduleParts) error {
 	return nil
 }
 
-func (m *Migrate) replaceBinaryWithAliases(p *moduleParts) error {
+func (m *migrator) replaceBinaryWithAliases(p *moduleParts) error {
 	for _, part := range p.binaryParts {
 		rule, err := binaryAlias(p.module, m.thirdPartyFolder, part)
 		if err != nil {
@@ -497,7 +499,7 @@ func newGoRepoRule(module, version, download, name string, install, patches, lic
 }
 
 // readModuleRules reads all the module rules from all the files and stores them in a single
-func (m *Migrate) readModuleRules(f *build.File, pkg string) error {
+func (m *migrator) readModuleRules(f *build.File, pkg string) error {
 	for _, rule := range f.Rules("go_module") {
 		moduleName := rule.AttrString("module")
 
