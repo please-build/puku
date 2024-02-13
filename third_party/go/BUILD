@@ -1,8 +1,10 @@
 subinclude("///go//build_defs:go")
+subinclude("//package:architectures")
 
 go_toolchain(
     name = "toolchain",
     version = CONFIG.GO_VERSION,
+    architectures = architectures,
 )
 
 go_repo(

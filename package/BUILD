@@ -1,12 +1,12 @@
 subinclude("//:version")
 
-architectures = [
-    "darwin_amd64",
-    "darwin_arm64",
-    "freebsd_amd64",
-    "linux_amd64",
-    "linux_arm64",
-]
+filegroup(
+    name = "architectures",
+    srcs = ["architectures.build_defs"],
+    visibility = ["PUBLIC"],
+)
+
+subinclude(":architectures")
 
 go_toolchain(
     name = "release_toolchain",
