@@ -8,10 +8,8 @@ import (
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
-	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/kinds"
 	"github.com/please-build/puku/please"
-	"github.com/please-build/puku/trie"
 )
 
 func TestAllocateSources(t *testing.T) {
@@ -46,7 +44,7 @@ func TestAllocateSources(t *testing.T) {
 		},
 	}
 
-	u := &updater{plzConf: new(please.Config)}
+	u := newUpdater(new(please.Config))
 	conf := &config.Config{PleasePath: "plz"}
 	newRules, err := u.allocateSources(conf, "foo", files, rules)
 	require.NoError(t, err)
@@ -77,7 +75,7 @@ func TestAddingLibDepToTest(t *testing.T) {
 	foo.SetAttr(foo.SrcsAttr(), edit.NewStringList([]string{"foo.go"}))
 	fooTest.SetAttr(fooTest.SrcsAttr(), edit.NewStringList([]string{"foo_test.go"}))
 
-	u := &updater{plzConf: new(please.Config)}
+	u := newUpdater(new(please.Config))
 	conf := &config.Config{PleasePath: "plz"}
 	err := u.updateRuleDeps(conf, fooTest, []*rule{foo, fooTest}, files)
 	require.NoError(t, err)
@@ -124,7 +122,7 @@ func TestAllocateSourcesToCustomKind(t *testing.T) {
 		},
 	}
 
-	u := new(updater)
+	u := newUpdater(new(please.Config))
 	conf := &config.Config{PleasePath: "plz"}
 	newRules, err := u.allocateSources(conf, "foo", files, rules)
 	require.NoError(t, err)
@@ -154,7 +152,7 @@ func TestAllocateSourcesToNonGoKind(t *testing.T) {
 		},
 	}
 
-	u := new(updater)
+	u := newUpdater(new(please.Config))
 	u.plzConf = &please.Config{}
 	newRules, err := u.allocateSources(new(config.Config), "foo", files, rules)
 	require.NoError(t, err)
@@ -265,14 +263,9 @@ func TestUpdateDeps(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			plzConf := new(please.Config)
 			plzConf.Plugin.Go.ImportPath = []string{"github.com/this/module"}
-			u := &updater{
-				modules:         tc.modules,
-				plzConf:         plzConf,
-				installs:        trie.New(),
-				resolvedImports: map[string]string{},
-				proxy:           tc.proxy,
-				graph:           graph.New([]string{}),
-			}
+			u := newUpdater(plzConf)
+			u.modules = tc.modules
+			u.proxy = tc.proxy
 
 			for path, value := range tc.installs {
 				u.installs.Add(path, value)

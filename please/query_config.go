@@ -14,6 +14,7 @@ type Config struct {
 	Parse struct {
 		BuildFileName      []string `json:"buildfilename"`
 		PreloadSubincludes []string `json:"preloadsubincludes"`
+		ExperimentalDir    []string `json:"experimentaldir"`
 	} `json:"parse"`
 }
 
