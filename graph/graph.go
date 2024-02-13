@@ -24,9 +24,10 @@ type Dependency struct {
 }
 
 type Graph struct {
-	buildFileNames []string
-	files          map[string]*build.File
-	deps           []*Dependency
+	buildFileNames   []string
+	files            map[string]*build.File
+	deps             []*Dependency
+	experimentalDirs []string
 }
 
 func New(buildFileNames []string) *Graph {
@@ -34,6 +35,11 @@ func New(buildFileNames []string) *Graph {
 		buildFileNames: buildFileNames,
 		files:          map[string]*build.File{},
 	}
+}
+
+func (g *Graph) WithExperimentalDirs(dirs ...string) *Graph {
+	g.experimentalDirs = dirs
+	return g
 }
 
 func (g *Graph) LoadFile(path string) (*build.File, error) {
@@ -57,6 +63,15 @@ func (g *Graph) SetFile(path string, file *build.File) {
 	g.files[path] = file
 }
 
+func (g *Graph) isExperimental(label labels.Label) bool {
+	for _, e := range g.experimentalDirs {
+		if strings.HasPrefix(label.Package, e) {
+			return true
+		}
+	}
+	return false
+}
+
 // EnsureVisibility registers a dependency between two targets in different packages. This is used to ensure the targets are
 // visible to each other.
 func (g *Graph) EnsureVisibility(from, to string) {
@@ -66,6 +81,10 @@ func (g *Graph) EnsureVisibility(from, to string) {
 
 	fromLabel := labels.Parse(from)
 	toLabel := labels.Parse(to)
+
+	if g.isExperimental(fromLabel) {
+		return // Experimental dirs are given visibility to all other packages
+	}
 
 	if strings.HasPrefix(to, ":") || fromLabel.Package == toLabel.Package {
 		return // Don't need visibility between targets in the same package

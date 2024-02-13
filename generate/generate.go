@@ -58,7 +58,7 @@ func newUpdaterWithGraph(g *graph.Graph, conf *please.Config) *updater {
 // newUpdater initialises a new updater struct. It's intended to be only used for testing (as is
 // newUpdaterWithGraph). In most instances the Update function should be called directly.
 func newUpdater(conf *please.Config) *updater {
-	g := graph.New(conf.BuildFileNames())
+	g := graph.New(conf.BuildFileNames()).WithExperimentalDirs(conf.Parse.ExperimentalDir...)
 
 	return newUpdaterWithGraph(g, conf)
 }

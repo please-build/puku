@@ -34,7 +34,7 @@ func TestLoadBuildFile(t *testing.T) {
 }
 
 func TestEnsureVisibility(t *testing.T) {
-	g := New(nil)
+	g := New(nil).WithExperimentalDirs("exp", "experimental")
 
 	foo, err := build.ParseBuild("foo/BUILD", []byte(`
 go_library(
@@ -53,13 +53,24 @@ go_library(
 `))
 	require.NoError(t, err)
 
+	experimental, err := build.ParseBuild("experimental/BUILD", []byte(`
+go_library(
+	name = "experimental",
+	srcs = ["experimental.go"],
+	deps = ["//foo"],
+)
+`))
+	require.NoError(t, err)
+
 	g.files["foo"] = foo
 	g.files["bar"] = bar
+	g.files["experimental"] = experimental
 
 	g.EnsureVisibility("//bar", "//foo")
-	g.EnsureVisibility("//bar", "///github.com//foo") // skipped - target in subrepo
-	g.EnsureVisibility("//bar", ":foo")               // skipped - local dep
-	g.EnsureVisibility("//bar:bar_test", "//bar")     // skipped - also local
+	g.EnsureVisibility("//bar", "///github.com//foo")          // skipped - target in subrepo
+	g.EnsureVisibility("//bar", ":foo")                        // skipped - local dep
+	g.EnsureVisibility("//bar:bar_test", "//bar")              // skipped - also local
+	g.EnsureVisibility("//experimental:experimental", "//foo") // skipped - experimental
 	require.Len(t, g.deps, 1)
 	require.Equal(t, g.deps[0], &Dependency{
 		From: labels.Parse("//bar"),
