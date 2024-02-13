@@ -1,3 +1,7 @@
+Version 1.6.1
+------------
+    * Don't set visibility on deps of experimental labels (#101)
+
 Version 1.6.0
 ------------
     * Known kinds can now specify a srcsArg which tells puku which arg on the
