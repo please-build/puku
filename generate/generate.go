@@ -49,9 +49,16 @@ type updater struct {
 }
 
 func newUpdaterWithGraph(g *graph.Graph, conf *please.Config) *updater {
+	p := proxy.New(proxy.DefaultURL)
+	l := licences.New(p, g)
 	return &updater{
-		plzConf: conf,
-		graph:   g,
+		proxy:           p,
+		licences:        l,
+		plzConf:         conf,
+		graph:           g,
+		installs:        trie.New(),
+		eval:            eval.New(glob.New()),
+		resolvedImports: map[string]string{},
 	}
 }
 
@@ -64,19 +71,7 @@ func newUpdater(conf *please.Config) *updater {
 }
 
 func Update(write bool, plzConf *please.Config, paths ...string) error {
-	g := graph.New(plzConf.BuildFileNames())
-	p := proxy.New(proxy.DefaultURL)
-	l := licences.New(p, g)
-
-	u := &updater{
-		proxy:           p,
-		licences:        l,
-		installs:        trie.New(),
-		resolvedImports: map[string]string{},
-		plzConf:         plzConf,
-		eval:            eval.New(glob.New()),
-		graph:           g,
-	}
+	u := newUpdater(plzConf)
 
 	conf, err := config.ReadConfig(".")
 	if err != nil {
