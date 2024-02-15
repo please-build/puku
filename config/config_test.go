@@ -42,3 +42,24 @@ func TestGetKind(t *testing.T) {
 		assert.Equal(t, kinds.Test, kind.Type)
 	})
 }
+
+func TestGetStop(t *testing.T) {
+	t.Run("when stop is true then dont stop", func(t *testing.T) {
+		c := Config{Stop: true}
+		assert.True(t, c.GetStop())
+	})
+
+	t.Run("when stop is false then stop", func(t *testing.T) {
+		c := Config{Stop: false}
+		assert.False(t, c.GetStop())
+	})
+
+	t.Run("when base stop is true then stop", func(t *testing.T) {
+		base := Config{Stop: true}
+		c := Config{base: &base, Stop: false}
+		assert.True(t, c.GetStop())
+
+		c = Config{base: &base, Stop: true}
+		assert.True(t, c.GetStop())
+	})
+}
