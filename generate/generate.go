@@ -151,7 +151,7 @@ func (u *updater) update(conf *config.Config) error {
 			return err
 		}
 
-		if conf.Stop {
+		if conf.GetStop() {
 			return nil
 		}
 

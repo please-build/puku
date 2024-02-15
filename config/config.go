@@ -120,7 +120,10 @@ func (c *Config) GetThirdPartyDir() string {
 }
 
 func (c *Config) GetStop() bool {
-	return c.Stop
+	if c.Stop {
+		return true
+	}
+	return c.base != nil && c.base.GetStop()
 }
 
 func (c *Config) GetKnownTarget(importPath string) string {
