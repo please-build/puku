@@ -123,7 +123,7 @@ func (c *Config) GetStop() bool {
 	if c.Stop {
 		return true
 	}
-	return (c.base != nil) && c.base.GetStop()
+	return c.base != nil && c.base.GetStop()
 }
 
 func (c *Config) GetKnownTarget(importPath string) string {
