@@ -1,3 +1,8 @@
+Version 1.6.2
+------------
+    * Fix bug where we weren't recursively looking at base configs to
+      determine if we should stop for a directory (#104)
+
 Version 1.6.1
 ------------
     * Don't set visibility on deps of experimental labels (#101)
