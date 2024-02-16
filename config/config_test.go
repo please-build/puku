@@ -44,12 +44,12 @@ func TestGetKind(t *testing.T) {
 }
 
 func TestGetStop(t *testing.T) {
-	t.Run("when stop is true then dont stop", func(t *testing.T) {
+	t.Run("when stop is true then stop", func(t *testing.T) {
 		c := Config{Stop: true}
 		assert.True(t, c.GetStop())
 	})
 
-	t.Run("when stop is false then stop", func(t *testing.T) {
+	t.Run("when stop is false then don't stop", func(t *testing.T) {
 		c := Config{Stop: false}
 		assert.False(t, c.GetStop())
 	})
