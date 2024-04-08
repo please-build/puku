@@ -44,11 +44,11 @@ var opts = struct {
 		} `positional-args:"true"`
 	} `command:"fmt" description:"Format build files in the provided paths"`
 	Sync struct {
-		Format outputFormat `short:"f" long:"format" default:"text" description:"output format of the linter"`
-		Write  bool         `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
+		Format string `short:"f" long:"format" choice:"json" choice:"text" default:"text" description:"output format when outputting to stdout"`
+		Write  bool   `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
 	} `command:"sync" description:"Synchronises the go.mod to the third party build file"`
 	Lint struct {
-		Format outputFormat `short:"f" long:"format" default:"text" description:"output format of the linter"`
+		Format string `short:"f" long:"format" choice:"json" choice:"text" default:"text" description:"output format when outputting to stdout"`
 		Args   struct {
 			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
 		} `positional-args:"true"`
@@ -59,18 +59,18 @@ var opts = struct {
 		} `positional-args:"true"`
 	} `command:"watch" description:"Watch build files in the provided paths and update them when needed"`
 	Migrate struct {
-		Write          bool         `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
-		Format         outputFormat `short:"f" long:"format" default:"text" description:"output format of the linter"`
-		ThirdPartyDirs []string     `long:"third_party_dir" description:"Directories to find go_module rules to migrate"`
-		UpdateGoMod    bool         `short:"g" long:"update_go_mod" description:"Update the go mod with the module(s) being migrated"`
+		Write          bool     `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
+		Format         string   `short:"f" long:"format" choice:"json" choice:"text" default:"text" description:"output format when outputting to stdout"`
+		ThirdPartyDirs []string `long:"third_party_dir" description:"Directories to find go_module rules to migrate"`
+		UpdateGoMod    bool     `short:"g" long:"update_go_mod" description:"Update the go mod with the module(s) being migrated"`
 		Args           struct {
 			Modules []string `positional-arg-name:"modules" description:"The modules to migrate to go_repo"`
 		} `positional-args:"true"`
 	} `command:"migrate" description:"Migrates from go_module to go_repo"`
 	Licenses struct {
 		Update struct {
-			Format outputFormat `short:"f" long:"format" default:"text" description:"output format of the linter"`
-			Write  bool         `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
+			Format string `short:"f" long:"format" choice:"json" choice:"text" default:"text" description:"output format when outputting to stdout"`
+			Write  bool   `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
 			Args   struct {
 				Paths []string `positional-arg-name:"packages" description:"The packages to process"`
 			} `positional-args:"true"`
