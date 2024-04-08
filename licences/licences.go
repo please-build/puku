@@ -67,7 +67,17 @@ func getLicences(modPaths []string) (map[string][]string, error) {
 	return ret, nil
 }
 
-func (l *Licenses) Update(paths []string, write bool) error {
+func (l *Licenses) Update(paths []string) error {
+	l.update(paths)
+	return l.graph.FormatFiles()
+}
+
+func (l *Licenses) UpdateToStdout(format string, paths []string) error {
+	l.update(paths)
+	return l.graph.FormatFilesWithWriter(os.Stdout, format)
+}
+
+func (l *Licenses) update(paths []string) error {
 	var mods []string
 	rules := make(map[string]*build.Rule)
 
@@ -115,8 +125,7 @@ func (l *Licenses) Update(paths []string, write bool) error {
 			rules[mod].SetAttr("licences", edit.NewStringList(license))
 		}
 	}
-
-	return l.graph.FormatFiles(write, os.Stdout)
+	return nil
 }
 
 func (l *Licenses) Get(mod, ver string) ([]string, error) {

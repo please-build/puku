@@ -22,22 +22,36 @@ type syncer struct {
 	licences *licences.Licenses
 }
 
-// Sync constructs the syncer struct and initiates the sync.
-// NB. the Graph is to be constructed in the calling code because it's useful
-// for it to be available outside the package for testing.
-func Sync(plzConf *please.Config, g *graph.Graph, write bool) error {
+func newSyncer(plzConf *please.Config, g *graph.Graph) *syncer {
 	p := proxy.New(proxy.DefaultURL)
 	l := licences.New(p, g)
-	s := &syncer{
+	return &syncer{
 		plzConf:  plzConf,
 		graph:    g,
 		licences: l,
 	}
-
-	return s.sync(write)
 }
 
-func (s *syncer) sync(write bool) error {
+// Sync constructs the syncer struct and initiates the sync.
+// NB. the Graph is to be constructed in the calling code because it's useful
+// for it to be available outside the package for testing.
+func Sync(plzConf *please.Config, g *graph.Graph) error {
+	s := newSyncer(plzConf, g)
+	if err := s.sync(); err != nil {
+		return err
+	}
+	return s.graph.FormatFiles()
+}
+
+func SyncToStdout(format string, plzConf *please.Config, g *graph.Graph) error {
+	s := newSyncer(plzConf, g)
+	if err := s.sync(); err != nil {
+		return err
+	}
+	return s.graph.FormatFilesWithWriter(os.Stdout, format)
+}
+
+func (s *syncer) sync() error {
 	if s.plzConf.ModFile() == "" {
 		return nil
 	}
@@ -60,8 +74,7 @@ func (s *syncer) sync(write bool) error {
 	if err := s.syncModFile(conf, file, existingRules); err != nil {
 		return err
 	}
-
-	return s.graph.FormatFiles(write, os.Stdout)
+	return nil
 }
 
 func (s *syncer) syncModFile(conf *config.Config, file *build.File, exitingRules map[string]*build.Rule) error {
