@@ -29,7 +29,7 @@ func TestModSync(t *testing.T) {
 	require.NoError(t, err)
 
 	g := graph.New(plzConf.BuildFileNames())
-	err = sync.Sync(plzConf, g, false)
+	err = sync.SyncToStdout("text", plzConf, g)
 	require.NoError(t, err)
 
 	thirdPartyBuildFile, err := g.LoadFile(conf.GetThirdPartyDir())
