@@ -70,28 +70,24 @@ func newUpdater(conf *please.Config) *updater {
 	return newUpdaterWithGraph(g, conf)
 }
 
-func Update(write bool, plzConf *please.Config, paths ...string) error {
+func Update(plzConf *please.Config, paths ...string) error {
 	u := newUpdater(plzConf)
-
-	conf, err := config.ReadConfig(".")
-	if err != nil {
+	if err := u.update(paths...); err != nil {
 		return err
 	}
-	u.paths = paths
+	return u.graph.FormatFiles()
+}
 
-	if err := u.readAllModules(conf); err != nil {
-		return fmt.Errorf("failed to read third party rules: %v", err)
-	}
-
-	if err := u.update(conf); err != nil {
+func UpdateToStdout(format string, plzConf *please.Config, paths ...string) error {
+	u := newUpdater(plzConf)
+	if err := u.update(paths...); err != nil {
 		return err
 	}
-
-	return u.graph.FormatFiles(write, os.Stdout)
+	return u.graph.FormatFilesWithWriter(os.Stdout, format)
 }
 
 func (u *updater) readAllModules(conf *config.Config) error {
-	return filepath.WalkDir(conf.GetThirdPartyDir(), func(path string, info fs.DirEntry, err error) error {
+	return filepath.WalkDir(conf.GetThirdPartyDir(), func(path string, info fs.DirEntry, _ error) error {
 		for _, buildFileName := range u.plzConf.BuildFileNames() {
 			if info.Name() == buildFileName {
 				file, err := u.graph.LoadFile(filepath.Dir(path))
@@ -144,7 +140,17 @@ func (u *updater) readModules(file *build.File) error {
 }
 
 // update loops through the provided paths, updating and creating any build rules it finds.
-func (u *updater) update(conf *config.Config) error {
+func (u *updater) update(paths ...string) error {
+	conf, err := config.ReadConfig(".")
+	if err != nil {
+		return err
+	}
+	u.paths = paths
+
+	if err := u.readAllModules(conf); err != nil {
+		return fmt.Errorf("failed to read third party rules: %v", err)
+	}
+
 	for _, path := range u.paths {
 		conf, err := config.ReadConfig(path)
 		if err != nil {

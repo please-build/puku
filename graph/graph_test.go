@@ -78,7 +78,7 @@ go_library(
 	})
 
 	bs := new(bytes.Buffer)
-	err = g.FormatFiles(false, bs)
+	err = g.FormatFilesWithWriter(bs, "text")
 	require.NoError(t, err)
 
 	fooT := edit.FindTargetByName(g.files["foo"], "foo")

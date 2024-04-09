@@ -2,6 +2,7 @@ package graph
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -122,12 +123,24 @@ func (g *Graph) loadFile(path string) (*build.File, error) {
 	return build.ParseBuild(validFilename, nil)
 }
 
-func (g *Graph) FormatFiles(write bool, out io.Writer) error {
+func (g *Graph) FormatFilesWithWriter(out io.Writer, format string) error {
 	if err := g.ensureVisibilities(); err != nil {
 		return err
 	}
 	for _, file := range g.files {
-		if err := saveAndFormatBuildFile(file, write, out); err != nil {
+		if err := writeFormattedBuildFile(file, out, format); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (g *Graph) FormatFiles() error {
+	if err := g.ensureVisibilities(); err != nil {
+		return err
+	}
+	for _, file := range g.files {
+		if err := saveFormattedBuildFile(file); err != nil {
 			return err
 		}
 	}
@@ -218,24 +231,11 @@ func checkVisibility(target labels.Label, visibilities []string) bool {
 	return false
 }
 
-func saveAndFormatBuildFile(buildFile *build.File, write bool, out io.Writer) error {
+func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string) error {
 	if len(buildFile.Stmt) == 0 {
 		return nil
 	}
-
-	if write {
-		f, err := os.Create(buildFile.Path)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-
-		_, err = f.Write(build.FormatWithoutRewriting(buildFile))
-		return err
-	}
-
 	target := build.FormatWithoutRewriting(buildFile)
-
 	actual, err := os.ReadFile(buildFile.Path)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -245,9 +245,29 @@ func saveAndFormatBuildFile(buildFile *build.File, write bool, out io.Writer) er
 	}
 
 	if !bytes.Equal(target, actual) {
-		_, err := out.Write(target)
-		return err
+		switch format {
+		case "text":
+			_, err := out.Write(target)
+			return err
+		case "json":
+			e := json.NewEncoder(out)
+			return e.Encode(struct{ Path, Content string }{Path: buildFile.Path, Content: string(target)})
+		}
+	}
+	return nil
+}
+
+func saveFormattedBuildFile(buildFile *build.File) error {
+	if len(buildFile.Stmt) == 0 {
+		return nil
 	}
 
-	return nil
+	f, err := os.Create(buildFile.Path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.Write(build.FormatWithoutRewriting(buildFile))
+	return err
 }

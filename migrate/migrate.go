@@ -30,9 +30,9 @@ type migrator struct {
 	licences          *licences.Licenses
 }
 
-func Migrate(conf *config.Config, plzConf *please.Config, write, updateGoMod bool, modules, paths []string) error {
+func newMigrator(plzConf *please.Config, conf *config.Config) *migrator {
 	g := graph.New(plzConf.BuildFileNames())
-	m := &migrator{
+	return &migrator{
 		plzConf:           plzConf,
 		graph:             g,
 		thirdPartyFolder:  conf.GetThirdPartyDir(),
@@ -40,8 +40,22 @@ func Migrate(conf *config.Config, plzConf *please.Config, write, updateGoMod boo
 		licences:          licences.New(proxy.New(proxy.DefaultURL), g),
 		existingRepoRules: map[string]*build.Rule{},
 	}
+}
 
-	return m.migrate(modules, paths, write, updateGoMod)
+func Migrate(conf *config.Config, plzConf *please.Config, updateGoMod bool, modules, paths []string) error {
+	m := newMigrator(plzConf, conf)
+	if err := m.migrate(modules, paths, updateGoMod); err != nil {
+		return err
+	}
+	return m.graph.FormatFiles()
+}
+
+func MigrateToStdout(format string, conf *config.Config, plzConf *please.Config, updateGoMod bool, modules, paths []string) error { //nolint
+	m := newMigrator(plzConf, conf)
+	if err := m.migrate(modules, paths, updateGoMod); err != nil {
+		return err
+	}
+	return m.graph.FormatFilesWithWriter(os.Stdout, format)
 }
 
 // pkgRule represents the rule expr in a pkg
@@ -125,7 +139,7 @@ func binaryAlias(module, thirdPartyDir string, part *pkgRule) (*build.Rule, erro
 	return rule, nil
 }
 
-func (m *migrator) migrate(modules, paths []string, write, updateGoMod bool) error {
+func (m *migrator) migrate(modules, paths []string, updateGoMod bool) error {
 	// Read all the BUILD files under the provided paths to find go_module and go_mod_download rules
 	for _, path := range paths {
 		f, err := m.graph.LoadFile(path)
@@ -144,7 +158,7 @@ func (m *migrator) migrate(modules, paths []string, write, updateGoMod bool) err
 	if err := m.replaceRulesForModules(updateGoMod, modules); err != nil {
 		return err
 	}
-	return m.graph.FormatFiles(write, os.Stdout)
+	return nil
 }
 
 // replaceRulesForModules takes a list of modules and replaces those modules and their dependencies

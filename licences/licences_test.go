@@ -49,7 +49,7 @@ go_repo(
 		graph: g,
 	}
 
-	err = l.Update([]string{"third_party/go"}, false)
+	err = l.UpdateToStdout("text", []string{"third_party/go"})
 	require.NoError(t, err)
 
 	testify := edit.FindTargetByName(thirdPartFile, "testify")
