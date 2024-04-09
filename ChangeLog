@@ -1,3 +1,8 @@
+Version 1.7.0
+------------
+    * Allow the user to specify output format when outputting to stdout on
+      lint, sync, migrate and licences update.
+
 Version 1.6.2
 ------------
     * Fix bug where we weren't recursively looking at base configs to
