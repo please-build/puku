@@ -128,7 +128,7 @@ func (g *Graph) FormatFilesWithWriter(out io.Writer, format string) error {
 		return err
 	}
 	for _, file := range g.files {
-		if err := writeFormatedBuildFile(file, out, format); err != nil {
+		if err := writeFormattedBuildFile(file, out, format); err != nil {
 			return err
 		}
 	}
