@@ -231,7 +231,7 @@ func checkVisibility(target labels.Label, visibilities []string) bool {
 	return false
 }
 
-func writeFormatedBuildFile(buildFile *build.File, out io.Writer, format string) error {
+func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string) error {
 	if len(buildFile.Stmt) == 0 {
 		return nil
 	}
