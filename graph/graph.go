@@ -140,7 +140,7 @@ func (g *Graph) FormatFiles() error {
 		return err
 	}
 	for _, file := range g.files {
-		if err := saveFormatedBuildFile(file); err != nil {
+		if err := saveFormattedBuildFile(file); err != nil {
 			return err
 		}
 	}
