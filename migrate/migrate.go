@@ -48,10 +48,9 @@ func Migrate(conf *config.Config, plzConf *please.Config, updateGoMod bool, modu
 		return err
 	}
 	return m.graph.FormatFiles()
-
 }
 
-func MigrateToStdout(format string, conf *config.Config, plzConf *please.Config, updateGoMod bool, modules, paths []string) error {
+func MigrateToStdout(format string, conf *config.Config, plzConf *please.Config, updateGoMod bool, modules, paths []string) error { //nolint
 	m := newMigrator(plzConf, conf)
 	if err := m.migrate(modules, paths, updateGoMod); err != nil {
 		return err

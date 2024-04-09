@@ -43,7 +43,8 @@ func Sync(plzConf *please.Config, g *graph.Graph) error {
 	return s.graph.FormatFiles()
 }
 
-func SyncToStdout(format string, plzConf *please.Config, g *graph.Graph) error {
+// SyncToStdout constructs the syncer and outputs the synced build file to stdout.
+func SyncToStdout(format string, plzConf *please.Config, g *graph.Graph) error { //nolint
 	s := newSyncer(plzConf, g)
 	if err := s.sync(); err != nil {
 		return err

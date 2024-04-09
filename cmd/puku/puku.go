@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -21,19 +20,6 @@ import (
 	"github.com/please-build/puku/work"
 )
 
-type outputFormat string
-
-// UnmarshalFlag implements the flags.Unmarshaler interface.
-func (f *outputFormat) UnmarshalFlag(in string) error {
-	switch in {
-	case "json", "text":
-		*f = outputFormat(in)
-	default:
-		return fmt.Errorf("Flags error: Output format unrecognised")
-	}
-	return nil
-}
-
 var opts = struct {
 	Usage     string
 	Verbosity clilogging.Verbosity `short:"v" long:"verbosity" description:"Verbosity of output (error, warning, notice, info, debug)" default:"info"`
@@ -44,11 +30,11 @@ var opts = struct {
 		} `positional-args:"true"`
 	} `command:"fmt" description:"Format build files in the provided paths"`
 	Sync struct {
-		Format string `short:"f" long:"format" choice:"json" choice:"text" default:"text" description:"output format when outputting to stdout"`
+		Format string `short:"f" long:"format" choice:"json" choice:"text" default:"text" description:"output format when outputting to stdout"` //nolint
 		Write  bool   `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
 	} `command:"sync" description:"Synchronises the go.mod to the third party build file"`
 	Lint struct {
-		Format string `short:"f" long:"format" choice:"json" choice:"text" default:"text" description:"output format when outputting to stdout"`
+		Format string `short:"f" long:"format" choice:"json" choice:"text" default:"text" description:"output format when outputting to stdout"` //nolint
 		Args   struct {
 			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
 		} `positional-args:"true"`
@@ -60,7 +46,7 @@ var opts = struct {
 	} `command:"watch" description:"Watch build files in the provided paths and update them when needed"`
 	Migrate struct {
 		Write          bool     `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
-		Format         string   `short:"f" long:"format" choice:"json" choice:"text" default:"text" description:"output format when outputting to stdout"`
+		Format         string   `short:"f" long:"format" choice:"json" choice:"text" default:"text" description:"output format when outputting to stdout"` //nolint
 		ThirdPartyDirs []string `long:"third_party_dir" description:"Directories to find go_module rules to migrate"`
 		UpdateGoMod    bool     `short:"g" long:"update_go_mod" description:"Update the go mod with the module(s) being migrated"`
 		Args           struct {
@@ -69,7 +55,7 @@ var opts = struct {
 	} `command:"migrate" description:"Migrates from go_module to go_repo"`
 	Licenses struct {
 		Update struct {
-			Format string `short:"f" long:"format" choice:"json" choice:"text" default:"text" description:"output format when outputting to stdout"`
+			Format string `short:"f" long:"format" choice:"json" choice:"text" default:"text" description:"output format when outputting to stdout"` //nolint
 			Write  bool   `short:"w" long:"write" description:"Whether to write the files back or just print them to stdout"`
 			Args   struct {
 				Paths []string `positional-arg-name:"packages" description:"The packages to process"`
@@ -85,35 +71,35 @@ puku is a tool used to generate and update Go targets in build files
 var log = logging.GetLogger()
 
 var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignalWD string) int{
-	"fmt": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
+	"fmt": func(_ *config.Config, plzConf *please.Config, orignalWD string) int {
 		paths := work.MustExpandPaths(orignalWD, opts.Fmt.Args.Paths)
 		if err := generate.Update(plzConf, paths...); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
 	},
-	"sync": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
+	"sync": func(_ *config.Config, plzConf *please.Config, _ string) int {
 		g := graph.New(plzConf.BuildFileNames())
 		if opts.Sync.Write {
 			if err := sync.Sync(plzConf, g); err != nil {
 				log.Fatalf("%v", err)
 			}
 		} else {
-			if err := sync.SyncToStdout(string(opts.Sync.Format), plzConf, g); err != nil {
+			if err := sync.SyncToStdout(opts.Sync.Format, plzConf, g); err != nil {
 				log.Fatalf("%v", err)
 			}
 		}
 		return 0
 	},
-	"lint": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
+	"lint": func(_ *config.Config, plzConf *please.Config, orignalWD string) int {
 
 		paths := work.MustExpandPaths(orignalWD, opts.Lint.Args.Paths)
-		if err := generate.UpdateToStdout(string(opts.Lint.Format), plzConf, paths...); err != nil {
+		if err := generate.UpdateToStdout(opts.Lint.Format, plzConf, paths...); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
 	},
-	"watch": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
+	"watch": func(_ *config.Config, plzConf *please.Config, orignalWD string) int {
 		paths := work.MustExpandPaths(orignalWD, opts.Watch.Args.Paths)
 		if err := generate.Update(plzConf, paths...); err != nil {
 			log.Fatalf("%v", err)
@@ -135,13 +121,13 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 				log.Fatalf("%v", err)
 			}
 		} else {
-			if err := migrate.MigrateToStdout(string(opts.Migrate.Format), conf, plzConf, opts.Migrate.UpdateGoMod, opts.Migrate.Args.Modules, paths); err != nil {
+			if err := migrate.MigrateToStdout(opts.Migrate.Format, conf, plzConf, opts.Migrate.UpdateGoMod, opts.Migrate.Args.Modules, paths); err != nil {
 				log.Fatalf("%v", err)
 			}
 		}
 		return 0
 	},
-	"update": func(conf *config.Config, plzConf *please.Config, orignalWD string) int {
+	"update": func(_ *config.Config, plzConf *please.Config, orignalWD string) int {
 		paths := work.MustExpandPaths(orignalWD, opts.Licenses.Update.Args.Paths)
 		l := licences.New(proxy.New(proxy.DefaultURL), graph.New(plzConf.BuildFileNames()))
 		if opts.Licenses.Update.Write {
@@ -149,7 +135,7 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 				log.Fatalf("%v", err)
 			}
 		} else {
-			if err := l.UpdateToStdout(string(opts.Licenses.Update.Format), paths); err != nil {
+			if err := l.UpdateToStdout(opts.Licenses.Update.Format, paths); err != nil {
 				log.Fatalf("%v", err)
 			}
 		}

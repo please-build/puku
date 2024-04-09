@@ -87,7 +87,7 @@ func UpdateToStdout(format string, plzConf *please.Config, paths ...string) erro
 }
 
 func (u *updater) readAllModules(conf *config.Config) error {
-	return filepath.WalkDir(conf.GetThirdPartyDir(), func(path string, info fs.DirEntry, err error) error {
+	return filepath.WalkDir(conf.GetThirdPartyDir(), func(path string, info fs.DirEntry, _ error) error {
 		for _, buildFileName := range u.plzConf.BuildFileNames() {
 			if info.Name() == buildFileName {
 				file, err := u.graph.LoadFile(filepath.Dir(path))

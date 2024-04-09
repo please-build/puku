@@ -68,12 +68,16 @@ func getLicences(modPaths []string) (map[string][]string, error) {
 }
 
 func (l *Licenses) Update(paths []string) error {
-	l.update(paths)
+	if err := l.update(paths); err != nil {
+		return err
+	}
 	return l.graph.FormatFiles()
 }
 
 func (l *Licenses) UpdateToStdout(format string, paths []string) error {
-	l.update(paths)
+	if err := l.update(paths); err != nil {
+		return err
+	}
 	return l.graph.FormatFilesWithWriter(os.Stdout, format)
 }
 
