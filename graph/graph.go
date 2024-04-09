@@ -257,7 +257,7 @@ func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string
 	return nil
 }
 
-func saveFormatedBuildFile(buildFile *build.File) error {
+func saveFormattedBuildFile(buildFile *build.File) error {
 	if len(buildFile.Stmt) == 0 {
 		return nil
 	}
