@@ -54,7 +54,8 @@ configured to support other rules. See the configuration section below for more 
 ### Updating and adding third party dependencies with go.mod (optional) 
 
 Puku will attempt to resolve new imports and add `go_repo` rules to satisfy them. This works most of the time, however 
-setting `ModFile = //:gomod` in your Go plugin, is far more robust and highly recommended. 
+setting `ModFile = //:gomod` in your Go plugin, is far more robust and highly recommended. Without this, you may just 
+have to pass in modules via requirements = ["github.com/example/module"], to help resolve imports to the correct module path.
 
 This approach facilitates using standard go tooling i.e. `go get` to resolve dependencies. Puku will then sync new 
 dependencies from your `go.mod` to `third_party/go/BUILD` automatically as necessary, or on demand via `puku sync` 
