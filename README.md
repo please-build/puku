@@ -51,7 +51,7 @@ $ puku fmt //src/...
 Puku supports `go_library`, `go_test`, `go_binary`, `go_benchmark`, `proto_library`, and `grpc_library` out of the box, but can be
 configured to support other rules. See the configuration section below for more information.
 
-### Updating and adding third party dependencies 
+### Updating and adding third party dependencies with go.mod (optional) 
 
 Puku will attempt to resolve new imports and add `go_repo` rules to satisfy them. This works most of the time, however 
 setting `ModFile = //:gomod` in your Go plugin, is far more robust and highly recommended. 
