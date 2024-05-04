@@ -118,10 +118,8 @@ func (u *updater) readModules(file *build.File) error {
 		module := repoRule.AttrString("module")
 		u.modules = append(u.modules, module)
 
-		installs := repoRule.AttrStrings("install")
-		if len(installs) > 0 {
-			addInstalls(repoRule.Name(), module, installs)
-		}
+		// we do not add installs for go_repos. We prefer to resolve deps
+		// to the subrepo targets since this is more efficient for please.
 	}
 
 	goMods := file.Rules("go_module")
