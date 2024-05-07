@@ -1,3 +1,8 @@
+Version 1.7.1
+------------
+    * resolve deps for go_repo to subrepo targets rather than its install
+      (#108)
+
 Version 1.7.0
 ------------
     * Allow the user to specify output format when outputting to stdout on
