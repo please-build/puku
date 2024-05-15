@@ -31,11 +31,53 @@ func LookLikeBuildLabel(l string) bool {
 }
 
 func (e *Eval) EvalGlobs(dir string, rule *build.Rule, attrName string) ([]string, error) {
-	globArgs := parseGlob(rule.Attr(attrName))
-	if globArgs != nil {
-		return e.globber.Glob(dir, globArgs)
+	files, err := e.evalGlobs(dir, rule.Attr(attrName))
+	if err != nil {
+		return nil, err
 	}
-	return rule.AttrStrings(attrName), nil
+	ret := make([]string, 0, len(files))
+	for f := range files {
+		ret = append(ret, f)
+	}
+	return ret, nil
+}
+
+func (e *Eval) evalGlobs(dir string, val build.Expr) (map[string]struct{}, error) {
+	switch expr := val.(type) {
+	case *build.CallExpr:
+		globArgs := parseGlob(expr)
+		if globArgs == nil {
+			return nil, nil
+		}
+		return e.globber.Glob(dir, globArgs)
+	case *build.BinaryExpr:
+		ret, err := e.evalGlobs(dir, expr.X)
+		if err != nil {
+			return nil, err
+		}
+		y, err := e.evalGlobs(dir, expr.Y)
+		if err != nil {
+			return nil, err
+		}
+		switch expr.Op {
+		case "+":
+			for f := range y {
+				ret[f] = struct{}{}
+			}
+		case "-":
+			for f := range y {
+				delete(ret, f)
+			}
+		}
+		return ret, nil
+	default:
+		str := build.Strings(expr)
+		ret := make(map[string]struct{}, len(str))
+		for _, s := range str {
+			ret[s] = struct{}{}
+		}
+		return ret, nil
+	}
 }
 
 func (e *Eval) BuildSources(plzPath, dir string, rule *build.Rule, srcsArg string) ([]string, error) {
