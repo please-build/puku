@@ -1,3 +1,7 @@
+Version 1.7.2
+------------
+    * evaluating binary expressions correctly for srcs. (#109)
+
 Version 1.7.1
 ------------
     * resolve deps for go_repo to subrepo targets rather than its install
