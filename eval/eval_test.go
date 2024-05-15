@@ -6,6 +6,8 @@ import (
 	"github.com/please-build/buildtools/build"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/please-build/puku/glob"
 )
 
 func TestParseGlob(t *testing.T) {
@@ -53,6 +55,54 @@ func TestParseGlob(t *testing.T) {
 			args := parseGlob(call)
 			assert.Equal(t, test.include, args.Include)
 			assert.Equal(t, test.exclude, args.Exclude)
+		})
+	}
+}
+func TestEvalGlob(t *testing.T) {
+	e := New(glob.New())
+	testCases := []struct {
+		name     string
+		code     string
+		expected []string
+	}{
+		{
+			name:     "glob + glob",
+			code:     `glob(["mai*.go"]) + glob(["ba*.go"])`,
+			expected: []string{"main.go", "bar.go", "bar_test.go"},
+		},
+		{
+			name:     "glob + glob + strings",
+			code:     `glob(["mai*.go"]) + glob(["*_test.go"]) + ["bar.go"]`,
+			expected: []string{"main.go", "bar.go", "bar_test.go"},
+		},
+		{
+			name:     "strings + strings",
+			code:     `["main.go"] + ["bar.go"]`,
+			expected: []string{"main.go", "bar.go"},
+		},
+		{
+			name:     "glob + strings",
+			code:     `glob(["mai*.go"]) + ["bar.go"]`,
+			expected: []string{"main.go", "bar.go"},
+		},
+		{
+			name:     "glob - strings",
+			code:     `glob(["*.go"]) - ["bar.go"]`,
+			expected: []string{"main.go", "bar_test.go"},
+		},
+	}
+	for _, test := range testCases {
+		t.Run(test.name, func(t *testing.T) {
+			file, err := build.ParseBuild(test.name, []byte(test.code))
+			require.NoError(t, err)
+			require.Len(t, file.Stmt, 1)
+			ret, err := e.evalGlobs("test_project", file.Stmt[0])
+			got := make([]string, 0, len(ret))
+			for f := range ret {
+				got = append(got, f)
+			}
+			require.NoError(t, err)
+			assert.ElementsMatch(t, test.expected, got)
 		})
 	}
 }

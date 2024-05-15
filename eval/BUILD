@@ -13,6 +13,7 @@ go_library(
 go_test(
     name = "eval_test",
     srcs = ["eval_test.go"],
+    data = ["//:test_project"],
     deps = [
         ":eval",
         "///third_party/go/github.com_please-build_buildtools//build",

@@ -15,7 +15,7 @@ func TestGlob(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assert.ElementsMatch(t, []string{"bar_test.go"}, files)
+		assert.Equal(t, map[string]struct{}{"bar_test.go": {}}, files)
 	})
 
 	t.Run("excludes pattern", func(t *testing.T) {
@@ -25,6 +25,6 @@ func TestGlob(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assert.ElementsMatch(t, []string{"main.go", "bar.go"}, files)
+		assert.Equal(t, map[string]struct{}{"main.go": {}, "bar.go": {}}, files)
 	})
 }
