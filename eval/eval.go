@@ -1,6 +1,7 @@
 package eval
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/please-build/buildtools/build"
@@ -31,18 +32,10 @@ func LookLikeBuildLabel(l string) bool {
 }
 
 func (e *Eval) EvalGlobs(dir string, rule *build.Rule, attrName string) ([]string, error) {
-	files, err := e.evalGlobs(dir, rule.Attr(attrName))
-	if err != nil {
-		return nil, err
-	}
-	ret := make([]string, 0, len(files))
-	for f := range files {
-		ret = append(ret, f)
-	}
-	return ret, nil
+	return e.evalGlobs(dir, rule.Attr(attrName))
 }
 
-func (e *Eval) evalGlobs(dir string, val build.Expr) (map[string]struct{}, error) {
+func (e *Eval) evalGlobs(dir string, val build.Expr) ([]string, error) {
 	switch expr := val.(type) {
 	case *build.CallExpr:
 		globArgs := parseGlob(expr)
@@ -51,7 +44,10 @@ func (e *Eval) evalGlobs(dir string, val build.Expr) (map[string]struct{}, error
 		}
 		return e.globber.Glob(dir, globArgs)
 	case *build.BinaryExpr:
-		ret, err := e.evalGlobs(dir, expr.X)
+		if expr.Op != "+" {
+			return nil, fmt.Errorf("encountered a binary expression with operation %s. Only + is supported", expr.Op)
+		}
+		x, err := e.evalGlobs(dir, expr.X)
 		if err != nil {
 			return nil, err
 		}
@@ -59,24 +55,9 @@ func (e *Eval) evalGlobs(dir string, val build.Expr) (map[string]struct{}, error
 		if err != nil {
 			return nil, err
 		}
-		switch expr.Op {
-		case "+":
-			for f := range y {
-				ret[f] = struct{}{}
-			}
-		case "-":
-			for f := range y {
-				delete(ret, f)
-			}
-		}
-		return ret, nil
+		return append(x, y...), nil
 	default:
-		str := build.Strings(expr)
-		ret := make(map[string]struct{}, len(str))
-		for _, s := range str {
-			ret[s] = struct{}{}
-		}
-		return ret, nil
+		return build.Strings(expr), nil
 	}
 }
 

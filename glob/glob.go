@@ -25,7 +25,7 @@ func New() *Globber {
 // 1) globs should only match .go files as they're being used in go rules
 // 2) go rules will never depend on files outside the package dir, so we don't need to support **
 // 3) we don't want symlinks, directories and other non-regular files
-func (g *Globber) Glob(dir string, args *Args) (map[string]struct{}, error) {
+func (g *Globber) Glob(dir string, args *Args) ([]string, error) {
 	inc := map[string]struct{}{}
 	for _, i := range args.Include {
 		fs, err := g.glob(dir, i)
@@ -49,7 +49,11 @@ func (g *Globber) Glob(dir string, args *Args) (map[string]struct{}, error) {
 		}
 	}
 
-	return inc, nil
+	ret := make([]string, 0, len(inc))
+	for i := range inc {
+		ret = append(ret, i)
+	}
+	return ret, nil
 }
 
 // glob matches all regular files in a directory based on a glob pattern

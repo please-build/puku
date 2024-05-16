@@ -35,7 +35,6 @@ func TestParseGlob(t *testing.T) {
 			include: []string{"*.go"},
 			exclude: []string{"*_test.go"},
 		},
-
 		{
 			name: "ignores other args",
 			// Please has some other stuff we don't care about.
@@ -85,22 +84,13 @@ func TestEvalGlob(t *testing.T) {
 			code:     `glob(["mai*.go"]) + ["bar.go"]`,
 			expected: []string{"main.go", "bar.go"},
 		},
-		{
-			name:     "glob - strings",
-			code:     `glob(["*.go"]) - ["bar.go"]`,
-			expected: []string{"main.go", "bar_test.go"},
-		},
 	}
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			file, err := build.ParseBuild(test.name, []byte(test.code))
 			require.NoError(t, err)
 			require.Len(t, file.Stmt, 1)
-			ret, err := e.evalGlobs("test_project", file.Stmt[0])
-			got := make([]string, 0, len(ret))
-			for f := range ret {
-				got = append(got, f)
-			}
+			got, err := e.evalGlobs("test_project", file.Stmt[0])
 			require.NoError(t, err)
 			assert.ElementsMatch(t, test.expected, got)
 		})
