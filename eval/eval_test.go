@@ -90,7 +90,7 @@ func TestEvalGlob(t *testing.T) {
 			file, err := build.ParseBuild(test.name, []byte(test.code))
 			require.NoError(t, err)
 			require.Len(t, file.Stmt, 1)
-			got, err := e.evalGlobs("test_project", file.Stmt[0])
+			got, err := e.EvalGlobs("test_project", file.Stmt[0])
 			require.NoError(t, err)
 			assert.ElementsMatch(t, test.expected, got)
 		})
