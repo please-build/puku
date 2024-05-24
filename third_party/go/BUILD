@@ -7,6 +7,10 @@ go_toolchain(
     architectures = architectures,
 )
 
+go_stdlib(
+    name = "std",
+)
+
 go_repo(
     licences = ["ISC"],
     module = "github.com/davecgh/go-spew",
