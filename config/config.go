@@ -18,6 +18,7 @@ type KindConfig struct {
 	ProvidedDeps      []string `json:"providedDeps"`
 	DefaultVisibility []string `json:"defaultVisibility"`
 	SrcsArg           string   `json:"srcsArg"`
+	SrcsRuleTemplate  string   `json:"srcsRuleTemplate"`
 }
 
 func (kc *KindConfig) srcsArg() string {
@@ -177,24 +178,27 @@ func (c *Config) GetKind(kind string) *kinds.Kind {
 			SrcsAttr:          k.srcsArg(),
 			DefaultVisibility: k.DefaultVisibility,
 			NonGoSources:      k.NonGoSources,
+			SrcsRuleTemplate:  k.SrcsRuleTemplate,
 		}
 	}
 	if k, ok := c.TestKinds[kind]; ok {
 		return &kinds.Kind{
-			Name:         kind,
-			Type:         kinds.Test,
-			ProvidedDeps: k.ProvidedDeps,
-			SrcsAttr:     k.srcsArg(),
-			NonGoSources: k.NonGoSources,
+			Name:             kind,
+			Type:             kinds.Test,
+			ProvidedDeps:     k.ProvidedDeps,
+			SrcsAttr:         k.srcsArg(),
+			NonGoSources:     k.NonGoSources,
+			SrcsRuleTemplate: k.SrcsRuleTemplate,
 		}
 	}
 	if k, ok := c.BinKinds[kind]; ok {
 		return &kinds.Kind{
-			Name:         kind,
-			Type:         kinds.Bin,
-			ProvidedDeps: k.ProvidedDeps,
-			SrcsAttr:     k.srcsArg(),
-			NonGoSources: k.NonGoSources,
+			Name:             kind,
+			Type:             kinds.Bin,
+			ProvidedDeps:     k.ProvidedDeps,
+			SrcsAttr:         k.srcsArg(),
+			NonGoSources:     k.NonGoSources,
+			SrcsRuleTemplate: k.SrcsRuleTemplate,
 		}
 	}
 	if c.base != nil {

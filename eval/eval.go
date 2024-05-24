@@ -31,12 +31,8 @@ func LookLikeBuildLabel(l string) bool {
 	return strings.HasPrefix("//", l)
 }
 
-func (e *Eval) EvalGlobs(dir string, rule *build.Rule, attrName string) ([]string, error) {
-	return e.evalGlobs(dir, rule.Attr(attrName))
-}
-
-func (e *Eval) evalGlobs(dir string, val build.Expr) ([]string, error) {
-	switch expr := val.(type) {
+func (e *Eval) EvalGlobs(dir string, srcs build.Expr) ([]string, error) {
+	switch expr := srcs.(type) {
 	case *build.CallExpr:
 		globArgs := parseGlob(expr)
 		if globArgs == nil {
@@ -47,11 +43,11 @@ func (e *Eval) evalGlobs(dir string, val build.Expr) ([]string, error) {
 		if expr.Op != "+" {
 			return nil, fmt.Errorf("encountered a binary expression with operation %s. Only + is supported", expr.Op)
 		}
-		x, err := e.evalGlobs(dir, expr.X)
+		x, err := e.EvalGlobs(dir, expr.X)
 		if err != nil {
 			return nil, err
 		}
-		y, err := e.evalGlobs(dir, expr.Y)
+		y, err := e.EvalGlobs(dir, expr.Y)
 		if err != nil {
 			return nil, err
 		}
@@ -61,8 +57,8 @@ func (e *Eval) evalGlobs(dir string, val build.Expr) ([]string, error) {
 	}
 }
 
-func (e *Eval) BuildSources(plzPath, dir string, rule *build.Rule, srcsArg string) ([]string, error) {
-	srcs, err := e.EvalGlobs(dir, rule, srcsArg)
+func (e *Eval) BuildSources(plzPath, dir string, srcsExpr build.Expr) ([]string, error) {
+	srcs, err := e.EvalGlobs(dir, srcsExpr)
 	if err != nil {
 		return nil, err
 	}

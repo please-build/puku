@@ -20,7 +20,8 @@ type Kind struct {
 	SrcsAttr          string
 	// NonGoSources indicates the puku that the sources to this rule are not go so we shouldn't try to parse them to
 	// infer their deps, for example, proto_library.
-	NonGoSources bool
+	NonGoSources     bool
+	SrcsRuleTemplate string
 }
 
 // IsProvided returns whether the dependency is already provided by the kind, and therefore can be omitted from the deps

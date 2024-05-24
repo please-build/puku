@@ -299,7 +299,7 @@ func TestUpdateDeps(t *testing.T) {
 func mustGetSources(t *testing.T, u *updater, rule *rule) []string {
 	t.Helper()
 
-	srcs, err := u.eval.EvalGlobs(rule.dir, rule.Rule, rule.SrcsAttr())
+	srcs, err := u.eval.EvalGlobs(rule.dir, rule.Srcs())
 	require.NoError(t, err)
 	return srcs
 }
