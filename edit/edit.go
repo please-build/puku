@@ -1,6 +1,7 @@
 package edit
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/please-build/buildtools/build"
@@ -117,7 +118,7 @@ func BoolAttr(rule *build.Rule, attrName string) bool {
 	return ident.Name == "True"
 }
 
-func NewGoRepoRule(mod, version, download string, licences []string) *build.CallExpr {
+func NewGoRepoRule(mod, version, download string, licences []string, labels []string) *build.CallExpr {
 	rule := build.NewRule(&build.CallExpr{
 		X:    &build.Ident{Name: "go_repo"},
 		List: []build.Expr{},
@@ -132,6 +133,9 @@ func NewGoRepoRule(mod, version, download string, licences []string) *build.Call
 	if len(licences) != 0 {
 		rule.SetAttr("licences", NewStringList(licences))
 	}
+	if len(labels) != 0 {
+		rule.SetAttr("labels", NewStringList(labels))
+	}
 	return rule.Call
 }
 
@@ -144,4 +148,33 @@ func NewModDownloadRule(mod, version string, licences []string) (*build.CallExpr
 		rule.SetAttr("licences", NewStringList(licences))
 	}
 	return rule.Call, rule.Name()
+}
+
+// AddLabel adds a specified string label to a build Rule's labels, unless it already exists
+func AddLabel(rule *build.Rule, label string) error {
+	// Fetch the labels attribute, or initialise it
+	ruleLabels := rule.Attr("labels")
+	if ruleLabels == nil {
+		ruleLabels = &build.ListExpr{}
+	}
+	// Check it's a list of expressions
+	ruleLabelsList, ok := ruleLabels.(*build.ListExpr)
+	if !ok {
+		return errors.New("rule already has a `labels` attribute, and it is not a list")
+	}
+	// Check for already-matching label
+	for _, labelExpr := range ruleLabelsList.List {
+		// Ignore any non-string labels
+		labelStringExpr, ok := labelExpr.(*build.StringExpr)
+		if !ok {
+			continue
+		}
+		// If a matching label already exists, no need to do anything
+		if labelStringExpr.Value == label {
+			return nil
+		}
+	}
+	// Add the new label
+	ruleLabelsList.List = append(ruleLabelsList.List, NewStringExpr(label))
+	return nil
 }
