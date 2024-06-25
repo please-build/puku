@@ -176,5 +176,6 @@ func AddLabel(rule *build.Rule, label string) error {
 	}
 	// Add the new label
 	ruleLabelsList.List = append(ruleLabelsList.List, NewStringExpr(label))
+	rule.SetAttr("labels", ruleLabelsList)
 	return nil
 }
