@@ -1,6 +1,7 @@
 package syncmod
 
 import (
+	"github.com/please-build/buildtools/build"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,6 +21,7 @@ func TestModSync(t *testing.T) {
 		panic(err)
 	}
 
+	// Setup puku and please config
 	conf, err := config.ReadConfig(".")
 	require.NoError(t, err)
 
@@ -28,13 +30,16 @@ func TestModSync(t *testing.T) {
 	plzConf, err := please.QueryConfig(conf.GetPlzPath())
 	require.NoError(t, err)
 
+	// Parse the puku graph of test repo build files
 	g := graph.New(plzConf.BuildFileNames())
 	err = sync.SyncToStdout("text", plzConf, g)
 	require.NoError(t, err)
 
+	// Fetch the generated third_party/go build file
 	thirdPartyBuildFile, err := g.LoadFile(conf.GetThirdPartyDir())
 	require.NoError(t, err)
 
+	// Read version info from the go.mod file
 	expectedVers := readModFileVersions()
 
 	// We expect to generate the following for the replace in the go.mod:
@@ -52,12 +57,24 @@ func TestModSync(t *testing.T) {
 	for _, repoRule := range thirdPartyBuildFile.Rules("go_repo") {
 		t.Run(repoRule.AttrString("module"), func(t *testing.T) {
 			// Check that we've replaced build tools
-			if repoRule.AttrString("version") == "" {
-				assert.Equal(t, "github.com/bazelbuild/buildtools", repoRule.AttrString("module"))
+			if repoRule.AttrString("module") == "github.com/bazelbuild/buildtools" {
+				// Assert there's no version set
+				assert.Equal(t, "", repoRule.AttrString("version"))
+				// Ensure the download attribute is set
 				assert.Equal(t, ":github.com_peterebden_buildtools_dl", repoRule.AttrString("download"))
+				// Check that a label has been added
+				labels := listLabels(repoRule)
+				assert.Contains(t, labels, "go_replace_directive")
 				return
 			}
-			// All rules start off at v0.0.1 and should be updated to v1.0.0 as per the go.mod
+
+			// Check that testify is labelled for a replace directive
+			if repoRule.AttrString("module") == "github.com/stretchr/testify" {
+				labels := listLabels(repoRule)
+				assert.Contains(t, labels, "go_replace_directive")
+			}
+
+			// All rules start off at v0.0.1 and should be updated to their version listed in the go.mod
 			assert.Equal(t, expectedVers[repoRule.AttrString("module")], repoRule.AttrString("version"))
 		})
 	}
@@ -69,6 +86,15 @@ func TestModSync(t *testing.T) {
 	assert.Equal(t, "github.com_peterebden_buildtools_dl", dlRule.Name())
 	assert.Equal(t, "github.com/peterebden/buildtools", dlRule.AttrString("module"))
 	assert.Equal(t, expectedVers[dlRule.AttrString("module")], dlRule.AttrString("version"))
+}
+
+func listLabels(rule *build.Rule) []string {
+	labelsExpr := rule.Attr("labels")
+	var labels []string
+	for _, labelExpr := range labelsExpr.(*build.ListExpr).List {
+		labels = append(labels, labelExpr.(*build.StringExpr).Value)
+	}
+	return labels
 }
 
 func readModFileVersions() map[string]string {
