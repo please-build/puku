@@ -1,11 +1,12 @@
 package sync
 
 import (
+	"os"
 	"fmt"
+	
 	"github.com/please-build/buildtools/build"
 	"github.com/please-build/buildtools/labels"
 	"golang.org/x/mod/modfile"
-	"os"
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
