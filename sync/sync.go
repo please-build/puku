@@ -1,9 +1,9 @@
 package sync
 
 import (
-	"os"
 	"fmt"
-	
+	"os"
+
 	"github.com/please-build/buildtools/build"
 	"github.com/please-build/buildtools/labels"
 	"golang.org/x/mod/modfile"
