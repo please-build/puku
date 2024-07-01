@@ -12,9 +12,12 @@ import (
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/licences"
+	"github.com/please-build/puku/logging"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/proxy"
 )
+
+var log = logging.GetLogger()
 
 type syncer struct {
 	plzConf  *please.Config
@@ -124,7 +127,7 @@ func (s *syncer) syncModFile(conf *config.Config, file *build.File, existingRule
 				if matchingReplace != nil {
 					err := edit.AddLabel(rule, REPLACE_LABEL)
 					if err != nil {
-						return fmt.Errorf("failed to add replace label to %v: %v", req.Mod.Path, err)
+						log.Warningf("Failed to add replace label to %v: %v", req.Mod.Path, err)
 					}
 				}
 				// No other changes needed
