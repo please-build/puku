@@ -1,11 +1,11 @@
 package syncmod
 
 import (
-	"github.com/please-build/buildtools/build"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/please-build/buildtools/build"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/modfile"
@@ -90,7 +90,7 @@ func TestModSync(t *testing.T) {
 
 func listLabels(rule *build.Rule) []string {
 	labelsExpr := rule.Attr("labels")
-	var labels []string
+	labels := make([]string, 0, len(labelsExpr.(*build.ListExpr).List))
 	for _, labelExpr := range labelsExpr.(*build.ListExpr).List {
 		labels = append(labels, labelExpr.(*build.StringExpr).Value)
 	}

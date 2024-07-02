@@ -6,6 +6,7 @@ go_library(
         "//edit",
         "//graph",
         "//licences",
+        "//logging",
         "//please",
         "//proxy",
         "///third_party/go/github.com_please-build_buildtools//build",

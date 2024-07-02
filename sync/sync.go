@@ -25,7 +25,7 @@ type syncer struct {
 	licences *licences.Licenses
 }
 
-const REPLACE_LABEL = "go_replace_directive"
+const ReplaceLabel = "go_replace_directive"
 
 func newSyncer(plzConf *please.Config, g *graph.Graph) *syncer {
 	p := proxy.New(proxy.DefaultURL)
@@ -125,7 +125,7 @@ func (s *syncer) syncModFile(conf *config.Config, file *build.File, existingRule
 				rule.SetAttr("version", edit.NewStringExpr(reqVersion))
 				// Add label for the replace directive
 				if matchingReplace != nil {
-					err := edit.AddLabel(rule, REPLACE_LABEL)
+					err := edit.AddLabel(rule, ReplaceLabel)
 					if err != nil {
 						log.Warningf("Failed to add replace label to %v: %v", req.Mod.Path, err)
 					}
@@ -142,13 +142,13 @@ func (s *syncer) syncModFile(conf *config.Config, file *build.File, existingRule
 
 		// If no replace directive, or replace directive is just replacing the version, add a simple rule
 		if matchingReplace == nil || matchingReplace.New.Path == req.Mod.Path {
-			file.Stmt = append(file.Stmt, edit.NewGoRepoRule(req.Mod.Path, reqVersion, "", ls, []string{REPLACE_LABEL}))
+			file.Stmt = append(file.Stmt, edit.NewGoRepoRule(req.Mod.Path, reqVersion, "", ls, []string{ReplaceLabel}))
 			continue
 		}
 
 		dl, dlName := edit.NewModDownloadRule(matchingReplace.New.Path, matchingReplace.New.Version, ls)
 		file.Stmt = append(file.Stmt, dl)
-		file.Stmt = append(file.Stmt, edit.NewGoRepoRule(req.Mod.Path, "", dlName, nil, []string{REPLACE_LABEL}))
+		file.Stmt = append(file.Stmt, edit.NewGoRepoRule(req.Mod.Path, "", dlName, nil, []string{ReplaceLabel}))
 	}
 
 	return nil
