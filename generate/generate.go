@@ -236,7 +236,7 @@ func (u *updater) addNewModules(conf *config.Config) error {
 		if err != nil {
 			return fmt.Errorf("failed to get license for mod %v: %v", mod.Module, err)
 		}
-		file.Stmt = append(file.Stmt, edit.NewGoRepoRule(mod.Module, mod.Version, "", ls))
+		file.Stmt = append(file.Stmt, edit.NewGoRepoRule(mod.Module, mod.Version, "", ls, []string{}))
 	}
 	return nil
 }

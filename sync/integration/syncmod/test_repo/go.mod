@@ -12,3 +12,5 @@ require (
 )
 
 replace github.com/bazelbuild/buildtools => github.com/peterebden/buildtools v1.6.0
+
+replace github.com/stretchr/testify => github.com/stretchr/testify v1.3.0
