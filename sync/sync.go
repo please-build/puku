@@ -12,15 +12,20 @@ import (
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/licences"
+	"github.com/please-build/puku/logging"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/proxy"
 )
+
+var log = logging.GetLogger()
 
 type syncer struct {
 	plzConf  *please.Config
 	graph    *graph.Graph
 	licences *licences.Licenses
 }
+
+const ReplaceLabel = "go_replace_directive"
 
 func newSyncer(plzConf *please.Config, g *graph.Graph) *syncer {
 	p := proxy.New(proxy.DefaultURL)
@@ -78,7 +83,7 @@ func (s *syncer) sync() error {
 	return nil
 }
 
-func (s *syncer) syncModFile(conf *config.Config, file *build.File, exitingRules map[string]*build.Rule) error {
+func (s *syncer) syncModFile(conf *config.Config, file *build.File, existingRules map[string]*build.Rule) error {
 	outs, err := please.Build(conf.GetPlzPath(), s.plzConf.ModFile())
 	if err != nil {
 		return err
@@ -100,27 +105,32 @@ func (s *syncer) syncModFile(conf *config.Config, file *build.File, exitingRules
 
 	for _, req := range f.Require {
 		reqVersion := req.Mod.Version
-		var replace *modfile.Replace
+		var matchingReplace *modfile.Replace
 		for _, r := range f.Replace {
 			if r.Old.Path == req.Mod.Path {
+				matchingReplace = r
 				reqVersion = r.New.Version
-				if r.New.Path == req.Mod.Path { // we are just replacing version so don't need a replace
-					continue
-				}
-				replace = r
 			}
 		}
 
 		// Existing rule will point to the go_mod_download with the version on it so we should use the original path
-		r, ok := exitingRules[req.Mod.Path]
+		rule, ok := existingRules[req.Mod.Path]
 		if ok {
-			if replace != nil && r.Kind() == "go_repo" {
-				// Looks like we've added in a replace for this module so we need to delete the old go_repo rule
-				// and regen with a go_mod_download and a go_repo.
-				edit.RemoveTarget(file, r)
+			if matchingReplace != nil && matchingReplace.New.Path != req.Mod.Path && rule.Kind() == "go_repo" {
+				// Looks like we've added in a replace directive for this module which changes the path, so we need to
+				// delete the old go_repo rule and regenerate it with a go_mod_download and a go_repo.
+				edit.RemoveTarget(file, rule)
 			} else {
 				// Make sure the version is up-to-date
-				r.SetAttr("version", edit.NewStringExpr(reqVersion))
+				rule.SetAttr("version", edit.NewStringExpr(reqVersion))
+				// Add label for the replace directive
+				if matchingReplace != nil {
+					err := edit.AddLabel(rule, ReplaceLabel)
+					if err != nil {
+						log.Warningf("Failed to add replace label to %v: %v", req.Mod.Path, err)
+					}
+				}
+				// No other changes needed
 				continue
 			}
 		}
@@ -130,14 +140,15 @@ func (s *syncer) syncModFile(conf *config.Config, file *build.File, exitingRules
 			return fmt.Errorf("failed to get licences for %v: %v", req.Mod.Path, err)
 		}
 
-		if replace == nil {
-			file.Stmt = append(file.Stmt, edit.NewGoRepoRule(req.Mod.Path, reqVersion, "", ls))
+		// If no replace directive, or replace directive is just replacing the version, add a simple rule
+		if matchingReplace == nil || matchingReplace.New.Path == req.Mod.Path {
+			file.Stmt = append(file.Stmt, edit.NewGoRepoRule(req.Mod.Path, reqVersion, "", ls, []string{ReplaceLabel}))
 			continue
 		}
 
-		dl, dlName := edit.NewModDownloadRule(replace.New.Path, replace.New.Version, ls)
+		dl, dlName := edit.NewModDownloadRule(matchingReplace.New.Path, matchingReplace.New.Version, ls)
 		file.Stmt = append(file.Stmt, dl)
-		file.Stmt = append(file.Stmt, edit.NewGoRepoRule(req.Mod.Path, "", dlName, nil))
+		file.Stmt = append(file.Stmt, edit.NewGoRepoRule(req.Mod.Path, "", dlName, nil, []string{ReplaceLabel}))
 	}
 
 	return nil

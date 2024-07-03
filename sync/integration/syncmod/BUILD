@@ -12,5 +12,6 @@ go_test(
         "//please",
         "//third_party/go:testify",
         "//sync",
+        "///third_party/go/github.com_please-build_buildtools//build",
     ],
 )
