@@ -1,3 +1,8 @@
+Version 1.8.0
+-------------
+    * Puku sync will now add `go_replace_directive` labels to any go_repo targets with a replace directive in the go.mod file (#114)
+    * Update go version from 1.21.4 to 1.22.3 (#113)
+
 Version 1.7.2
 ------------
     * evaluating binary expressions correctly for srcs. (#109)
