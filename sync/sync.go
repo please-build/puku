@@ -113,12 +113,12 @@ func (s *syncer) syncModFile(conf *config.Config, file *build.File, existingRule
 
 	// Check all modules listed in go.mod
 	for _, req := range f.Require {
-		reqVersion := req.Mod.Version
+
+		// Find any matching replace directive
 		var matchingReplace *modfile.Replace
-		for _, r := range f.Replace {
-			if r.Old.Path == req.Mod.Path {
-				matchingReplace = r
-				reqVersion = r.New.Version
+		for _, replace := range f.Replace {
+			if replace.Old.Path == req.Mod.Path {
+				matchingReplace = replace
 			}
 		}
 
@@ -130,40 +130,58 @@ func (s *syncer) syncModFile(conf *config.Config, file *build.File, existingRule
 				// delete the old go_repo rule and regenerate it with a go_mod_download and a go_repo.
 				edit.RemoveTarget(file, rule)
 			} else {
-				// Make sure the version is up-to-date
-				rule.SetAttr("version", edit.NewStringExpr(reqVersion))
-				// Add label for the replace directive
-				if matchingReplace != nil {
-					err := edit.AddLabel(rule, ReplaceLabel)
-					if err != nil {
-						log.Warningf("Failed to add replace label to %v: %v", req.Mod.Path, err)
-					}
-				}
+				s.syncExistingRule(rule, req, matchingReplace)
 				// No other changes needed
 				continue
 			}
 		}
 
-		ls, err := s.licences.Get(req.Mod.Path, req.Mod.Version)
-		if err != nil {
-			return fmt.Errorf("failed to get licences for %v: %v", req.Mod.Path, err)
+		// Add a new rule to the build file if one does not exist
+		if err = s.addNewRule(file, req, matchingReplace); err != nil {
+			return fmt.Errorf("failed to add new rule %v: %v", req.Mod.Path, err)
 		}
-
-		// If no replace directive, or replace directive is just replacing the version, add a simple rule
-		if matchingReplace == nil || matchingReplace.New.Path == req.Mod.Path {
-			replaceLabels := []string{}
-			if matchingReplace != nil {
-				replaceLabels = []string{ReplaceLabel}
-			}
-			file.Stmt = append(file.Stmt, edit.NewGoRepoRule(req.Mod.Path, reqVersion, "", ls, replaceLabels))
-			continue
-		}
-
-		dl, dlName := edit.NewModDownloadRule(matchingReplace.New.Path, matchingReplace.New.Version, ls)
-		file.Stmt = append(file.Stmt, dl)
-		file.Stmt = append(file.Stmt, edit.NewGoRepoRule(req.Mod.Path, "", dlName, nil, []string{ReplaceLabel}))
 	}
 
+	return nil
+}
+
+func (s *syncer) syncExistingRule(rule *build.Rule, requireDirective *modfile.Require, replaceDirective *modfile.Replace) {
+	reqVersion := requireDirective.Mod.Version
+	// Add label for the replace directive
+	if replaceDirective != nil {
+		err := edit.AddLabel(rule, ReplaceLabel)
+		if err != nil {
+			log.Warningf("Failed to add replace label to %v: %v", requireDirective.Mod.Path, err)
+		}
+		// Update the requested version
+		reqVersion = replaceDirective.New.Version
+	}
+	// Make sure the version is up-to-date
+	rule.SetAttr("version", edit.NewStringExpr(reqVersion))
+}
+
+func (s *syncer) addNewRule(file *build.File, requireDirective *modfile.Require, replaceDirective *modfile.Replace) error {
+	// List licences
+	ls, err := s.licences.Get(requireDirective.Mod.Path, requireDirective.Mod.Version)
+	if err != nil {
+		return fmt.Errorf("failed to get licences for %v: %v", requireDirective.Mod.Path, err)
+	}
+
+	// If no replace directive, add a simple rule
+	if replaceDirective == nil {
+		file.Stmt = append(file.Stmt, edit.NewGoRepoRule(requireDirective.Mod.Path, requireDirective.Mod.Version, "", ls, []string{}))
+		return nil
+	}
+
+	// If replace directive is just replacing the version, add a simple rule
+	if replaceDirective.New.Path == requireDirective.Mod.Path {
+		file.Stmt = append(file.Stmt, edit.NewGoRepoRule(requireDirective.Mod.Path, replaceDirective.New.Version, "", ls, []string{ReplaceLabel}))
+		return nil
+	}
+
+	dl, dlName := edit.NewModDownloadRule(replaceDirective.New.Path, replaceDirective.New.Version, ls)
+	file.Stmt = append(file.Stmt, dl)
+	file.Stmt = append(file.Stmt, edit.NewGoRepoRule(requireDirective.Mod.Path, "", dlName, nil, []string{ReplaceLabel}))
 	return nil
 }
 
