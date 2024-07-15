@@ -179,3 +179,37 @@ func AddLabel(rule *build.Rule, label string) error {
 	rule.SetAttr("labels", ruleLabelsList)
 	return nil
 }
+
+func RemoveLabel(rule *build.Rule, label string) error {
+	// Fetch the labels attribute, if it exists
+	ruleLabels := rule.Attr("labels")
+	if ruleLabels == nil {
+		return nil
+	}
+	// Check it's a list of expressions
+	ruleLabelsList, ok := ruleLabels.(*build.ListExpr)
+	if !ok {
+		return errors.New("rule already has a `labels` attribute, and it is not a list")
+	}
+	// Build a new list of labels which doesn't include the specified one.
+	newLabels := &build.ListExpr{}
+	for _, labelExpr := range ruleLabelsList.List {
+		// Copy any non-string labels
+		labelStringExpr, ok := labelExpr.(*build.StringExpr)
+		if !ok {
+			newLabels.List = append(newLabels.List, labelExpr)
+			continue
+		}
+		// Copy any string labels which do not match
+		if labelStringExpr.Value != label {
+			newLabels.List = append(newLabels.List, labelExpr)
+		}
+	}
+	// If labels is empty, remove the attribute
+	if len(newLabels.List) == 0 {
+		rule.DelAttr("labels")
+	} else {
+		rule.SetAttr("labels", newLabels)
+	}
+	return nil
+}
