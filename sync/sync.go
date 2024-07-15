@@ -148,7 +148,11 @@ func (s *syncer) syncModFile(conf *config.Config, file *build.File, existingRule
 
 		// If no replace directive, or replace directive is just replacing the version, add a simple rule
 		if matchingReplace == nil || matchingReplace.New.Path == req.Mod.Path {
-			file.Stmt = append(file.Stmt, edit.NewGoRepoRule(req.Mod.Path, reqVersion, "", ls, []string{ReplaceLabel}))
+			replaceLabels := []string{}
+			if matchingReplace != nil {
+				replaceLabels = []string{ReplaceLabel}
+			}
+			file.Stmt = append(file.Stmt, edit.NewGoRepoRule(req.Mod.Path, reqVersion, "", ls, replaceLabels))
 			continue
 		}
 
