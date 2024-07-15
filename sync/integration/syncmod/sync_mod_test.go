@@ -42,7 +42,7 @@ func TestModSync(t *testing.T) {
 	// Read version info from the go.mod file
 	expectedVers := readModFileVersions()
 
-	// We expect to generate the following for the replace in the go.mod:
+	// We expect to generate the following for the replace directives in the go.mod:
 	// go_mod_download(
 	//   name = "github.com_peterebden_buildtools_dl",
 	//   module = "github.com/peterebden/buildtools",
@@ -52,6 +52,13 @@ func TestModSync(t *testing.T) {
 	// go_repo(
 	//   download = ":github.com_peterebden_buildtools_dl",
 	//   module = "github.com/bazelbuild/buildtools",
+	//   labels = ["go_replace_directive"],
+	// )
+	//
+	// go_repo(
+	//   module = "github.com/stretchr/testify",
+	//   version = "v1.3.0",
+	//   labels = ["go_replace_directive"],
 	// )
 
 	for _, repoRule := range thirdPartyBuildFile.Rules("go_repo") {
@@ -68,10 +75,16 @@ func TestModSync(t *testing.T) {
 				return
 			}
 
-			// Check that testify is labelled for a replace directive
+			// Check that testify is the only other one labelled for a replace directive
+			labels := listLabels(repoRule)
 			if repoRule.AttrString("module") == "github.com/stretchr/testify" {
-				labels := listLabels(repoRule)
 				assert.Contains(t, labels, "go_replace_directive")
+			} else {
+				assert.NotContains(t, labels, "go_replace_directive")
+				// Ensure there aren't empty labels list attributes
+				if len(labels) == 0 {
+					assert.Nil(t, repoRule.Attr("labels"))
+				}
 			}
 
 			// All rules start off at v0.0.1 and should be updated to their version listed in the go.mod
@@ -90,6 +103,9 @@ func TestModSync(t *testing.T) {
 
 func listLabels(rule *build.Rule) []string {
 	labelsExpr := rule.Attr("labels")
+	if labelsExpr == nil {
+		return []string{}
+	}
 	labels := make([]string, 0, len(labelsExpr.(*build.ListExpr).List))
 	for _, labelExpr := range labelsExpr.(*build.ListExpr).List {
 		labels = append(labels, labelExpr.(*build.StringExpr).Value)
