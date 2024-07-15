@@ -104,8 +104,11 @@ func (s *syncer) syncModFile(conf *config.Config, file *build.File, existingRule
 	}
 
 	// Remove "go_replace_directive" label from all existing rules, before re-adding it only where appropriate
-	for _, rule := range existingRules {
-		edit.RemoveLabel(rule, ReplaceLabel)
+	for modPath, rule := range existingRules {
+		err = edit.RemoveLabel(rule, ReplaceLabel)
+		if err != nil {
+			log.Warningf("Failed to remove replace label from %v: %v", modPath, err)
+		}
 	}
 
 	// Check all modules listed in go.mod
