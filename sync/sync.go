@@ -103,11 +103,22 @@ func (s *syncer) syncModFile(conf *config.Config, file *build.File, existingRule
 		return err
 	}
 
-	// Remove "go_replace_directive" label from all existing rules, before re-adding it only where appropriate
+	// Remove "go_replace_directive" label from any rules which lack a replace directive
 	for modPath, rule := range existingRules {
-		err = edit.RemoveLabel(rule, ReplaceLabel)
-		if err != nil {
-			log.Warningf("Failed to remove replace label from %v: %v", modPath, err)
+		// Find any matching replace directive
+		var matchingReplace *modfile.Replace
+		for _, replace := range f.Replace {
+			if replace.Old.Path == modPath {
+				matchingReplace = replace
+			}
+		}
+
+		// Remove the replace label if not needed
+		if matchingReplace == nil {
+			err := edit.RemoveLabel(rule, ReplaceLabel)
+			if err != nil {
+				log.Warningf("Failed to remove replace label from %v: %v", modPath, err)
+			}
 		}
 	}
 
