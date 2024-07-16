@@ -6,16 +6,22 @@ go_repo(
 )
 
 go_repo(
+    labels = [
+      "example_label",
+      "go_replace_directive",
+    ],
     module = "github.com/davecgh/go-spew",
     version = "v0.0.1",
 )
 
 go_repo(
+    labels = ["example_label"],
     module = "github.com/pmezard/go-difflib",
     version = "v0.0.1",
 )
 
 go_repo(
+    labels = ["go_replace_directive"],
     module = "github.com/stretchr/objx",
     version = "v0.0.1",
 )
