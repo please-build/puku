@@ -1,6 +1,9 @@
 package generate
 
 import (
+	"bytes"
+	"text/template"
+
 	"github.com/please-build/buildtools/build"
 
 	"github.com/please-build/puku/edit"
@@ -11,6 +14,7 @@ type rule struct {
 	dir  string
 	kind *kinds.Kind
 	*build.Rule
+	SrcsOveride build.Expr
 }
 
 // setOrDeleteAttr will make sure the attribute with the given name matches the values passed in. It will keep the
@@ -66,12 +70,18 @@ func (rule *rule) SrcsAttr() string {
 }
 
 func (rule *rule) addSrc(src string) {
+	if rule.SrcsOveride != nil {
+		return
+	}
 	srcsAttr := rule.SrcsAttr()
 	srcs := rule.AttrStrings(srcsAttr)
 	rule.setOrDeleteAttr(srcsAttr, append(srcs, src))
 }
 
 func (rule *rule) removeSrc(rem string) {
+	if rule.SrcsOveride != nil {
+		return
+	}
 	srcsAttr := rule.SrcsAttr()
 	srcs := rule.AttrStrings(srcsAttr)
 	set := make([]string, 0, len(srcs))
@@ -115,8 +125,39 @@ func (rule *rule) isExternal() bool {
 
 func newRule(r *build.Rule, kindType *kinds.Kind, pkgDir string) *rule {
 	return &rule{
-		dir:  pkgDir,
-		kind: kindType,
-		Rule: r,
+		dir:         pkgDir,
+		kind:        kindType,
+		Rule:        r,
+		SrcsOveride: templateSrcs(kindType.SrcsRuleTemplate, r),
 	}
+}
+
+func (rule *rule) Srcs() build.Expr {
+	if rule.SrcsOveride != nil {
+		return rule.SrcsOveride
+	}
+	return rule.Attr(rule.SrcsAttr())
+}
+
+func templateSrcs(templStr string, r *build.Rule) build.Expr {
+	if templStr == "" {
+		return nil
+	}
+	tmpl, err := template.New("test").Parse(templStr)
+	if err != nil {
+		return nil
+	}
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, r)
+	if err != nil {
+		return nil
+	}
+	file, err := build.ParseBuild("template", buf.Bytes())
+	if err != nil {
+		return nil
+	}
+	if len(file.Stmt) != 1 {
+		return nil
+	}
+	return file.Stmt[0]
 }
