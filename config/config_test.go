@@ -66,17 +66,17 @@ func TestGetStop(t *testing.T) {
 	})
 
 	t.Run("with base", func(t *testing.T) {
-		t.Run("both are nil, don't stop", func(t *testing.T) {
+		t.Run("nil base, nil child, don't stop", func(t *testing.T) {
 			c := Config{base: &Config{Stop: nil}, Stop: nil}
 			assert.False(t, c.GetStop())
 		})
 
-		t.Run("override base", func(t *testing.T) {
+		t.Run("true base, false child, don't stop", func(t *testing.T) {
 			c := Config{base: &Config{Stop: ptr(true)}, Stop: ptr(false)}
 			assert.False(t, c.GetStop())
 		})
 
-		t.Run("use value from base", func(t *testing.T) {
+		t.Run("true base, nil child, do stop", func(t *testing.T) {
 			c := Config{base: &Config{Stop: ptr(true)}, Stop: nil}
 			assert.True(t, c.GetStop())
 		})
