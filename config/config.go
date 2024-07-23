@@ -39,7 +39,7 @@ type Config struct {
 	LibKinds            map[string]*KindConfig `json:"libKinds"`
 	TestKinds           map[string]*KindConfig `json:"testKinds"`
 	BinKinds            map[string]*KindConfig `json:"binKinds"`
-	Stop                bool                   `json:"stop"`
+	Stop                *bool                  `json:"stop"`
 	EnsureSubincludes   *bool                  `json:"ensureSubincludes"`
 	ExcludeBuiltinKinds []string               `json:"excludeBuiltinKinds"`
 }
@@ -120,8 +120,8 @@ func (c *Config) GetThirdPartyDir() string {
 }
 
 func (c *Config) GetStop() bool {
-	if c.Stop {
-		return true
+	if c.Stop != nil {
+		return *c.Stop
 	}
 	return c.base != nil && c.base.GetStop()
 }

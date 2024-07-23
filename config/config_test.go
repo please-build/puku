@@ -44,22 +44,41 @@ func TestGetKind(t *testing.T) {
 }
 
 func TestGetStop(t *testing.T) {
-	t.Run("when stop is true then stop", func(t *testing.T) {
-		c := Config{Stop: true}
-		assert.True(t, c.GetStop())
+	ptr := func(val bool) *bool {
+		return &val
+	}
+
+	t.Run("at root", func(t *testing.T) {
+		t.Run("when stop is true then stop", func(t *testing.T) {
+			c := Config{Stop: ptr(true)}
+			assert.True(t, c.GetStop())
+		})
+
+		t.Run("when stop is false then don't stop", func(t *testing.T) {
+			c := Config{Stop: ptr(false)}
+			assert.False(t, c.GetStop())
+		})
+
+		t.Run("when stop is nil then don't stop", func(t *testing.T) {
+			c := Config{Stop: nil}
+			assert.False(t, c.GetStop())
+		})
 	})
 
-	t.Run("when stop is false then don't stop", func(t *testing.T) {
-		c := Config{Stop: false}
-		assert.False(t, c.GetStop())
-	})
+	t.Run("with base", func(t *testing.T) {
+		t.Run("nil base, nil child, don't stop", func(t *testing.T) {
+			c := Config{base: &Config{Stop: nil}, Stop: nil}
+			assert.False(t, c.GetStop())
+		})
 
-	t.Run("when base stop is true then stop", func(t *testing.T) {
-		base := Config{Stop: true}
-		c := Config{base: &base, Stop: false}
-		assert.True(t, c.GetStop())
+		t.Run("true base, false child, don't stop", func(t *testing.T) {
+			c := Config{base: &Config{Stop: ptr(true)}, Stop: ptr(false)}
+			assert.False(t, c.GetStop())
+		})
 
-		c = Config{base: &base, Stop: true}
-		assert.True(t, c.GetStop())
+		t.Run("true base, nil child, do stop", func(t *testing.T) {
+			c := Config{base: &Config{Stop: ptr(true)}, Stop: nil}
+			assert.True(t, c.GetStop())
+		})
 	})
 }

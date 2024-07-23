@@ -1,3 +1,8 @@
+Version 1.9.0
+-------------
+    * `"stop": false` in a `puku.json` in a subdirectory will override a `"stop": true` in a parent
+      directory.
+
 Version 1.8.1
 -------------
     * Puku sync will also remove `go_replace_directive` labels from any go_repo targets which don't have a replace directive in the go.mod file (#117)
