@@ -14,6 +14,7 @@ genrule(
     cmd = "echo VERSION = \\\"$(cat $SRCS)\\\" > $OUT",
     visibility = [
         "//package:all",
+        "//cmd/puku:all",
     ],
 )
 
