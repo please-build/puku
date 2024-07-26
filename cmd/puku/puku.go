@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/proxy"
 	"github.com/please-build/puku/sync"
+	"github.com/please-build/puku/version"
 	"github.com/please-build/puku/watch"
 	"github.com/please-build/puku/work"
 )
@@ -24,7 +26,8 @@ var opts = struct {
 	Usage     string
 	Verbosity clilogging.Verbosity `short:"v" long:"verbosity" description:"Verbosity of output (error, warning, notice, info, debug)" default:"info"`
 
-	Fmt struct {
+	Version struct{} `command:"version" description:"Print the version of puku"`
+	Fmt     struct {
 		Args struct {
 			Paths []string `positional-arg-name:"packages" description:"The packages to process"`
 		} `positional-args:"true"`
@@ -146,6 +149,11 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 func main() {
 	cmd := flags.ParseFlagsOrDie("puku", &opts, nil)
 	logging.InitLogging(opts.Verbosity)
+
+	if cmd == "version" {
+		fmt.Println("puku version", version.PukuVersion)
+		return
+	}
 
 	wd, err := os.Getwd()
 	if err != nil {

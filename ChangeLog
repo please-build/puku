@@ -1,3 +1,7 @@
+Version 1.10.0
+-------------
+    * Adds a `puku version` command to report the version of puku that is installed.
+
 Version 1.9.0
 -------------
     * `"stop": false` in a `puku.json` in a subdirectory will override a `"stop": true` in a parent
