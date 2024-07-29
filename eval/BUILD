@@ -17,6 +17,8 @@ go_test(
     deps = [
         ":eval",
         "///third_party/go/github.com_please-build_buildtools//build",
-        "//third_party/go:testify",
+        "///third_party/go/github.com_stretchr_testify//assert",
+        "///third_party/go/github.com_stretchr_testify//require",
+        "//glob",
     ],
 )

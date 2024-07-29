@@ -13,8 +13,8 @@ go_library(
         "//generate/integration/syncmod:all",
         "//licences:all",
         "//migrate:all",
-        "//watch:all",
         "//sync:all",
         "//sync/integration/syncmod:all",
+        "//watch:all",
     ],
 )

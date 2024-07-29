@@ -9,9 +9,9 @@ go_library(
         "//generate/integration/syncmod:all",
         "//graph:all",
         "//migrate:all",
-        "//work:all",
         "//sync:all",
         "//sync/integration/syncmod:all",
+        "//work:all",
     ],
     deps = ["//kinds"],
 )
@@ -21,7 +21,8 @@ go_test(
     srcs = ["config_test.go"],
     deps = [
         ":config",
+        "///third_party/go/github.com_stretchr_testify//assert",
+        "///third_party/go/github.com_stretchr_testify//require",
         "//kinds",
-        "//third_party/go:testify",
     ],
 )

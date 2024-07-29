@@ -13,6 +13,7 @@ go_test(
     data = ["//:test_project"],
     deps = [
         ":glob",
-        "//third_party/go:testify",
+        "///third_party/go/github.com_stretchr_testify//assert",
+        "///third_party/go/github.com_stretchr_testify//require",
     ],
 )
