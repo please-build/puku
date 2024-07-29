@@ -33,7 +33,6 @@ type Proxy interface {
 type updater struct {
 	plzConf       *please.Config
 	usingGoModule bool
-	skipRewriting bool
 
 	graph *graph.Graph
 

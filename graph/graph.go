@@ -29,14 +29,14 @@ type Graph struct {
 	files            map[string]*build.File
 	deps             []*Dependency
 	experimentalDirs []string
-	skipRewriting bool
+	skipRewriting    bool
 }
 
 func New(buildFileNames []string, skipRewriting bool) *Graph {
 	return &Graph{
 		buildFileNames: buildFileNames,
 		files:          map[string]*build.File{},
-		skipRewriting: skipRewriting,
+		skipRewriting:  skipRewriting,
 	}
 }
 
@@ -243,17 +243,17 @@ func (nopCloser) Close() error { return nil }
 //
 // See the comment on outputFormattedBuildFile for more details.
 func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string, skipRewriting bool) error {
-	outFn := func () (io.WriteCloser, error) {
+	outFn := func() (io.WriteCloser, error) {
 		return nopCloser{out}, nil
 	}
-	return outputFormattedBuildFile(buildFile, outFn, "text", skipRewriting)
+	return outputFormattedBuildFile(buildFile, outFn, format, skipRewriting)
 }
 
 // saveFormattedBuildFile writes a build file to disk if puku has made meaningful changes.
 //
 // See the comment on outputFormattedBuildFile for more details.
 func saveFormattedBuildFile(buildFile *build.File, skipRewriting bool) error {
-	outFn := func () (io.WriteCloser, error) {
+	outFn := func() (io.WriteCloser, error) {
 		return os.Create(buildFile.Path)
 	}
 
