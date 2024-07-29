@@ -266,6 +266,10 @@ func saveFormattedBuildFile(buildFile *build.File, skipRewriting bool) error {
 // done by comparing the formatted build file without applying rewriting (which roughly means linter
 // changes). If changes do exist and skipRewriting is not true, the rewriting is applied to ensure
 // the resulting build file will satisfy `plz fmt`.
+//
+// This takes a function to obtain the writer because this needs to read the file to check if puku
+// has made any changes before it writes to it. If saveFormattedBuildFile called os.Create
+// proactively, the file would be truncated, and so we'd always try to write to it.
 func outputFormattedBuildFile(buildFile *build.File, outFn func() (io.WriteCloser, error), format string, skipRewriting bool) error {
 	if len(buildFile.Stmt) == 0 {
 		return nil
