@@ -21,10 +21,10 @@ const debounceDuration = 200 * time.Millisecond
 // debouncer batches up updates to paths, waiting for a debounceDuration to pass. This avoids running puku many times
 // during git checkouts etc. but it also avoids inconsistent state when files are being moved around rapidly.
 type debouncer struct {
-	paths  map[string]struct{}
-	timer  *time.Timer
-	mux    sync.Mutex
-	config *please.Config
+	paths         map[string]struct{}
+	timer         *time.Timer
+	mux           sync.Mutex
+	config        *please.Config
 	skipRewriting bool
 }
 
@@ -76,8 +76,8 @@ func Watch(config *please.Config, skipRewriting bool, paths ...string) error {
 	defer watcher.Close()
 
 	d := &debouncer{
-		paths:  map[string]struct{}{},
-		config: config,
+		paths:         map[string]struct{}{},
+		config:        config,
 		skipRewriting: skipRewriting,
 	}
 

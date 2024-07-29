@@ -23,9 +23,9 @@ import (
 )
 
 var opts = struct {
-	Usage     string
-	Verbosity clilogging.Verbosity `short:"v" long:"verbosity" description:"Verbosity of output (error, warning, notice, info, debug)" default:"info"`
-	SkipRewriting bool `long:"skip_rewriting" description:"When generating build files, skip linter-style rewrites"`
+	Usage         string
+	Verbosity     clilogging.Verbosity `short:"v" long:"verbosity" description:"Verbosity of output (error, warning, notice, info, debug)" default:"info"`
+	SkipRewriting bool                 `long:"skip_rewriting" description:"When generating build files, skip linter-style rewrites"`
 
 	Version struct{} `command:"version" description:"Print the version of puku"`
 	Fmt     struct {
