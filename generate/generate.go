@@ -49,7 +49,7 @@ type updater struct {
 	licences *licences.Licenses
 }
 
-func newUpdaterWithGraph(g *graph.Graph, conf *please.Config, skipRewriting bool) *updater {
+func newUpdaterWithGraph(g *graph.Graph, conf *please.Config) *updater {
 	p := proxy.New(proxy.DefaultURL)
 	l := licences.New(p, g)
 	return &updater{
@@ -68,7 +68,7 @@ func newUpdaterWithGraph(g *graph.Graph, conf *please.Config, skipRewriting bool
 func newUpdater(conf *please.Config, skipRewriting bool) *updater {
 	g := graph.New(conf.BuildFileNames(), skipRewriting).WithExperimentalDirs(conf.Parse.ExperimentalDir...)
 
-	return newUpdaterWithGraph(g, conf, skipRewriting)
+	return newUpdaterWithGraph(g, conf)
 }
 
 func Update(plzConf *please.Config, skipRewriting bool, paths ...string) error {

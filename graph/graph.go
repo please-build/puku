@@ -233,17 +233,46 @@ func checkVisibility(target labels.Label, visibilities []string) bool {
 	return false
 }
 
-// writeFormattedBuildFile writes a build file to disk, if puku has made meaningful changes.
+type nopCloser struct {
+	io.Writer
+}
+
+func (nopCloser) Close() error { return nil }
+
+// writeFormattedBuildFile writes a build file to the given writer if puku has made meaningful changes.
+//
+// See the comment on outputFormattedBuildFile for more details.
+func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string, skipRewriting bool) error {
+	outFn := func () (io.WriteCloser, error) {
+		return nopCloser{out}, nil
+	}
+	return outputFormattedBuildFile(buildFile, outFn, "text", skipRewriting)
+}
+
+// saveFormattedBuildFile writes a build file to disk if puku has made meaningful changes.
+//
+// See the comment on outputFormattedBuildFile for more details.
+func saveFormattedBuildFile(buildFile *build.File, skipRewriting bool) error {
+	outFn := func () (io.WriteCloser, error) {
+		return os.Create(buildFile.Path)
+	}
+
+	return outputFormattedBuildFile(buildFile, outFn, "text", skipRewriting)
+}
+
+// outputFormattedBuildFile writes a build file to the given writer if puku has made meaningful changes.
 //
 // To avoid churn and changes to files where puku has not changed anything, checking for changes is
 // done by comparing the formatted build file without applying rewriting (which roughly means linter
 // changes). If changes do exist and skipRewriting is not true, the rewriting is applied to ensure
 // the resulting build file will satisfy `plz fmt`.
-func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string, skipRewriting bool) error {
+func outputFormattedBuildFile(buildFile *build.File, outFn func() (io.WriteCloser, error), format string, skipRewriting bool) error {
 	if len(buildFile.Stmt) == 0 {
 		return nil
 	}
-	target := build.FormatWithoutRewriting(buildFile)
+
+	content := build.FormatWithoutRewriting(buildFile)
+
 	actual, err := os.ReadFile(buildFile.Path)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -252,40 +281,28 @@ func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string
 		actual = nil
 	}
 
-	if !bytes.Equal(target, actual) {
-		if !skipRewriting {
-			target = build.Format(buildFile)
-		}
-		switch format {
-		case "text":
-			_, err := out.Write(target)
-			return err
-		case "json":
-			e := json.NewEncoder(out)
-			return e.Encode(struct{ Path, Content string }{Path: buildFile.Path, Content: string(target)})
-		}
-	}
-	return nil
-}
-
-func saveFormattedBuildFile(buildFile *build.File, skipRewriting bool) error {
-	if len(buildFile.Stmt) == 0 {
+	if bytes.Equal(content, actual) {
 		return nil
 	}
 
-	f, err := os.Create(buildFile.Path)
+	w, err := outFn()
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer w.Close()
 
-	var content []byte
-	if skipRewriting {
-		content = build.FormatWithoutRewriting(buildFile)
-	} else {
+	if !skipRewriting {
 		content = build.Format(buildFile)
 	}
 
-	_, err = f.Write(content)
-	return err
+	switch format {
+	case "text":
+		_, err := w.Write(content)
+		return err
+	case "json":
+		e := json.NewEncoder(w)
+		return e.Encode(struct{ Path, Content string }{Path: buildFile.Path, Content: string(content)})
+	default:
+		return fmt.Errorf("unsupported format %q", format)
+	}
 }
