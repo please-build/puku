@@ -26,7 +26,7 @@ func TestGetLicences(t *testing.T) {
 }
 
 func TestUpdateLicences(t *testing.T) {
-	g := graph.New([]string{"BUILD_FILE"})
+	g := graph.New([]string{"BUILD_FILE"}, true)
 	fileContent := `
 go_module(
 	name = "testify",

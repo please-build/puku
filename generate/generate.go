@@ -33,6 +33,7 @@ type Proxy interface {
 type updater struct {
 	plzConf       *please.Config
 	usingGoModule bool
+	skipRewriting bool
 
 	graph *graph.Graph
 
@@ -48,7 +49,7 @@ type updater struct {
 	licences *licences.Licenses
 }
 
-func newUpdaterWithGraph(g *graph.Graph, conf *please.Config) *updater {
+func newUpdaterWithGraph(g *graph.Graph, conf *please.Config, skipRewriting bool) *updater {
 	p := proxy.New(proxy.DefaultURL)
 	l := licences.New(p, g)
 	return &updater{
@@ -64,22 +65,22 @@ func newUpdaterWithGraph(g *graph.Graph, conf *please.Config) *updater {
 
 // newUpdater initialises a new updater struct. It's intended to be only used for testing (as is
 // newUpdaterWithGraph). In most instances the Update function should be called directly.
-func newUpdater(conf *please.Config) *updater {
-	g := graph.New(conf.BuildFileNames()).WithExperimentalDirs(conf.Parse.ExperimentalDir...)
+func newUpdater(conf *please.Config, skipRewriting bool) *updater {
+	g := graph.New(conf.BuildFileNames(), skipRewriting).WithExperimentalDirs(conf.Parse.ExperimentalDir...)
 
-	return newUpdaterWithGraph(g, conf)
+	return newUpdaterWithGraph(g, conf, skipRewriting)
 }
 
-func Update(plzConf *please.Config, paths ...string) error {
-	u := newUpdater(plzConf)
+func Update(plzConf *please.Config, skipRewriting bool, paths ...string) error {
+	u := newUpdater(plzConf, skipRewriting)
 	if err := u.update(paths...); err != nil {
 		return err
 	}
 	return u.graph.FormatFiles()
 }
 
-func UpdateToStdout(format string, plzConf *please.Config, paths ...string) error {
-	u := newUpdater(plzConf)
+func UpdateToStdout(format string, plzConf *please.Config, skipRewriting bool, paths ...string) error {
+	u := newUpdater(plzConf, skipRewriting)
 	if err := u.update(paths...); err != nil {
 		return err
 	}

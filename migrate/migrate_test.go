@@ -13,7 +13,7 @@ import (
 
 func TestMigrateGoModule(t *testing.T) {
 	m := &migrator{
-		graph:            graph.New([]string{"BUILD"}),
+		graph:            graph.New([]string{"BUILD"}, true),
 		thirdPartyFolder: "third_party/go",
 		moduleRules:      map[string]*moduleParts{},
 	}
@@ -44,7 +44,7 @@ go_module(
 
 func TestMigrateGoModuleWithParts(t *testing.T) {
 	m := &migrator{
-		graph:            graph.New([]string{"BUILD"}),
+		graph:            graph.New([]string{"BUILD"}, true),
 		thirdPartyFolder: "third_party/go",
 		moduleRules:      map[string]*moduleParts{},
 	}
@@ -126,7 +126,7 @@ go_module(
 
 func TestModuleAlias(t *testing.T) {
 	m := &migrator{
-		graph:            graph.New([]string{"BUILD"}),
+		graph:            graph.New([]string{"BUILD"}, true),
 		thirdPartyFolder: "third_party/go",
 		moduleRules:      map[string]*moduleParts{},
 	}
@@ -165,7 +165,7 @@ go_module(
 
 func TestAliasesInOtherDirs(t *testing.T) {
 	m := &migrator{
-		graph:            graph.New([]string{"BUILD"}),
+		graph:            graph.New([]string{"BUILD"}, true),
 		thirdPartyFolder: "third_party/go",
 		moduleRules:      map[string]*moduleParts{},
 	}
@@ -203,7 +203,7 @@ go_module(
 
 func TestTransitiveMigration(t *testing.T) {
 	m := &migrator{
-		graph:            graph.New([]string{"BUILD"}),
+		graph:            graph.New([]string{"BUILD"}, true),
 		thirdPartyFolder: "third_party/go",
 		moduleRules:      map[string]*moduleParts{},
 	}

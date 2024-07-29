@@ -29,12 +29,14 @@ type Graph struct {
 	files            map[string]*build.File
 	deps             []*Dependency
 	experimentalDirs []string
+	skipRewriting bool
 }
 
-func New(buildFileNames []string) *Graph {
+func New(buildFileNames []string, skipRewriting bool) *Graph {
 	return &Graph{
 		buildFileNames: buildFileNames,
 		files:          map[string]*build.File{},
+		skipRewriting: skipRewriting,
 	}
 }
 
@@ -128,7 +130,7 @@ func (g *Graph) FormatFilesWithWriter(out io.Writer, format string) error {
 		return err
 	}
 	for _, file := range g.files {
-		if err := writeFormattedBuildFile(file, out, format); err != nil {
+		if err := writeFormattedBuildFile(file, out, format, g.skipRewriting); err != nil {
 			return err
 		}
 	}
@@ -140,7 +142,7 @@ func (g *Graph) FormatFiles() error {
 		return err
 	}
 	for _, file := range g.files {
-		if err := saveFormattedBuildFile(file); err != nil {
+		if err := saveFormattedBuildFile(file, g.skipRewriting); err != nil {
 			return err
 		}
 	}
@@ -231,7 +233,13 @@ func checkVisibility(target labels.Label, visibilities []string) bool {
 	return false
 }
 
-func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string) error {
+// writeFormattedBuildFile writes a build file to disk, if puku has made meaningful changes.
+//
+// To avoid churn and changes to files where puku has not changed anything, checking for changes is
+// done by comparing the formatted build file without applying rewriting (which roughly means linter
+// changes). If changes do exist and skipRewriting is not true, the rewriting is applied to ensure
+// the resulting build file will satisfy `plz fmt`.
+func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string, skipRewriting bool) error {
 	if len(buildFile.Stmt) == 0 {
 		return nil
 	}
@@ -245,6 +253,9 @@ func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string
 	}
 
 	if !bytes.Equal(target, actual) {
+		if !skipRewriting {
+			target = build.Format(buildFile)
+		}
 		switch format {
 		case "text":
 			_, err := out.Write(target)
@@ -257,7 +268,7 @@ func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string
 	return nil
 }
 
-func saveFormattedBuildFile(buildFile *build.File) error {
+func saveFormattedBuildFile(buildFile *build.File, skipRewriting bool) error {
 	if len(buildFile.Stmt) == 0 {
 		return nil
 	}
@@ -268,6 +279,13 @@ func saveFormattedBuildFile(buildFile *build.File) error {
 	}
 	defer f.Close()
 
-	_, err = f.Write(build.FormatWithoutRewriting(buildFile))
+	var content []byte
+	if skipRewriting {
+		content = build.FormatWithoutRewriting(buildFile)
+	} else {
+		content = build.Format(buildFile)
+	}
+
+	_, err = f.Write(content)
 	return err
 }

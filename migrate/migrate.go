@@ -30,8 +30,8 @@ type migrator struct {
 	licences          *licences.Licenses
 }
 
-func newMigrator(plzConf *please.Config, conf *config.Config) *migrator {
-	g := graph.New(plzConf.BuildFileNames())
+func newMigrator(plzConf *please.Config, conf *config.Config, skipRewriting bool) *migrator {
+	g := graph.New(plzConf.BuildFileNames(), skipRewriting)
 	return &migrator{
 		plzConf:           plzConf,
 		graph:             g,
@@ -42,16 +42,16 @@ func newMigrator(plzConf *please.Config, conf *config.Config) *migrator {
 	}
 }
 
-func Migrate(conf *config.Config, plzConf *please.Config, updateGoMod bool, modules, paths []string) error {
-	m := newMigrator(plzConf, conf)
+func Migrate(conf *config.Config, plzConf *please.Config, updateGoMod bool, modules, paths []string, skipRewriting bool) error {
+	m := newMigrator(plzConf, conf, skipRewriting)
 	if err := m.migrate(modules, paths, updateGoMod); err != nil {
 		return err
 	}
 	return m.graph.FormatFiles()
 }
 
-func MigrateToStdout(format string, conf *config.Config, plzConf *please.Config, updateGoMod bool, modules, paths []string) error { //nolint
-	m := newMigrator(plzConf, conf)
+func MigrateToStdout(format string, conf *config.Config, plzConf *please.Config, updateGoMod bool, modules, paths []string, skipRewriting bool) error { //nolint
+	m := newMigrator(plzConf, conf, skipRewriting)
 	if err := m.migrate(modules, paths, updateGoMod); err != nil {
 		return err
 	}

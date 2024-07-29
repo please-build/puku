@@ -14,7 +14,7 @@ import (
 )
 
 func TestLoadBuildFile(t *testing.T) {
-	g := New([]string{"BUILD_FILE", "BUILD_FILE.plz"})
+	g := New([]string{"BUILD_FILE", "BUILD_FILE.plz"}, true)
 
 	f, err := g.LoadFile("test_project")
 	require.NoError(t, err)
@@ -34,7 +34,7 @@ func TestLoadBuildFile(t *testing.T) {
 }
 
 func TestEnsureVisibility(t *testing.T) {
-	g := New(nil).WithExperimentalDirs("exp", "experimental")
+	g := New(nil, true).WithExperimentalDirs("exp", "experimental")
 
 	foo, err := build.ParseBuild("foo/BUILD", []byte(`
 go_library(
@@ -136,7 +136,7 @@ go_library(
 `))
 	require.NoError(t, err)
 
-	g := New(nil)
+	g := New(nil, true)
 	g.files["foo"] = foo
 	g.files["bar"] = bar
 	g.files["baz"] = baz

@@ -38,7 +38,7 @@ func TestLocalDeps(t *testing.T) {
 	conf.Parse.BuildFileName = []string{"BUILD_FILE", "BUILD_FILE.plz"}
 	conf.Plugin.Go.ImportPath = []string{"github.com/some/module"}
 
-	u := newUpdater(conf)
+	u := newUpdater(conf, true)
 
 	trgt, err := u.localDep("test_project/foo")
 	require.NoError(t, err)

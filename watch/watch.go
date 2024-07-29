@@ -25,6 +25,7 @@ type debouncer struct {
 	timer  *time.Timer
 	mux    sync.Mutex
 	config *please.Config
+	skipRewriting bool
 }
 
 // updatePath adds a path to the batch and resets the timer to the deboundDuration
@@ -52,7 +53,7 @@ func (d *debouncer) wait() {
 	for p := range d.paths {
 		paths = append(paths, p)
 	}
-	if err := generate.Update(d.config, paths...); err != nil {
+	if err := generate.Update(d.config, d.skipRewriting, paths...); err != nil {
 		log.Warningf("failed to update: %v", err)
 	} else {
 		log.Infof("Updated paths: %v ", strings.Join(paths, ", "))
@@ -64,7 +65,7 @@ func (d *debouncer) wait() {
 	d.wait() // infinite recursive calls are a lint error but it's what we want here
 }
 
-func Watch(config *please.Config, paths ...string) error {
+func Watch(config *please.Config, skipRewriting bool, paths ...string) error {
 	if len(paths) < 1 {
 		return nil
 	}
@@ -77,6 +78,7 @@ func Watch(config *please.Config, paths ...string) error {
 	d := &debouncer{
 		paths:  map[string]struct{}{},
 		config: config,
+		skipRewriting: skipRewriting,
 	}
 
 	go func() {

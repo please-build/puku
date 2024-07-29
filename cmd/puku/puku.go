@@ -25,6 +25,7 @@ import (
 var opts = struct {
 	Usage     string
 	Verbosity clilogging.Verbosity `short:"v" long:"verbosity" description:"Verbosity of output (error, warning, notice, info, debug)" default:"info"`
+	SkipRewriting bool `long:"skip_rewriting" description:"When generating build files, skip linter-style rewrites"`
 
 	Version struct{} `command:"version" description:"Print the version of puku"`
 	Fmt     struct {
@@ -76,13 +77,13 @@ var log = logging.GetLogger()
 var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignalWD string) int{
 	"fmt": func(_ *config.Config, plzConf *please.Config, orignalWD string) int {
 		paths := work.MustExpandPaths(orignalWD, opts.Fmt.Args.Paths)
-		if err := generate.Update(plzConf, paths...); err != nil {
+		if err := generate.Update(plzConf, opts.SkipRewriting, paths...); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
 	},
 	"sync": func(_ *config.Config, plzConf *please.Config, _ string) int {
-		g := graph.New(plzConf.BuildFileNames())
+		g := graph.New(plzConf.BuildFileNames(), opts.SkipRewriting)
 		if opts.Sync.Write {
 			if err := sync.Sync(plzConf, g); err != nil {
 				log.Fatalf("%v", err)
@@ -95,20 +96,19 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 		return 0
 	},
 	"lint": func(_ *config.Config, plzConf *please.Config, orignalWD string) int {
-
 		paths := work.MustExpandPaths(orignalWD, opts.Lint.Args.Paths)
-		if err := generate.UpdateToStdout(opts.Lint.Format, plzConf, paths...); err != nil {
+		if err := generate.UpdateToStdout(opts.Lint.Format, plzConf, opts.SkipRewriting, paths...); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
 	},
 	"watch": func(_ *config.Config, plzConf *please.Config, orignalWD string) int {
 		paths := work.MustExpandPaths(orignalWD, opts.Watch.Args.Paths)
-		if err := generate.Update(plzConf, paths...); err != nil {
+		if err := generate.Update(plzConf, opts.SkipRewriting, paths...); err != nil {
 			log.Fatalf("%v", err)
 		}
 
-		if err := watch.Watch(plzConf, paths...); err != nil {
+		if err := watch.Watch(plzConf, opts.SkipRewriting, paths...); err != nil {
 			log.Fatalf("%v", err)
 		}
 		return 0
@@ -120,11 +120,11 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 		}
 		paths = work.MustExpandPaths(orignalWD, paths)
 		if opts.Migrate.Write {
-			if err := migrate.Migrate(conf, plzConf, opts.Migrate.UpdateGoMod, opts.Migrate.Args.Modules, paths); err != nil {
+			if err := migrate.Migrate(conf, plzConf, opts.Migrate.UpdateGoMod, opts.Migrate.Args.Modules, paths, opts.SkipRewriting); err != nil {
 				log.Fatalf("%v", err)
 			}
 		} else {
-			if err := migrate.MigrateToStdout(opts.Migrate.Format, conf, plzConf, opts.Migrate.UpdateGoMod, opts.Migrate.Args.Modules, paths); err != nil {
+			if err := migrate.MigrateToStdout(opts.Migrate.Format, conf, plzConf, opts.Migrate.UpdateGoMod, opts.Migrate.Args.Modules, paths, opts.SkipRewriting); err != nil {
 				log.Fatalf("%v", err)
 			}
 		}
@@ -132,7 +132,7 @@ var funcs = map[string]func(conf *config.Config, plzConf *please.Config, orignal
 	},
 	"update": func(_ *config.Config, plzConf *please.Config, orignalWD string) int {
 		paths := work.MustExpandPaths(orignalWD, opts.Licenses.Update.Args.Paths)
-		l := licences.New(proxy.New(proxy.DefaultURL), graph.New(plzConf.BuildFileNames()))
+		l := licences.New(proxy.New(proxy.DefaultURL), graph.New(plzConf.BuildFileNames(), opts.SkipRewriting))
 		if opts.Licenses.Update.Write {
 			if err := l.Update(paths); err != nil {
 				log.Fatalf("%v", err)

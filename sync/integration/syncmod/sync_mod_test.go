@@ -31,7 +31,7 @@ func TestModSync(t *testing.T) {
 	require.NoError(t, err)
 
 	// Parse the puku graph of test repo build files
-	g := graph.New(plzConf.BuildFileNames())
+	g := graph.New(plzConf.BuildFileNames(), true)
 	err = sync.SyncToStdout("text", plzConf, g)
 	require.NoError(t, err)
 
