@@ -16,6 +16,7 @@ go_library(
         "//licences",
         "//please",
         "//proxy",
+        "//options",
     ],
 )
 
@@ -29,5 +30,6 @@ go_test(
         "///third_party/go/github.com_stretchr_testify//require",
         "//edit",
         "//graph",
+        "//options",
     ],
 )

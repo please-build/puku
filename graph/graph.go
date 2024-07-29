@@ -16,6 +16,7 @@ import (
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/fs"
 	"github.com/please-build/puku/logging"
+	"github.com/please-build/puku/options"
 )
 
 var log = logging.GetLogger()
@@ -29,14 +30,14 @@ type Graph struct {
 	files            map[string]*build.File
 	deps             []*Dependency
 	experimentalDirs []string
-	skipRewriting    bool
+	opts             options.Options
 }
 
-func New(buildFileNames []string, skipRewriting bool) *Graph {
+func New(buildFileNames []string, opts options.Options) *Graph {
 	return &Graph{
 		buildFileNames: buildFileNames,
 		files:          map[string]*build.File{},
-		skipRewriting:  skipRewriting,
+		opts:           opts,
 	}
 }
 
@@ -130,7 +131,7 @@ func (g *Graph) FormatFilesWithWriter(out io.Writer, format string) error {
 		return err
 	}
 	for _, file := range g.files {
-		if err := writeFormattedBuildFile(file, out, format, g.skipRewriting); err != nil {
+		if err := writeFormattedBuildFile(file, out, format, g.opts); err != nil {
 			return err
 		}
 	}
@@ -142,7 +143,7 @@ func (g *Graph) FormatFiles() error {
 		return err
 	}
 	for _, file := range g.files {
-		if err := saveFormattedBuildFile(file, g.skipRewriting); err != nil {
+		if err := saveFormattedBuildFile(file, g.opts); err != nil {
 			return err
 		}
 	}
@@ -242,22 +243,22 @@ func (nopCloser) Close() error { return nil }
 // writeFormattedBuildFile writes a build file to the given writer if puku has made meaningful changes.
 //
 // See the comment on outputFormattedBuildFile for more details.
-func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string, skipRewriting bool) error {
+func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string, opts options.Options) error {
 	outFn := func() (io.WriteCloser, error) {
 		return nopCloser{out}, nil
 	}
-	return outputFormattedBuildFile(buildFile, outFn, format, skipRewriting)
+	return outputFormattedBuildFile(buildFile, outFn, format, opts)
 }
 
 // saveFormattedBuildFile writes a build file to disk if puku has made meaningful changes.
 //
 // See the comment on outputFormattedBuildFile for more details.
-func saveFormattedBuildFile(buildFile *build.File, skipRewriting bool) error {
+func saveFormattedBuildFile(buildFile *build.File, opts options.Options) error {
 	outFn := func() (io.WriteCloser, error) {
 		return os.Create(buildFile.Path)
 	}
 
-	return outputFormattedBuildFile(buildFile, outFn, "text", skipRewriting)
+	return outputFormattedBuildFile(buildFile, outFn, "text", opts)
 }
 
 // outputFormattedBuildFile writes a build file to the given writer if puku has made meaningful changes.
@@ -270,7 +271,7 @@ func saveFormattedBuildFile(buildFile *build.File, skipRewriting bool) error {
 // This takes a function to obtain the writer because this needs to read the file to check if puku
 // has made any changes before it writes to it. If saveFormattedBuildFile called os.Create
 // proactively, the file would be truncated, and so we'd always try to write to it.
-func outputFormattedBuildFile(buildFile *build.File, outFn func() (io.WriteCloser, error), format string, skipRewriting bool) error {
+func outputFormattedBuildFile(buildFile *build.File, outFn func() (io.WriteCloser, error), format string, opts options.Options) error {
 	if len(buildFile.Stmt) == 0 {
 		return nil
 	}
@@ -295,7 +296,7 @@ func outputFormattedBuildFile(buildFile *build.File, outFn func() (io.WriteClose
 	}
 	defer w.Close()
 
-	if !skipRewriting {
+	if !opts.SkipRewriting {
 		content = build.Format(buildFile)
 	}
 

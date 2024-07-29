@@ -11,10 +11,11 @@ import (
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
+	"github.com/please-build/puku/options"
 )
 
 func TestLoadBuildFile(t *testing.T) {
-	g := New([]string{"BUILD_FILE", "BUILD_FILE.plz"}, true)
+	g := New([]string{"BUILD_FILE", "BUILD_FILE.plz"}, options.TestOptions)
 
 	f, err := g.LoadFile("test_project")
 	require.NoError(t, err)
@@ -34,7 +35,7 @@ func TestLoadBuildFile(t *testing.T) {
 }
 
 func TestEnsureVisibility(t *testing.T) {
-	g := New(nil, true).WithExperimentalDirs("exp", "experimental")
+	g := New(nil, options.TestOptions).WithExperimentalDirs("exp", "experimental")
 
 	foo, err := build.ParseBuild("foo/BUILD", []byte(`
 go_library(
@@ -136,7 +137,7 @@ go_library(
 `))
 	require.NoError(t, err)
 
-	g := New(nil, true)
+	g := New(nil, options.TestOptions)
 	g.files["foo"] = foo
 	g.files["bar"] = bar
 	g.files["baz"] = baz

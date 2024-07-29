@@ -9,6 +9,7 @@ import (
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/kinds"
+	"github.com/please-build/puku/options"
 	"github.com/please-build/puku/please"
 )
 
@@ -44,7 +45,7 @@ func TestAllocateSources(t *testing.T) {
 		},
 	}
 
-	u := newUpdater(new(please.Config), true /* skipRewriting */)
+	u := newUpdater(new(please.Config), options.TestOptions)
 	conf := &config.Config{PleasePath: "plz"}
 	newRules, err := u.allocateSources(conf, "foo", files, rules)
 	require.NoError(t, err)
@@ -75,7 +76,7 @@ func TestAddingLibDepToTest(t *testing.T) {
 	foo.SetAttr(foo.SrcsAttr(), edit.NewStringList([]string{"foo.go"}))
 	fooTest.SetAttr(fooTest.SrcsAttr(), edit.NewStringList([]string{"foo_test.go"}))
 
-	u := newUpdater(new(please.Config), true /* skipRewriting */)
+	u := newUpdater(new(please.Config), options.TestOptions)
 	conf := &config.Config{PleasePath: "plz"}
 	err := u.updateRuleDeps(conf, fooTest, []*rule{foo, fooTest}, files)
 	require.NoError(t, err)
@@ -122,7 +123,7 @@ func TestAllocateSourcesToCustomKind(t *testing.T) {
 		},
 	}
 
-	u := newUpdater(new(please.Config), true /* skipRewriting */)
+	u := newUpdater(new(please.Config), options.TestOptions)
 	conf := &config.Config{PleasePath: "plz"}
 	newRules, err := u.allocateSources(conf, "foo", files, rules)
 	require.NoError(t, err)
@@ -152,7 +153,7 @@ func TestAllocateSourcesToNonGoKind(t *testing.T) {
 		},
 	}
 
-	u := newUpdater(new(please.Config), true /* skipRewriting */)
+	u := newUpdater(new(please.Config), options.TestOptions)
 	u.plzConf = &please.Config{}
 	newRules, err := u.allocateSources(new(config.Config), "foo", files, rules)
 	require.NoError(t, err)
@@ -263,7 +264,7 @@ func TestUpdateDeps(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			plzConf := new(please.Config)
 			plzConf.Plugin.Go.ImportPath = []string{"github.com/this/module"}
-			u := newUpdater(plzConf, true /* skipRewriting */)
+			u := newUpdater(plzConf, options.TestOptions)
 			u.modules = tc.modules
 			u.proxy = tc.proxy
 

@@ -14,5 +14,6 @@ go_test(
         "//graph",
         "//please",
         "//sync",
+        "//options",
     ],
 )

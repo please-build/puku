@@ -29,6 +29,7 @@ go_library(
         "//please",
         "//proxy",
         "//trie",
+        "//options",
     ],
 )
 
@@ -46,5 +47,6 @@ testify_test(
         "//please",
         "//proxy",
         "//trie",
+        "//options",
     ],
 )

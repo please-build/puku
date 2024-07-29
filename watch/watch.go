@@ -11,6 +11,7 @@ import (
 
 	"github.com/please-build/puku/generate"
 	"github.com/please-build/puku/logging"
+	"github.com/please-build/puku/options"
 	"github.com/please-build/puku/please"
 )
 
@@ -21,11 +22,11 @@ const debounceDuration = 200 * time.Millisecond
 // debouncer batches up updates to paths, waiting for a debounceDuration to pass. This avoids running puku many times
 // during git checkouts etc. but it also avoids inconsistent state when files are being moved around rapidly.
 type debouncer struct {
-	paths         map[string]struct{}
-	timer         *time.Timer
-	mux           sync.Mutex
-	config        *please.Config
-	skipRewriting bool
+	paths  map[string]struct{}
+	timer  *time.Timer
+	mux    sync.Mutex
+	config *please.Config
+	opts   options.Options
 }
 
 // updatePath adds a path to the batch and resets the timer to the deboundDuration
@@ -53,7 +54,7 @@ func (d *debouncer) wait() {
 	for p := range d.paths {
 		paths = append(paths, p)
 	}
-	if err := generate.Update(d.config, d.skipRewriting, paths...); err != nil {
+	if err := generate.Update(d.config, d.opts, paths...); err != nil {
 		log.Warningf("failed to update: %v", err)
 	} else {
 		log.Infof("Updated paths: %v ", strings.Join(paths, ", "))
@@ -65,7 +66,7 @@ func (d *debouncer) wait() {
 	d.wait() // infinite recursive calls are a lint error but it's what we want here
 }
 
-func Watch(config *please.Config, skipRewriting bool, paths ...string) error {
+func Watch(config *please.Config, opts options.Options, paths ...string) error {
 	if len(paths) < 1 {
 		return nil
 	}
@@ -76,9 +77,9 @@ func Watch(config *please.Config, skipRewriting bool, paths ...string) error {
 	defer watcher.Close()
 
 	d := &debouncer{
-		paths:         map[string]struct{}{},
-		config:        config,
-		skipRewriting: skipRewriting,
+		paths:  map[string]struct{}{},
+		config: config,
+		opts:   opts,
 	}
 
 	go func() {

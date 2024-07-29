@@ -22,5 +22,6 @@ go_binary(
         "//version",
         "//watch",
         "//work",
+        "//options",
     ],
 )

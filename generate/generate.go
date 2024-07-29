@@ -18,6 +18,7 @@ import (
 	"github.com/please-build/puku/kinds"
 	"github.com/please-build/puku/licences"
 	"github.com/please-build/puku/logging"
+	"github.com/please-build/puku/options"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/proxy"
 	"github.com/please-build/puku/trie"
@@ -64,22 +65,22 @@ func newUpdaterWithGraph(g *graph.Graph, conf *please.Config) *updater {
 
 // newUpdater initialises a new updater struct. It's intended to be only used for testing (as is
 // newUpdaterWithGraph). In most instances the Update function should be called directly.
-func newUpdater(conf *please.Config, skipRewriting bool) *updater {
-	g := graph.New(conf.BuildFileNames(), skipRewriting).WithExperimentalDirs(conf.Parse.ExperimentalDir...)
+func newUpdater(conf *please.Config, opts options.Options) *updater {
+	g := graph.New(conf.BuildFileNames(), opts).WithExperimentalDirs(conf.Parse.ExperimentalDir...)
 
 	return newUpdaterWithGraph(g, conf)
 }
 
-func Update(plzConf *please.Config, skipRewriting bool, paths ...string) error {
-	u := newUpdater(plzConf, skipRewriting)
+func Update(plzConf *please.Config, opts options.Options, paths ...string) error {
+	u := newUpdater(plzConf, opts)
 	if err := u.update(paths...); err != nil {
 		return err
 	}
 	return u.graph.FormatFiles()
 }
 
-func UpdateToStdout(format string, plzConf *please.Config, skipRewriting bool, paths ...string) error {
-	u := newUpdater(plzConf, skipRewriting)
+func UpdateToStdout(format string, plzConf *please.Config, opts options.Options, paths ...string) error {
+	u := newUpdater(plzConf, opts)
 	if err := u.update(paths...); err != nil {
 		return err
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/graph"
+	"github.com/please-build/puku/options"
 	"github.com/please-build/puku/proxy"
 )
 
@@ -26,7 +27,7 @@ func TestGetLicences(t *testing.T) {
 }
 
 func TestUpdateLicences(t *testing.T) {
-	g := graph.New([]string{"BUILD_FILE"}, true)
+	g := graph.New([]string{"BUILD_FILE"}, options.TestOptions)
 	fileContent := `
 go_module(
 	name = "testify",

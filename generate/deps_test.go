@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/options"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/proxy"
 	"github.com/please-build/puku/trie"
@@ -38,7 +39,7 @@ func TestLocalDeps(t *testing.T) {
 	conf.Parse.BuildFileName = []string{"BUILD_FILE", "BUILD_FILE.plz"}
 	conf.Plugin.Go.ImportPath = []string{"github.com/some/module"}
 
-	u := newUpdater(conf, true)
+	u := newUpdater(conf, options.TestOptions)
 
 	trgt, err := u.localDep("test_project/foo")
 	require.NoError(t, err)
