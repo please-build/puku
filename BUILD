@@ -13,8 +13,8 @@ genrule(
     outs = ["version.build_defs"],
     cmd = "echo VERSION = \\\"$(cat $SRCS)\\\" > $OUT",
     visibility = [
-        "//package:all",
         "//cmd/puku:all",
+        "//package:all",
     ],
 )
 

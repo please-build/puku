@@ -1,10 +1,9 @@
-subinclude("///go//build_defs:go")
-subinclude("//package:architectures")
+subinclude("///go//build_defs:go", "//package:architectures")
 
 go_toolchain(
     name = "toolchain",
-    version = CONFIG.GO_VERSION,
     architectures = architectures,
+    version = CONFIG.GO_VERSION,
 )
 
 go_stdlib(
@@ -189,9 +188,9 @@ go_repo(
         "//graph:all",
         "//licences:all",
         "//migrate:all",
+        "//sync/integration/syncmod:all",
         "//trie:all",
         "//work:all",
-        "//sync/integration/syncmod:all",
     ],
 )
 

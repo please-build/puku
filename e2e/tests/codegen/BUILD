@@ -6,8 +6,9 @@ puku_e2e_test(
     srcs = ["codgen_test.go"],
     repo = "test_repo",
     deps = [
+        "///third_party/go/github.com_stretchr_testify//assert",
+        "///third_party/go/github.com_stretchr_testify//require",
         "//e2e/harness",
         "//edit",
-        "//third_party/go:testify",
     ],
 )

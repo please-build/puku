@@ -4,9 +4,9 @@ go_library(
     visibility = [
         "//cmd/puku:all",
         "//generate:all",
+        "//migrate:all",
         "//sync:all",
         "//sync/integration/syncmod:all",
-        "//migrate:all",
     ],
     deps = [
         "///third_party/go/github.com_google_go-licenses//licenses",
@@ -24,9 +24,10 @@ go_test(
     deps = [
         ":licences",
         "///third_party/go/github.com_please-build_buildtools//build",
+        "///third_party/go/github.com_stretchr_testify//assert",
+        "///third_party/go/github.com_stretchr_testify//require",
         "//edit",
         "//graph",
         "//proxy",
-        "//third_party/go:testify",
     ],
 )

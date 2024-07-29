@@ -18,6 +18,7 @@ go_test(
     srcs = ["work_test.go"],
     deps = [
         ":work",
-        "//third_party/go:testify",
+        "///third_party/go/github.com_stretchr_testify//assert",
+        "///third_party/go/github.com_stretchr_testify//require",
     ],
 )
