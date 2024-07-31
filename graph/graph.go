@@ -16,6 +16,7 @@ import (
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/fs"
 	"github.com/please-build/puku/logging"
+	"github.com/please-build/puku/options"
 )
 
 var log = logging.GetLogger()
@@ -29,12 +30,14 @@ type Graph struct {
 	files            map[string]*build.File
 	deps             []*Dependency
 	experimentalDirs []string
+	opts             options.Options
 }
 
-func New(buildFileNames []string) *Graph {
+func New(buildFileNames []string, opts options.Options) *Graph {
 	return &Graph{
 		buildFileNames: buildFileNames,
 		files:          map[string]*build.File{},
+		opts:           opts,
 	}
 }
 
@@ -128,7 +131,7 @@ func (g *Graph) FormatFilesWithWriter(out io.Writer, format string) error {
 		return err
 	}
 	for _, file := range g.files {
-		if err := writeFormattedBuildFile(file, out, format); err != nil {
+		if err := writeFormattedBuildFile(file, out, format, g.opts); err != nil {
 			return err
 		}
 	}
@@ -140,7 +143,7 @@ func (g *Graph) FormatFiles() error {
 		return err
 	}
 	for _, file := range g.files {
-		if err := saveFormattedBuildFile(file); err != nil {
+		if err := saveFormattedBuildFile(file, g.opts); err != nil {
 			return err
 		}
 	}
@@ -231,11 +234,50 @@ func checkVisibility(target labels.Label, visibilities []string) bool {
 	return false
 }
 
-func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string) error {
+type nopCloser struct {
+	io.Writer
+}
+
+func (nopCloser) Close() error { return nil }
+
+// writeFormattedBuildFile writes a build file to the given writer if puku has made meaningful changes.
+//
+// See the comment on outputFormattedBuildFile for more details.
+func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string, opts options.Options) error {
+	outFn := func() (io.WriteCloser, error) {
+		return nopCloser{out}, nil
+	}
+	return outputFormattedBuildFile(buildFile, outFn, format, opts)
+}
+
+// saveFormattedBuildFile writes a build file to disk if puku has made meaningful changes.
+//
+// See the comment on outputFormattedBuildFile for more details.
+func saveFormattedBuildFile(buildFile *build.File, opts options.Options) error {
+	outFn := func() (io.WriteCloser, error) {
+		return os.Create(buildFile.Path)
+	}
+
+	return outputFormattedBuildFile(buildFile, outFn, "text", opts)
+}
+
+// outputFormattedBuildFile writes a build file to the given writer if puku has made meaningful changes.
+//
+// To avoid churn and changes to files where puku has not changed anything, checking for changes is
+// done by comparing the formatted build file without applying rewriting (which roughly means linter
+// changes). If changes do exist and skipRewriting is not true, the rewriting is applied to ensure
+// the resulting build file will satisfy `plz fmt`.
+//
+// This takes a function to obtain the writer because this needs to read the file to check if puku
+// has made any changes before it writes to it. If saveFormattedBuildFile called os.Create
+// proactively, the file would be truncated, and so we'd always try to write to it.
+func outputFormattedBuildFile(buildFile *build.File, outFn func() (io.WriteCloser, error), format string, opts options.Options) error {
 	if len(buildFile.Stmt) == 0 {
 		return nil
 	}
-	target := build.FormatWithoutRewriting(buildFile)
+
+	content := build.FormatWithoutRewriting(buildFile)
+
 	actual, err := os.ReadFile(buildFile.Path)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -244,30 +286,28 @@ func writeFormattedBuildFile(buildFile *build.File, out io.Writer, format string
 		actual = nil
 	}
 
-	if !bytes.Equal(target, actual) {
-		switch format {
-		case "text":
-			_, err := out.Write(target)
-			return err
-		case "json":
-			e := json.NewEncoder(out)
-			return e.Encode(struct{ Path, Content string }{Path: buildFile.Path, Content: string(target)})
-		}
-	}
-	return nil
-}
-
-func saveFormattedBuildFile(buildFile *build.File) error {
-	if len(buildFile.Stmt) == 0 {
+	if bytes.Equal(content, actual) {
 		return nil
 	}
 
-	f, err := os.Create(buildFile.Path)
+	w, err := outFn()
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer w.Close()
 
-	_, err = f.Write(build.FormatWithoutRewriting(buildFile))
-	return err
+	if !opts.SkipRewriting {
+		content = build.Format(buildFile)
+	}
+
+	switch format {
+	case "text":
+		_, err := w.Write(content)
+		return err
+	case "json":
+		e := json.NewEncoder(w)
+		return e.Encode(struct{ Path, Content string }{Path: buildFile.Path, Content: string(content)})
+	default:
+		return fmt.Errorf("unsupported format %q", format)
+	}
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/please-build/puku/generate"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/licences"
+	"github.com/please-build/puku/options"
 	"github.com/please-build/puku/please"
 	"github.com/please-build/puku/proxy"
 )
@@ -30,8 +31,8 @@ type migrator struct {
 	licences          *licences.Licenses
 }
 
-func newMigrator(plzConf *please.Config, conf *config.Config) *migrator {
-	g := graph.New(plzConf.BuildFileNames())
+func newMigrator(plzConf *please.Config, conf *config.Config, opts options.Options) *migrator {
+	g := graph.New(plzConf.BuildFileNames(), opts)
 	return &migrator{
 		plzConf:           plzConf,
 		graph:             g,
@@ -42,16 +43,16 @@ func newMigrator(plzConf *please.Config, conf *config.Config) *migrator {
 	}
 }
 
-func Migrate(conf *config.Config, plzConf *please.Config, updateGoMod bool, modules, paths []string) error {
-	m := newMigrator(plzConf, conf)
+func Migrate(conf *config.Config, plzConf *please.Config, updateGoMod bool, modules, paths []string, opts options.Options) error {
+	m := newMigrator(plzConf, conf, opts)
 	if err := m.migrate(modules, paths, updateGoMod); err != nil {
 		return err
 	}
 	return m.graph.FormatFiles()
 }
 
-func MigrateToStdout(format string, conf *config.Config, plzConf *please.Config, updateGoMod bool, modules, paths []string) error { //nolint
-	m := newMigrator(plzConf, conf)
+func MigrateToStdout(format string, conf *config.Config, plzConf *please.Config, updateGoMod bool, modules, paths []string, opts options.Options) error { //nolint
+	m := newMigrator(plzConf, conf, opts)
 	if err := m.migrate(modules, paths, updateGoMod); err != nil {
 		return err
 	}

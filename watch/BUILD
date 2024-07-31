@@ -10,5 +10,6 @@ go_library(
         "//generate",
         "//logging",
         "//please",
+        "//options",
     ],
 )

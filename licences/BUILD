@@ -29,5 +29,6 @@ go_test(
         "//edit",
         "//graph",
         "//proxy",
+        "//options",
     ],
 )

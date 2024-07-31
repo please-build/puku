@@ -18,6 +18,7 @@ go_library(
         "//edit",
         "//fs",
         "//logging",
+        "//options",
     ],
 )
 
@@ -33,5 +34,6 @@ go_test(
         "///third_party/go/github.com_stretchr_testify//require",
         "//config",
         "//edit",
+        "//options",
     ],
 )
