@@ -88,7 +88,11 @@ func UpdateToStdout(format string, plzConf *please.Config, opts options.Options,
 }
 
 func (u *updater) readAllModules(conf *config.Config) error {
-	return filepath.WalkDir(conf.GetThirdPartyDir(), func(path string, info fs.DirEntry, _ error) error {
+	return filepath.WalkDir(conf.GetThirdPartyDir(), func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
 		for _, buildFileName := range u.plzConf.BuildFileNames() {
 			if info.Name() == buildFileName {
 				file, err := u.graph.LoadFile(filepath.Dir(path))

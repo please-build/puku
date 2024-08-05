@@ -1,3 +1,8 @@
+Version 1.11.1
+-------------
+    * Fix a bug causing a panic when the third party directory is misconfigured
+    * Add the filename to the error message seen if a puku.json file is malformed
+
 Version 1.11.0
 -------------
     * Make puku rewrite build files by default, with a flag to skip rewriting

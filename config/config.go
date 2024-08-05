@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -102,7 +103,7 @@ func readOneConfig(path string) (*Config, error) {
 
 	c := new(Config)
 	if err := json.Unmarshal(f, c); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("in %s: %w", path, err)
 	}
 
 	configs[path] = c
