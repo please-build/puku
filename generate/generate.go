@@ -255,13 +255,13 @@ func (u *updater) addNewModules(conf *config.Config) error {
 // goFiles contains a mapping of source files to their GoFile. This map might be missing entries from passedSources, if
 // the source doesn't actually exist. In which case, this should be removed from the rule, as the user likely deleted
 // the file.
-func (u *updater) allSources(conf *config.Config, r *edit.Rule, sourceMap map[string]*GoFile) (passedSources []string, goFiles map[string]*GoFile, err error) {
+func (u *updater) allSources(conf *config.Config, r *edit.Rule, sourceMap map[string]*SourceFile) (passedSources []string, goFiles map[string]*SourceFile, err error) {
 	srcs, err := u.eval.BuildSources(conf.GetPlzPath(), r.Dir, r.Rule, r.SrcsAttr())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	sources := make(map[string]*GoFile, len(srcs))
+	sources := make(map[string]*SourceFile, len(srcs))
 	for _, src := range srcs {
 		if file, ok := sourceMap[src]; ok {
 			sources[src] = file
@@ -269,7 +269,7 @@ func (u *updater) allSources(conf *config.Config, r *edit.Rule, sourceMap map[st
 		}
 
 		// These are generated sources in plz-out/gen
-		f, err := importFile(".", src)
+		f, err := importGoFile(".", src)
 		if err != nil {
 			continue
 		}
@@ -301,7 +301,7 @@ func isExternal(rule *edit.Rule) bool {
 }
 
 // updateRuleDeps updates the dependencies of a build rule based on the imports of its sources
-func (u *updater) updateRuleDeps(conf *config.Config, rule *edit.Rule, rules []*edit.Rule, packageFiles map[string]*GoFile) error {
+func (u *updater) updateRuleDeps(conf *config.Config, rule *edit.Rule, rules []*edit.Rule, packageFiles map[string]*SourceFile) error {
 	done := map[string]struct{}{}
 
 	// If the rule operates on non-go source files (e.g. *.proto for proto_library) then we should skip updating
@@ -324,7 +324,16 @@ func (u *updater) updateRuleDeps(conf *config.Config, rule *edit.Rule, rules []*
 			rule.RemoveSrc(src) // The src doesn't exist so remove it from the list of srcs
 			continue
 		}
-		for _, i := range f.Imports {
+
+		var tsConfig *config.TSConfig
+		if f.fileType == TS {
+			tsConfig, err = config.ReadTSConfig(f.Dir())
+			if err != nil {
+				log.Warningf("error reading tsconfig for %s: %v", f.FileName(), err)
+			}
+		}
+
+		for _, i := range f.Imports() {
 			if _, ok := done[i]; ok {
 				continue
 			}
@@ -332,10 +341,20 @@ func (u *updater) updateRuleDeps(conf *config.Config, rule *edit.Rule, rules []*
 
 			// If the dep is provided by the kind (i.e. the build def adds it) then skip this import
 
-			dep, err := u.resolveImport(conf, i)
-			if err != nil {
-				log.Warningf("couldn't resolve %q for %v: %v", i, rule.Label(), err)
-				continue
+			var dep string
+			if f.fileType == TS {
+				log.Debugf("Resolving TS file: %s (dir: %s)", i, f.Dir())
+				dep, err = u.resolveTSImport(conf, tsConfig, f, i, rule)
+				if err != nil {
+					log.Warningf("couldn't resolve %q for %v: %v", i, rule.Label(), err)
+					continue
+				}
+			} else {
+				dep, err = u.resolveImport(conf, i)
+				if err != nil {
+					log.Warningf("couldn't resolve %q for %v: %v", i, rule.Label(), err)
+					continue
+				}
 			}
 			if dep == "" {
 				continue
@@ -419,7 +438,7 @@ func (u *updater) readRulesFromFile(conf *config.Config, file *build.File, pkgDi
 }
 
 // updateDeps updates the existing rules and creates any new rules in the BUILD file
-func (u *updater) updateDeps(conf *config.Config, file *build.File, ruleExprs map[string]*build.Rule, rules []*edit.Rule, sources map[string]*GoFile) error {
+func (u *updater) updateDeps(conf *config.Config, file *build.File, ruleExprs map[string]*build.Rule, rules []*edit.Rule, sources map[string]*SourceFile) error {
 	for _, rule := range rules {
 		if _, ok := ruleExprs[rule.Name()]; !ok {
 			file.Stmt = append(file.Stmt, rule.Call)
@@ -433,7 +452,7 @@ func (u *updater) updateDeps(conf *config.Config, file *build.File, ruleExprs ma
 
 // allocateSources allocates sources to rules. If there's no existing rule, a new rule will be created and returned
 // from this function
-func (u *updater) allocateSources(conf *config.Config, pkgDir string, sources map[string]*GoFile, rules []*edit.Rule) ([]*edit.Rule, error) {
+func (u *updater) allocateSources(conf *config.Config, pkgDir string, sources map[string]*SourceFile, rules []*edit.Rule) ([]*edit.Rule, error) {
 	unallocated, err := u.unallocatedSources(sources, rules)
 	if err != nil {
 		return nil, err
@@ -447,7 +466,7 @@ func (u *updater) allocateSources(conf *config.Config, pkgDir string, sources ma
 		}
 		var rule *edit.Rule
 		for _, r := range append(rules, newRules...) {
-			if r.Kind.Type != importedFile.kindType() {
+			if r.Kind.Type != importedFile.KindType() {
 				continue
 			}
 
@@ -459,21 +478,35 @@ func (u *updater) allocateSources(conf *config.Config, pkgDir string, sources ma
 			// Find a rule that's for the same package and of the same kind (i.e. bin, lib, test)
 			// NB: we return when we find the first one so if there are multiple options, we will pick one essentially at
 			//     random.
-			if rulePkgName == "" || rulePkgName == importedFile.Name {
+			if rulePkgName == "" || rulePkgName == importedFile.Name() {
 				rule = r
 				break
 			}
 		}
 		if rule == nil {
-			name := filepath.Base(pkgDir)
-			kind := "go_library"
-			if importedFile.IsTest() {
-				name += "_test"
-				kind = "go_test"
-			}
-			if importedFile.IsCmd() {
-				kind = "go_binary"
-				name = "main"
+			var kind, name string
+
+			// Handle TS files
+			if importedFile.fileType == TS {
+				kind = "js_library"
+				name = importedFile.Name()
+				if importedFile.IsTest() {
+					// skip tests for now
+					continue
+					// name += "_test"
+					// kind = "js_test" // TODO
+				}
+			} else {
+				// Default to assuming we're dealing with a go file
+				kind = "go_library"
+				if importedFile.IsTest() {
+					name += "_test"
+					kind = "go_test"
+				}
+				if importedFile.IsCmd() {
+					kind = "go_binary"
+					name = "main"
+				}
 			}
 			rule = edit.NewRule(edit.NewRuleExpr(kind, name), kinds.DefaultKinds[kind], pkgDir)
 			if importedFile.IsExternal(filepath.Join(u.plzConf.ImportPath(), pkgDir)) {
@@ -489,8 +522,9 @@ func (u *updater) allocateSources(conf *config.Config, pkgDir string, sources ma
 
 // rulePkg checks the first source it finds for a rule and returns the name from the "package name" directive at the top
 // of the file
-func (u *updater) rulePkg(conf *config.Config, srcs map[string]*GoFile, rule *edit.Rule) (string, error) {
+func (u *updater) rulePkg(conf *config.Config, srcs map[string]*SourceFile, rule *edit.Rule) (string, error) {
 	// This is a safe bet if we can't use the source files to figure this out.
+	// TODO rename this since we now have more than 1 type of file.
 	if rule.Kind.NonGoSources {
 		return rule.Name(), nil
 	}
@@ -502,7 +536,7 @@ func (u *updater) rulePkg(conf *config.Config, srcs map[string]*GoFile, rule *ed
 
 	for _, s := range ss {
 		if src, ok := srcs[s]; ok {
-			return src.Name, nil
+			return src.Name(), nil
 		}
 	}
 
@@ -510,7 +544,7 @@ func (u *updater) rulePkg(conf *config.Config, srcs map[string]*GoFile, rule *ed
 }
 
 // unallocatedSources returns all the sources that don't already belong to a rule
-func (u *updater) unallocatedSources(srcs map[string]*GoFile, rules []*edit.Rule) ([]string, error) {
+func (u *updater) unallocatedSources(srcs map[string]*SourceFile, rules []*edit.Rule) ([]string, error) {
 	var ret []string
 	for src := range srcs {
 		found := false

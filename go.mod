@@ -20,8 +20,10 @@ require (
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/muhammadmuzzammil1998/jsonc v1.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sergi/go-diff v1.3.1 // indirect
+	github.com/smacker/go-tree-sitter v0.0.0-20240625050157-a31a98a7c0f6 // indirect
 	github.com/stretchr/objx v0.5.1 // indirect
 	github.com/thought-machine/go-flags v1.6.3 // indirect
 	go.opencensus.io v0.24.0 // indirect

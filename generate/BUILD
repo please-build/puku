@@ -16,6 +16,8 @@ go_library(
     deps = [
         "///third_party/go/github.com_please-build_buildtools//build",
         "///third_party/go/github.com_please-build_buildtools//labels",
+        "///third_party/go/github.com_smacker_go-tree-sitter//:go-tree-sitter",
+        "///third_party/go/github.com_smacker_go-tree-sitter//typescript/typescript",
         "//config",
         "//edit",
         "//eval",
@@ -26,10 +28,10 @@ go_library(
         "//knownimports",
         "//licences",
         "//logging",
+        "//options",
         "//please",
         "//proxy",
         "//trie",
-        "//options",
     ],
 )
 
@@ -44,9 +46,9 @@ testify_test(
         "//config",
         "//edit",
         "//kinds",
+        "//options",
         "//please",
         "//proxy",
         "//trie",
-        "//options",
     ],
 )
