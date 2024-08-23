@@ -13,7 +13,6 @@ import (
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
-	"github.com/please-build/puku/generate"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/licences"
 	"github.com/please-build/puku/options"
@@ -130,11 +129,11 @@ func binaryAlias(module, thirdPartyDir string, part *pkgRule) (*build.Rule, erro
 	installs := part.rule.AttrStrings("install")
 
 	if len(installs) == 0 {
-		rule.SetAttr("srcs", edit.NewStringList([]string{generate.SubrepoTarget(module, thirdPartyDir, "")}))
+		rule.SetAttr("srcs", edit.NewStringList([]string{edit.SubrepoTarget(module, thirdPartyDir, "")}))
 	} else if len(installs) == 1 {
-		rule.SetAttr("srcs", edit.NewStringList([]string{generate.SubrepoTarget(module, thirdPartyDir, installs[0])}))
+		rule.SetAttr("srcs", edit.NewStringList([]string{edit.SubrepoTarget(module, thirdPartyDir, installs[0])}))
 	} else {
-		return nil, fmt.Errorf("too many installs to binary rule: %s", generate.BuildTarget(rule.Name(), part.pkg, ""))
+		return nil, fmt.Errorf("too many installs to binary rule: %s", edit.BuildTarget(rule.Name(), part.pkg, ""))
 	}
 
 	return rule, nil
@@ -346,7 +345,7 @@ func (m *migrator) replaceRules(p *moduleParts) error {
 	// We need to use a go_mod_download if the download rule is downloading the module using a different path than the
 	// import path of the module e.g. for when we've forked a module similar to how replace works in go.mods.
 	if p.download != nil && p.module != p.download.rule.AttrString("module") {
-		download = labels.Shorten(generate.BuildTarget(p.download.rule.Name(), p.download.pkg, ""), m.thirdPartyFolder)
+		download = labels.Shorten(edit.BuildTarget(p.download.rule.Name(), p.download.pkg, ""), m.thirdPartyFolder)
 		if len(p.parts) == 1 {
 			name = p.parts[0].rule.Name()
 		}
@@ -447,8 +446,8 @@ func (m *migrator) replacePartsWithAliases(p *moduleParts) error {
 		return nil
 	}
 	for _, part := range p.parts {
-		subrepoName := generate.SubrepoName(p.module, m.thirdPartyFolder)
-		installRule := generate.BuildTarget("installs", ".", subrepoName)
+		subrepoName := edit.SubrepoName(p.module, m.thirdPartyFolder)
+		installRule := edit.BuildTarget("installs", ".", subrepoName)
 
 		rule := edit.NewRuleExpr("filegroup", part.rule.Name())
 
