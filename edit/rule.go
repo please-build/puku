@@ -1,21 +1,20 @@
-package generate
+package edit
 
 import (
 	"github.com/please-build/buildtools/build"
 
-	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/kinds"
 )
 
-type rule struct {
-	dir  string
-	kind *kinds.Kind
+type Rule struct {
+	Dir  string
+	Kind *kinds.Kind
 	*build.Rule
 }
 
-// setOrDeleteAttr will make sure the attribute with the given name matches the values passed in. It will keep the
+// SetOrDeleteAttr will make sure the attribute with the given name matches the values passed in. It will keep the
 // existing expressions in the list to maintain things like comments.
-func (rule *rule) setOrDeleteAttr(name string, values []string) {
+func (rule *Rule) SetOrDeleteAttr(name string, values []string) {
 	if len(values) == 0 {
 		rule.DelAttr(name)
 		return
@@ -49,7 +48,7 @@ func (rule *rule) setOrDeleteAttr(name string, values []string) {
 	// Loops through the value adding any new values that didn't used to be there
 	for _, v := range values {
 		if _, done := done[v]; !done {
-			exprs = append(exprs, edit.NewStringExpr(v))
+			exprs = append(exprs, NewStringExpr(v))
 		}
 	}
 
@@ -57,21 +56,21 @@ func (rule *rule) setOrDeleteAttr(name string, values []string) {
 	rule.SetAttr(name, listExpr)
 }
 
-func (rule *rule) isTest() bool {
-	return rule.kind.Type == kinds.Test
+func (rule *Rule) IsTest() bool {
+	return rule.Kind.Type == kinds.Test
 }
 
-func (rule *rule) SrcsAttr() string {
-	return rule.kind.SrcsAttr
+func (rule *Rule) SrcsAttr() string {
+	return rule.Kind.SrcsAttr
 }
 
-func (rule *rule) addSrc(src string) {
+func (rule *Rule) AddSrc(src string) {
 	srcsAttr := rule.SrcsAttr()
 	srcs := rule.AttrStrings(srcsAttr)
-	rule.setOrDeleteAttr(srcsAttr, append(srcs, src))
+	rule.SetOrDeleteAttr(srcsAttr, append(srcs, src))
 }
 
-func (rule *rule) removeSrc(rem string) {
+func (rule *Rule) RemoveSrc(rem string) {
 	srcsAttr := rule.SrcsAttr()
 	srcs := rule.AttrStrings(srcsAttr)
 	set := make([]string, 0, len(srcs))
@@ -80,43 +79,21 @@ func (rule *rule) removeSrc(rem string) {
 			set = append(set, src)
 		}
 	}
-	rule.setOrDeleteAttr(srcsAttr, set)
+	rule.SetOrDeleteAttr(srcsAttr, set)
 }
 
-func (rule *rule) setExternal() {
-	rule.SetAttr("external", &build.Ident{Name: "True"})
-}
-
-func (rule *rule) localLabel() string {
+func (rule *Rule) LocalLabel() string {
 	return ":" + rule.Name()
 }
 
-func (rule *rule) label() string {
-	return BuildTarget(rule.Name(), rule.dir, "")
+func (rule *Rule) Label() string {
+	return BuildTarget(rule.Name(), rule.Dir, "")
 }
 
-func (rule *rule) isExternal() bool {
-	if !rule.isTest() {
-		return false
-	}
-
-	external := rule.Attr("external")
-	if external == nil {
-		return false
-	}
-
-	ident, ok := external.(*build.Ident)
-	if !ok {
-		return false
-	}
-
-	return ident.Name == "True"
-}
-
-func newRule(r *build.Rule, kindType *kinds.Kind, pkgDir string) *rule {
-	return &rule{
-		dir:  pkgDir,
-		kind: kindType,
+func NewRule(r *build.Rule, kindType *kinds.Kind, pkgDir string) *Rule {
+	return &Rule{
+		Dir:  pkgDir,
+		Kind: kindType,
 		Rule: r,
 	}
 }

@@ -14,13 +14,13 @@ import (
 )
 
 func TestAllocateSources(t *testing.T) {
-	foo := newRule(edit.NewRuleExpr("go_library", "foo"), kinds.DefaultKinds["go_library"], "")
-	fooTest := newRule(edit.NewRuleExpr("go_test", "foo_test"), kinds.DefaultKinds["go_test"], "")
+	foo := edit.NewRule(edit.NewRuleExpr("go_library", "foo"), kinds.DefaultKinds["go_library"], "")
+	fooTest := edit.NewRule(edit.NewRuleExpr("go_test", "foo_test"), kinds.DefaultKinds["go_test"], "")
 
-	foo.addSrc("foo.go")
-	fooTest.addSrc("foo_test.go")
+	foo.AddSrc("foo.go")
+	fooTest.AddSrc("foo_test.go")
 
-	rules := []*rule{foo, fooTest}
+	rules := []*edit.Rule{foo, fooTest}
 
 	files := map[string]*GoFile{
 		"bar.go": {
@@ -59,8 +59,8 @@ func TestAllocateSources(t *testing.T) {
 }
 
 func TestAddingLibDepToTest(t *testing.T) {
-	foo := newRule(edit.NewRuleExpr("go_library", "foo"), kinds.DefaultKinds["go_library"], "")
-	fooTest := newRule(edit.NewRuleExpr("go_test", "foo_test"), kinds.DefaultKinds["go_test"], "")
+	foo := edit.NewRule(edit.NewRuleExpr("go_library", "foo"), kinds.DefaultKinds["go_library"], "")
+	fooTest := edit.NewRule(edit.NewRuleExpr("go_test", "foo_test"), kinds.DefaultKinds["go_test"], "")
 
 	files := map[string]*GoFile{
 		"foo.go": {
@@ -78,7 +78,7 @@ func TestAddingLibDepToTest(t *testing.T) {
 
 	u := newUpdater(new(please.Config), options.TestOptions)
 	conf := &config.Config{PleasePath: "plz"}
-	err := u.updateRuleDeps(conf, fooTest, []*rule{foo, fooTest}, files)
+	err := u.updateRuleDeps(conf, fooTest, []*edit.Rule{foo, fooTest}, files)
 	require.NoError(t, err)
 
 	assert.Equal(t, fooTest.AttrStrings("deps"), []string{":foo"})
@@ -96,13 +96,13 @@ func TestAllocateSourcesToCustomKind(t *testing.T) {
 		Type: kinds.Test,
 	}
 
-	foo := newRule(edit.NewRuleExpr("go_example_lib", "foo"), exampleKind, "")
-	fooTest := newRule(edit.NewRuleExpr("go_test", "foo_test"), satKind, "")
+	foo := edit.NewRule(edit.NewRuleExpr("go_example_lib", "foo"), exampleKind, "")
+	fooTest := edit.NewRule(edit.NewRuleExpr("go_test", "foo_test"), satKind, "")
 
-	foo.addSrc("foo.go")
-	fooTest.addSrc("foo_test.go")
+	foo.AddSrc("foo.go")
+	fooTest.AddSrc("foo_test.go")
 
-	rules := []*rule{foo, fooTest}
+	rules := []*edit.Rule{foo, fooTest}
 
 	files := map[string]*GoFile{
 		"bar.go": {
@@ -142,9 +142,9 @@ func TestAllocateSourcesToNonGoKind(t *testing.T) {
 		NonGoSources: true,
 	}
 
-	foo := newRule(edit.NewRuleExpr("go_example_lib", "nogo"), exampleKind, "")
+	foo := edit.NewRule(edit.NewRuleExpr("go_example_lib", "nogo"), exampleKind, "")
 
-	rules := []*rule{foo}
+	rules := []*edit.Rule{foo}
 
 	files := map[string]*GoFile{
 		"foo.go": {
@@ -161,7 +161,7 @@ func TestAllocateSourcesToNonGoKind(t *testing.T) {
 	require.Len(t, newRules, 1)
 
 	assert.ElementsMatch(t, []string{}, mustGetSources(t, u, foo))
-	assert.Equal(t, "go_library", newRules[0].Kind())
+	assert.Equal(t, "go_library", newRules[0].Rule.Kind())
 	assert.ElementsMatch(t, []string{"foo.go"}, mustGetSources(t, u, newRules[0]))
 }
 
@@ -277,9 +277,9 @@ func TestUpdateDeps(t *testing.T) {
 				conf = new(config.Config)
 			}
 
-			r := newRule(edit.NewRuleExpr(tc.rule.kind.Name, "rule"), tc.rule.kind, "")
+			r := edit.NewRule(edit.NewRuleExpr(tc.rule.kind.Name, "rule"), tc.rule.kind, "")
 			for _, src := range tc.rule.srcs {
-				r.addSrc(src)
+				r.AddSrc(src)
 			}
 
 			files := make(map[string]*GoFile, len(tc.srcs))
@@ -289,7 +289,7 @@ func TestUpdateDeps(t *testing.T) {
 				srcNames = append(srcNames, f.FileName)
 			}
 
-			err := u.updateRuleDeps(conf, r, []*rule{}, files)
+			err := u.updateRuleDeps(conf, r, []*edit.Rule{}, files)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, tc.expectedDeps, r.AttrStrings("deps"))
 			assert.ElementsMatch(t, srcNames, r.AttrStrings(r.SrcsAttr()))
@@ -297,10 +297,10 @@ func TestUpdateDeps(t *testing.T) {
 	}
 }
 
-func mustGetSources(t *testing.T, u *updater, rule *rule) []string {
+func mustGetSources(t *testing.T, u *updater, rule *edit.Rule) []string {
 	t.Helper()
 
-	srcs, err := u.eval.EvalGlobs(rule.dir, rule.Rule, rule.SrcsAttr())
+	srcs, err := u.eval.EvalGlobs(rule.Dir, rule.Rule, rule.SrcsAttr())
 	require.NoError(t, err)
 	return srcs
 }

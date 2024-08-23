@@ -4,6 +4,7 @@ go_library(
     visibility = [
         "//config",
         "//config:all",
+        "//edit:all",
         "//eval:all",
         "//generate:all",
     ],

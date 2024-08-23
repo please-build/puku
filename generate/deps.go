@@ -9,6 +9,7 @@ import (
 	"github.com/please-build/buildtools/build"
 
 	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/fs"
 	"github.com/please-build/puku/kinds"
 	"github.com/please-build/puku/knownimports"
@@ -145,7 +146,7 @@ func (u *updater) localDep(importPath string) (string, error) {
 	// If we can't find the lib target, and the target package is in scope for us to potentially generate it, check if
 	// we are going to generate it.
 	if len(libTargets) != 0 {
-		return BuildTarget(libTargets[0].Name(), path, ""), nil
+		return edit.BuildTarget(libTargets[0].Name(), path, ""), nil
 	}
 
 	if !u.isInScope(importPath) {
@@ -163,7 +164,7 @@ func (u *updater) localDep(importPath string) (string, error) {
 	// If there are any non-test sources, then we will generate a go_library here later on. Return that target name.
 	for _, f := range files {
 		if !f.IsTest() {
-			return BuildTarget(filepath.Base(importPath), path, ""), nil
+			return edit.BuildTarget(filepath.Base(importPath), path, ""), nil
 		}
 	}
 	return "", nil
@@ -178,7 +179,7 @@ func depTarget(modules []string, importPath, thirdPartyFolder string) string {
 	}
 
 	packageName := strings.TrimPrefix(strings.TrimPrefix(importPath, module), "/")
-	return SubrepoTarget(module, thirdPartyFolder, packageName)
+	return edit.SubrepoTarget(module, thirdPartyFolder, packageName)
 }
 
 func moduleForPackage(modules []string, importPath string) string {
@@ -190,47 +191,4 @@ func moduleForPackage(modules []string, importPath string) string {
 		}
 	}
 	return module
-}
-
-func SubrepoTarget(module, thirdPartyFolder, packageName string) string {
-	subrepoName := SubrepoName(module, thirdPartyFolder)
-
-	name := filepath.Base(packageName)
-	if packageName == "" {
-		name = filepath.Base(module)
-	}
-
-	return BuildTarget(name, packageName, subrepoName)
-}
-
-func SubrepoName(module, thirdPartyFolder string) string {
-	return filepath.Join(thirdPartyFolder, strings.ReplaceAll(module, "/", "_"))
-}
-
-func BuildTarget(name, pkgDir, subrepo string) string {
-	bs := new(strings.Builder)
-	if subrepo != "" {
-		bs.WriteString("///")
-		bs.WriteString(subrepo)
-	}
-
-	if pkgDir != "" || subrepo != "" {
-		bs.WriteString("//")
-	}
-
-	if pkgDir == "." {
-		pkgDir = ""
-	}
-
-	if pkgDir != "" {
-		bs.WriteString(pkgDir)
-		if filepath.Base(pkgDir) != name {
-			bs.WriteString(":")
-			bs.WriteString(name)
-		}
-	} else {
-		bs.WriteString(":")
-		bs.WriteString(name)
-	}
-	return bs.String()
 }
