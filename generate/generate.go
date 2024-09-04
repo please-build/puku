@@ -490,9 +490,14 @@ func (u *updater) allocateSources(conf *config.Config, pkgDir string, sources ma
 			// Handle TS files
 			if importedFile.fileType == TS {
 				kind = "js_library"
-				// Convention is that js_library target names are camel case. No idea
-				// why.
-				name = toSnakeCase(importedFile.Name())
+
+				// Convention is that js_library target names are camel case apart from
+				// the index file which is named the same as the folder.
+				if importedFile.Name() == "index" {
+					name = filepath.Base(pkgDir)
+				} else {
+					name = convertTSFilenameToRuleName(importedFile.Name())
+				}
 				if importedFile.IsTest() {
 					// skip tests for now
 					continue
@@ -576,9 +581,14 @@ func (u *updater) unallocatedSources(srcs map[string]*SourceFile, rules []*edit.
 
 var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
 var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
+var matchDots = regexp.MustCompile("\\.")
 
-func toSnakeCase(str string) string {
-	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
-	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
-	return strings.ToLower(snake)
+func convertTSFilenameToRuleName(str string) string {
+	// Convert to snake case
+	ruleName := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
+	ruleName = matchAllCap.ReplaceAllString(ruleName, "${1}_${2}")
+
+	// Replace "." with "_"
+	ruleName = matchDots.ReplaceAllString(ruleName, "_")
+	return strings.ToLower(ruleName)
 }
