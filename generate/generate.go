@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/please-build/buildtools/build"
@@ -489,7 +490,9 @@ func (u *updater) allocateSources(conf *config.Config, pkgDir string, sources ma
 			// Handle TS files
 			if importedFile.fileType == TS {
 				kind = "js_library"
-				name = importedFile.Name()
+				// Convention is that js_library target names are camel case. No idea
+				// why.
+				name = toSnakeCase(importedFile.Name())
 				if importedFile.IsTest() {
 					// skip tests for now
 					continue
@@ -569,4 +572,13 @@ func (u *updater) unallocatedSources(srcs map[string]*SourceFile, rules []*edit.
 		}
 	}
 	return ret, nil
+}
+
+var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
+var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
+
+func toSnakeCase(str string) string {
+	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
+	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
+	return strings.ToLower(snake)
 }
