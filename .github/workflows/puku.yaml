@@ -10,11 +10,10 @@ jobs:
         run: ./pleasew test -p -v notice --log_file plz-out/log/test.log
       - name: Archive logs
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: logs
-          path: |
-            plz-out/log
+          path: plz-out/log
   release:
     needs: [test]
     runs-on: ubuntu-latest
