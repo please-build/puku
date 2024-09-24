@@ -51,26 +51,14 @@ func TestImportTSDir(t *testing.T) {
 	require.NoError(t, err)
 
 	foo := tsDir["foo.ts"]
-	// fooTest := fooDir["foo_test.go"]
-	// externalTest := fooDir["external_test.go"]
+	bar := tsDir["bar.ts"]
 
 	require.NotNil(t, foo)
-	// require.NotNil(t, fooTest)
-	// require.NotNil(t, externalTest)
+	require.NotNil(t, bar)
 
-	assert.Equal(t, foo.Imports(), []string{"react"})
-	// assert.Equal(t, fooTest.Imports, []string{"github.com/stretchr/testify/assert"})
-	// assert.Equal(t, externalTest.Imports, []string{"github.com/stretchr/testify/require"})
+	assert.Equal(t, foo.Imports(), []string{"react", "./bar", "./lazy_loaded"})
+	assert.Equal(t, bar.Imports(), []string{})
 
 	assert.False(t, foo.IsTest())
-	// assert.True(t, fooTest.IsTest())
-	// assert.True(t, externalTest.IsTest())
-
-	assert.False(t, foo.IsExternal("foo"))
-	// assert.False(t, fooTest.IsExternal("foo"))
-	// assert.True(t, externalTest.IsExternal("foo"))
-
-	assert.False(t, foo.IsCmd())
-	// assert.False(t, fooTest.IsCmd())
-	// assert.False(t, externalTest.IsCmd())
+	assert.False(t, bar.IsTest())
 }

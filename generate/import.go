@@ -2,6 +2,7 @@ package generate
 
 import (
 	"context"
+	"fmt"
 	"go/parser"
 	"go/token"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/please-build/puku/kinds"
 	sitter "github.com/smacker/go-tree-sitter"
+	"github.com/smacker/go-tree-sitter/typescript/tsx"
 	"github.com/smacker/go-tree-sitter/typescript/typescript"
 )
 
@@ -152,7 +154,14 @@ func importGoFile(dir, src string) (*SourceFile, error) {
 
 func importTsFile(dir, src string) (*SourceFile, error) {
 	tsParser := sitter.NewParser()
-	tsParser.SetLanguage(typescript.GetLanguage())
+	fileExt := filepath.Ext(src)
+	if fileExt == ".ts" {
+		tsParser.SetLanguage(typescript.GetLanguage())
+	} else if fileExt == ".tsx" {
+		tsParser.SetLanguage(tsx.GetLanguage())
+	} else {
+		return nil, fmt.Errorf("unrecognised file extension %q", fileExt)
+	}
 
 	sourceCode, err := os.ReadFile(filepath.Join(dir, src))
 	if err != nil {
@@ -167,29 +176,29 @@ func importTsFile(dir, src string) (*SourceFile, error) {
 		return nil, err
 	}
 
-	var imports []string
+	imports := make([]string, 0)
 
 	n := tree.RootNode()
 	cursor := sitter.NewTreeCursor(n)
 	defer cursor.Close()
 
-	// enter tree
-	cursor.GoToFirstChild()
+	c := sitter.NewTreeCursor(n)
+	defer c.Close()
 
-	for true {
-		node := cursor.CurrentNode()
-		nodeType := node.Type()
+	var visit func(n *sitter.Node, name string, depth int)
+	visit = func(n *sitter.Node, name string, depth int) {
+		nodeType := n.Type()
 
-		// we only care about import statements
+		// handle top level import statements
 		if nodeType == "import_statement" {
-			importCursor := sitter.NewTreeCursor(node)
+			importCursor := sitter.NewTreeCursor(n)
 			defer importCursor.Close()
 			importCursor.GoToFirstChild()
 
 			for true {
 				if importCursor.CurrentFieldName() == "source" {
 					// remove quotes around string
-					importPath := string(sourceCode[importCursor.CurrentNode().StartByte()+1 : importCursor.CurrentNode().EndByte()-1])
+					importPath := extractStringSource(sourceCode, importCursor.CurrentNode())
 					imports = append(imports, importPath)
 				}
 
@@ -200,8 +209,9 @@ func importTsFile(dir, src string) (*SourceFile, error) {
 			}
 		}
 
+		// handle export statements
 		if nodeType == "export_statement" {
-			exportCursor := sitter.NewTreeCursor(node)
+			exportCursor := sitter.NewTreeCursor(n)
 			defer exportCursor.Close()
 			exportCursor.GoToFirstChild()
 
@@ -210,7 +220,7 @@ func importTsFile(dir, src string) (*SourceFile, error) {
 					// Go to the next sibling to get from path
 					exportCursor.GoToNextSibling()
 					// remove quotes around string
-					importPath := string(sourceCode[exportCursor.CurrentNode().StartByte()+1 : exportCursor.CurrentNode().EndByte()-1])
+					importPath := extractStringSource(sourceCode, exportCursor.CurrentNode())
 					imports = append(imports, importPath)
 				}
 
@@ -221,11 +231,34 @@ func importTsFile(dir, src string) (*SourceFile, error) {
 			}
 		}
 
-		result := cursor.GoToNextSibling()
-		if !result {
-			break
+		// handle async imports
+		if nodeType == "call_expression" {
+			callCursor := sitter.NewTreeCursor(n)
+			defer callCursor.Close()
+
+			callNode := callCursor.CurrentNode()
+			for i := 0; i < int(callCursor.CurrentNode().ChildCount()); i++ {
+				child := callNode.Child(i)
+
+				if child.Type() == "import" && callNode.FieldNameForChild(i) == "function" {
+					// arguments should be the next child
+					argumentNode := callNode.Child(i + 1)
+					for i := 0; i < int(argumentNode.ChildCount()); i++ {
+						if argumentNode.Child(i).Type() == "string" {
+							importPath := extractStringSource(sourceCode, argumentNode.Child(i))
+							imports = append(imports, importPath)
+						}
+					}
+				}
+			}
 		}
+
+		for i := 0; i < int(n.ChildCount()); i++ {
+			visit(n.Child(i), n.FieldNameForChild(i), depth+1)
+		}
+
 	}
+	visit(cursor.CurrentNode(), "root", 0)
 
 	return &SourceFile{
 		name:     src,
@@ -234,4 +267,9 @@ func importTsFile(dir, src string) (*SourceFile, error) {
 		dir:      dir,
 		fileType: TS,
 	}, nil
+}
+
+func extractStringSource(sourceCode []byte, n *sitter.Node) string {
+	stringSource := string(sourceCode[n.StartByte()+1 : n.EndByte()-1])
+	return stringSource
 }

@@ -17,6 +17,7 @@ go_library(
         "///third_party/go/github.com_please-build_buildtools//build",
         "///third_party/go/github.com_please-build_buildtools//labels",
         "///third_party/go/github.com_smacker_go-tree-sitter//:go-tree-sitter",
+        "///third_party/go/github.com_smacker_go-tree-sitter//typescript/tsx",
         "///third_party/go/github.com_smacker_go-tree-sitter//typescript/typescript",
         "//config",
         "//edit",

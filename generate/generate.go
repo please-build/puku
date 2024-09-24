@@ -507,6 +507,7 @@ func (u *updater) allocateSources(conf *config.Config, pkgDir string, sources ma
 			} else {
 				// Default to assuming we're dealing with a go file
 				kind = "go_library"
+				name = filepath.Base(pkgDir)
 				if importedFile.IsTest() {
 					name += "_test"
 					kind = "go_test"
