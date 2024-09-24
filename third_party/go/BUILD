@@ -319,3 +319,15 @@ go_repo(
     module = "k8s.io/klog/v2",
     version = "v2.120.1",
 )
+
+go_repo(
+    licences = ["MIT"],
+    module = "github.com/smacker/go-tree-sitter",
+    version = "v0.0.0-20240625050157-a31a98a7c0f6",
+)
+
+go_repo(
+    licences = ["MIT"],
+    module = "github.com/muhammadmuzzammil1998/jsonc",
+    version = "v1.0.0",
+)

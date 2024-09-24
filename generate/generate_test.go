@@ -22,26 +22,31 @@ func TestAllocateSources(t *testing.T) {
 
 	rules := []*edit.Rule{foo, fooTest}
 
-	files := map[string]*GoFile{
+	files := map[string]*SourceFile{
 		"bar.go": {
-			Name:     "foo",
-			FileName: "bar.go",
+			name:     "foo",
+			fileName: "bar.go",
+			fileType: GO,
 		},
 		"bar_test.go": {
-			Name:     "foo",
-			FileName: "bar_test.go",
+			name:     "foo",
+			fileName: "bar_test.go",
+			fileType: GO,
 		},
 		"external_test.go": {
-			Name:     "foo_test",
-			FileName: "external_test.go",
+			name:     "foo_test",
+			fileName: "external_test.go",
+			fileType: GO,
 		},
 		"foo.go": {
-			Name:     "foo",
-			FileName: "foo.go",
+			name:     "foo",
+			fileName: "foo.go",
+			fileType: GO,
 		},
 		"foo_test.go": {
-			Name:     "foo",
-			FileName: "foo_test.go",
+			name:     "foo",
+			fileName: "foo_test.go",
+			fileType: GO,
 		},
 	}
 
@@ -62,14 +67,16 @@ func TestAddingLibDepToTest(t *testing.T) {
 	foo := edit.NewRule(edit.NewRuleExpr("go_library", "foo"), kinds.DefaultKinds["go_library"], "")
 	fooTest := edit.NewRule(edit.NewRuleExpr("go_test", "foo_test"), kinds.DefaultKinds["go_test"], "")
 
-	files := map[string]*GoFile{
+	files := map[string]*SourceFile{
 		"foo.go": {
-			Name:     "foo",
-			FileName: "foo.go",
+			name:     "foo",
+			fileName: "foo.go",
+			fileType: GO,
 		},
 		"foo_test.go": {
-			Name:     "foo",
-			FileName: "foo_test.go",
+			name:     "foo",
+			fileName: "foo_test.go",
+			fileType: GO,
 		},
 	}
 
@@ -104,22 +111,26 @@ func TestAllocateSourcesToCustomKind(t *testing.T) {
 
 	rules := []*edit.Rule{foo, fooTest}
 
-	files := map[string]*GoFile{
+	files := map[string]*SourceFile{
 		"bar.go": {
-			Name:     "foo",
-			FileName: "bar.go",
+			name:     "foo",
+			fileName: "bar.go",
+			fileType: GO,
 		},
 		"bar_test.go": {
-			Name:     "foo",
-			FileName: "bar_test.go",
+			name:     "foo",
+			fileName: "bar_test.go",
+			fileType: GO,
 		},
 		"foo.go": {
-			Name:     "foo",
-			FileName: "foo.go",
+			name:     "foo",
+			fileName: "foo.go",
+			fileType: GO,
 		},
 		"foo_test.go": {
-			Name:     "foo",
-			FileName: "foo_test.go",
+			name:     "foo",
+			fileName: "foo_test.go",
+			fileType: GO,
 		},
 	}
 
@@ -146,10 +157,11 @@ func TestAllocateSourcesToNonGoKind(t *testing.T) {
 
 	rules := []*edit.Rule{foo}
 
-	files := map[string]*GoFile{
+	files := map[string]*SourceFile{
 		"foo.go": {
-			Name:     "foo",
-			FileName: "foo.go",
+			name:     "foo",
+			fileName: "foo.go",
+			fileType: GO,
 		},
 	}
 
@@ -173,7 +185,7 @@ func TestUpdateDeps(t *testing.T) {
 
 	testCases := []struct {
 		name         string
-		srcs         []*GoFile
+		srcs         []*SourceFile
 		rule         *ruleKind
 		expectedDeps []string
 		modules      []string
@@ -183,11 +195,12 @@ func TestUpdateDeps(t *testing.T) {
 	}{
 		{
 			name: "adds import from known module",
-			srcs: []*GoFile{
+			srcs: []*SourceFile{
 				{
-					FileName: "foo.go",
-					Imports:  []string{"github.com/example/module/foo"},
-					Name:     "foo",
+					fileName: "foo.go",
+					imports:  []string{"github.com/example/module/foo"},
+					name:     "foo",
+					fileType: GO,
 				},
 			},
 			modules: []string{"github.com/example/module"},
@@ -199,14 +212,15 @@ func TestUpdateDeps(t *testing.T) {
 		},
 		{
 			name: "handles installs",
-			srcs: []*GoFile{
+			srcs: []*SourceFile{
 				{
-					FileName: "foo.go",
-					Imports: []string{
+					fileName: "foo.go",
+					imports: []string{
 						"github.com/example/module1/foo",
 						"github.com/example/module2/foo/bar/baz",
 					},
-					Name: "foo",
+					name:     "foo",
+					fileType: GO,
 				},
 			},
 			modules: []string{},
@@ -223,14 +237,15 @@ func TestUpdateDeps(t *testing.T) {
 		},
 		{
 			name: "handles custom kinds",
-			srcs: []*GoFile{
+			srcs: []*SourceFile{
 				{
-					FileName: "foo.go",
-					Imports: []string{
+					fileName: "foo.go",
+					imports: []string{
 						"github.com/example/module/foo",
 						"github.com/example/module/bar",
 					},
-					Name: "foo",
+					name:     "foo",
+					fileType: GO,
 				},
 			},
 			modules: []string{"github.com/example/module"},
@@ -246,7 +261,7 @@ func TestUpdateDeps(t *testing.T) {
 		},
 		{
 			name:    "handles missing src",
-			srcs:    []*GoFile{},
+			srcs:    []*SourceFile{},
 			modules: []string{"github.com/example/module"},
 			rule: &ruleKind{
 				srcs: []string{"foo.go"},
@@ -282,11 +297,11 @@ func TestUpdateDeps(t *testing.T) {
 				r.AddSrc(src)
 			}
 
-			files := make(map[string]*GoFile, len(tc.srcs))
+			files := make(map[string]*SourceFile, len(tc.srcs))
 			srcNames := make([]string, 0, len(tc.srcs))
 			for _, f := range tc.srcs {
-				files[f.FileName] = f
-				srcNames = append(srcNames, f.FileName)
+				files[f.FileName()] = f
+				srcNames = append(srcNames, f.FileName())
 			}
 
 			err := u.updateRuleDeps(conf, r, []*edit.Rule{}, files)
