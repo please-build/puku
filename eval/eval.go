@@ -72,12 +72,12 @@ func (e *Eval) BuildSources(plzPath, dir string, rule *build.Rule, srcsArg strin
 			ret = append(ret, src)
 			continue
 		}
-		target, err := please.RecursivelyProvide(plzPath, labels.ParseRelative(src, dir).Format(), "go")
+		targets, err := please.RecursivelyProvide(plzPath, labels.ParseRelative(src, dir).Format(), "go")
 		if err != nil {
 			return nil, err
 		}
 
-		outs, err := please.Build(plzPath, target)
+		outs, err := please.Build(plzPath, targets...)
 		if err != nil {
 			return nil, err
 		}
