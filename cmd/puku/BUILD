@@ -16,12 +16,12 @@ go_binary(
         "//licences",
         "//logging",
         "//migrate",
+        "//options",
         "//please",
         "//proxy",
         "//sync",
         "//version",
         "//watch",
         "//work",
-        "//options",
     ],
 )
