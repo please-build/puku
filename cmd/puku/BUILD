@@ -1,10 +1,10 @@
-subinclude("//:version")
+subinclude("//:puku_version")
 
 go_binary(
     name = "puku",
     srcs = ["puku.go"],
     definitions = {
-        "github.com/please-build/puku/version.PukuVersion": VERSION,
+        "github.com/please-build/puku/version.PukuVersion": PUKU_VERSION,
     },
     visibility = ["PUBLIC"],
     deps = [
