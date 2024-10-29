@@ -8,10 +8,10 @@ filegroup(
 )
 
 genrule(
-    name = "version",
-    srcs = ["VERSION"],
-    outs = ["version.build_defs"],
-    cmd = "echo VERSION = \\\"$(cat $SRCS)\\\" > $OUT",
+    name = "puku_version",
+    srcs = ["PUKU_VERSION"],
+    outs = ["puku_version.build_defs"],
+    cmd = "echo PUKU_VERSION = \\\"$(cat $SRCS)\\\" > $OUT",
     visibility = [
         "//cmd/puku:all",
         "//package:all",
