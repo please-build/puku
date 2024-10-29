@@ -8,12 +8,6 @@ filegroup(
 
 subinclude(":architectures")
 
-go_toolchain(
-    name = "release_toolchain",
-    architectures = architectures,
-    version = CONFIG.GO_VERSION,
-)
-
 def cross_compile(version, arch):
     return build_rule(
         name = f"puku_{arch}",
