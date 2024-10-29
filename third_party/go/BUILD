@@ -8,6 +8,10 @@ go_toolchain(
 
 go_stdlib(
     name = "std",
+    tags = [
+        "netgo",
+        "osusergo",
+    ],
 )
 
 go_repo(
