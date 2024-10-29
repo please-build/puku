@@ -1,4 +1,4 @@
-subinclude("///go//build_defs:go", "//package:architectures")
+subinclude("///go//build_defs:go")
 
 go_toolchain(
     name = "toolchain",
