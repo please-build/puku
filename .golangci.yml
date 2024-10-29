@@ -12,7 +12,7 @@ linters:
     - unused
     - dogsled
     - dupl
-    - exportloopref
+    - copyloopvar
     - gci
     - gofmt
     - gosimple
@@ -30,7 +30,6 @@ linters:
     - wastedassign
     - whitespace
     - errcheck
-    - exportloopref
 linters-settings:
   gci:
     sections:
