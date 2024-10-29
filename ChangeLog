@@ -1,3 +1,9 @@
+Version 1.12.0
+--------------
+    * Set `netgo` and `osusergo` tags on the Go standard library to build puku more statically and
+      avoid libc dependency
+
+
 Version 1.11.1
 -------------
     * Fix a bug causing a panic when the third party directory is misconfigured
