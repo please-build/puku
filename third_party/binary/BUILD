@@ -22,6 +22,6 @@ remote_file(
     name = "plz",
     binary = True,
     test_only = True,
-    url = f"https://github.com/thought-machine/please/releases/download/v17.3.1/please_17.3.1_{CONFIG.OS}_{CONFIG.ARCH}",
+    url = f"https://github.com/thought-machine/please/releases/download/v17.11.0/please_17.11.0_{CONFIG.OS}_{CONFIG.ARCH}",
     visibility = ["PUBLIC"],
 )
