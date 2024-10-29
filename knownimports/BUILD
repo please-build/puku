@@ -1,10 +1,8 @@
-root = f"third_party/go/toolchain/pkg/{CONFIG.OS}_{CONFIG.ARCH}"
-
 genrule(
     name = "go_root_packages",
-    srcs = ["//third_party/go:toolchain"],
+    srcs = ["//third_party/go:std"],
     outs = ["go_root_packages"],
-    cmd = f'find {root} -name "*.a" | sed -e s=^{root}/== | sed -e s="\.a\$"== > $OUT',
+    cmd = 'find $SRCS -name "*.a" | sed -re s=^third_party/go/std/pkg/[^/]+_[^/]+/== | sed -e s="\.a\$"== > $OUT',
 )
 
 go_library(

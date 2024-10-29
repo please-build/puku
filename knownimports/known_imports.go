@@ -32,8 +32,7 @@ func IsInGoRoot(i string) bool {
 	if strings.HasPrefix(i, "crypto/") {
 		return true
 	}
-	_, ok := goRootImports[i]
-	if ok {
+	if _, ok := goRootImports[i]; ok {
 		return true
 	}
 
