@@ -76,9 +76,9 @@ func (g *Globber) glob(dir, glob string) ([]string, error) {
 		}
 
 		// We're globbing for Go files to determine their imports. We can skip any other files.
-		if filepath.Ext(e.Name()) != ".go" {
-			continue
-		}
+		// if filepath.Ext(e.Name()) != ".go" {
+		// 	continue
+		// }
 
 		match, err := filepath.Match(glob, e.Name())
 		if err != nil {

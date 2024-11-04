@@ -75,4 +75,9 @@ var DefaultKinds = map[string]*Kind{
 		Name: "go_repo",
 		Type: ThirdParty,
 	},
+	"js_library": {
+		Name:     "js_library",
+		Type:     Lib,
+		SrcsAttr: "srcs",
+	},
 }

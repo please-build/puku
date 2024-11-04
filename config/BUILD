@@ -13,7 +13,11 @@ go_library(
         "//sync/integration/syncmod:all",
         "//work:all",
     ],
-    deps = ["//kinds"],
+    deps = [
+        "///third_party/go/github.com_muhammadmuzzammil1998_jsonc//:jsonc",
+        "//kinds",
+        "//logging",
+    ],
 )
 
 go_test(
