@@ -1,4 +1,4 @@
-subinclude("//:version")
+subinclude("//:puku_version")
 
 filegroup(
     name = "architectures",
@@ -25,7 +25,7 @@ def cross_compile(version, arch):
 
 filegroup(
     name = f"release_files",
-    srcs = [cross_compile(VERSION, arch) for arch in architectures],
+    srcs = [cross_compile(PUKU_VERSION, arch) for arch in architectures],
     labels = [
         f"hlink:plz-out/package",
         "manual",

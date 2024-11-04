@@ -29,3 +29,4 @@ jobs:
         uses: thought-machine/release-action@master
         with:
           release-files: plz-out/package
+          version-file: PUKU_VERSION
