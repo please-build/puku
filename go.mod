@@ -1,6 +1,6 @@
 module github.com/please-build/puku
 
-go 1.19
+go 1.23
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0

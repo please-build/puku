@@ -5,6 +5,7 @@ genrule(
     srcs = ["//third_party/go:toolchain"],
     outs = ["go_root_packages"],
     cmd = f'find {root} -name "*.a" | sed -e s=^{root}/== | sed -e s="\.a\$"== > $OUT',
+    labels = ["codegen"],
 )
 
 go_library(

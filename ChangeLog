@@ -1,3 +1,7 @@
+Version 1.13.0
+--------------
+    * Build with Go 1.23.2 to pull in new packages
+
 Version 1.12.1
 --------------
     * Rename `VERSION` to `PUKU_VERSION` to allow running
