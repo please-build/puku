@@ -15,25 +15,27 @@ your `~/.bashrc`, or similar.
 
 ### Running puku with Please
 
-Add a remote file to your repo under `third_party/binary/BUILD`
-```python
-version = "9.9.9"
-remote_file(
-    name = "puku",
-    url = f"https://github.com/please-build/puku/releases/download/v{version}/puku-{version}-{CONFIG.OS}_{CONFIG.ARCH}",
-    binary = True,
-)
+Add a `BuildConfig` and `Alias` to your `.plzconfig`, or for personal usage, your `.plzconfig.local`:
 ```
+[BuildConfig]
+Puku-Version = "9.9.9"
 
-Then add an alias to your `.plzconfig`, or for personal usage, your `.plzconfig.local`:
-```
 [Alias "puku"]
 Cmd = run //third_party/binary:puku --
 PositionalLabels = true
 Desc = A tool to update BUILD files in Go packages 
 ```
 
-Then you can use `plz puku` in place of `puku`. 
+Then add a remote file to your repo under `third_party/binary/BUILD`
+```python
+remote_file(
+    name = "puku",
+    url = f"https://github.com/please-build/puku/releases/download/v{CONFIG.PUKU_VERSION}/puku-{CONFIG.PUKU_VERSION}-{CONFIG.OS}_{CONFIG.ARCH}",
+    binary = True,
+)
+```
+
+This enables you to use `plz puku` in place of `puku`. 
 
 ## Usage
 
