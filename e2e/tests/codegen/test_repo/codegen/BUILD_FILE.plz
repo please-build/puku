@@ -15,7 +15,7 @@ filegroup(
     name = "provider",
     srcs = ["foo.proto"],
     provides = {
-        "go": ":srcs",
+        "go": [":srcs"],
     },
 )
 
@@ -23,7 +23,15 @@ filegroup(
     name = "recursive_provider",
     srcs = ["foo.proto"],
     provides = {
-        "go": ":provider",
+        "go": [":provider"],
+    },
+)
+
+filegroup(
+    name = "list_provider",
+    srcs = ["foo.proto"],
+    provides = {
+        "go": [":srcs", ":provider"],
     },
 )
 
@@ -40,4 +48,9 @@ go_binary(
 go_binary(
     name = "recursive_codegen_provider",
     srcs = [":recursive_provider"],
+)
+
+go_binary(
+    name = "list_codegen_provider",
+    srcs = [":list_provider"],
 )
