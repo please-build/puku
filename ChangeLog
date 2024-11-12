@@ -1,3 +1,7 @@
+Version 1.14.0
+--------------
+    * Add support for targets which provide multiple Go targets
+
 Version 1.13.0
 --------------
     * Build with Go 1.23.2 to pull in new packages
