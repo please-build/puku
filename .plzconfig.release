@@ -1,2 +1,0 @@
-[Plugin "go"]
-GoTool = //package:release_toolchain|go

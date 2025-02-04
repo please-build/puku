@@ -1,18 +1,12 @@
 subinclude("//:puku_version")
 
-filegroup(
-    name = "architectures",
-    srcs = ["architectures.build_defs"],
-    visibility = ["PUBLIC"],
-)
-
-subinclude(":architectures")
-
-go_toolchain(
-    name = "release_toolchain",
-    architectures = architectures,
-    version = CONFIG.GO_VERSION,
-)
+architectures = [
+    "darwin_amd64",
+    "darwin_arm64",
+    "freebsd_amd64",
+    "linux_amd64",
+    "linux_arm64",
+]
 
 def cross_compile(version, arch):
     return build_rule(

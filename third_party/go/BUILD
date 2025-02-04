@@ -1,9 +1,9 @@
-subinclude("///go//build_defs:go", "//package:architectures")
+subinclude("///go//build_defs:go")
 
 go_toolchain(
     name = "toolchain",
-    architectures = architectures,
     version = CONFIG.GO_VERSION,
+    install_std = False,
 )
 
 go_stdlib(
