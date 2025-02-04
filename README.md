@@ -13,27 +13,35 @@ $ go install github.com/please-build/puku/cmd/puku
 Then make sure `$GOPATH/bin` is in `$PATH`. This can be done by adding `export PATH=$PATH:$GOROOT/bin:$GOPATH/bin` to 
 your `~/.bashrc`, or similar. 
 
-### Running puku with Please
+### Running Puku with Please
 
-Add a remote file to your repo under `third_party/binary/BUILD`
+Define a valid Puku version number as a build configuration string in `.plzconfig`:
+
+```
+[BuildConfig]
+puku-version = "9.9.9"
+```
+
+Then download that version of Puku in `third_party/binary/BUILD`:
+
 ```python
-version = "9.9.9"
 remote_file(
     name = "puku",
-    url = f"https://github.com/please-build/puku/releases/download/v{version}/puku-{version}-{CONFIG.OS}_{CONFIG.ARCH}",
+    url = f"https://github.com/please-build/puku/releases/download/v{CONFIG.PUKU_VERSION}/puku-{CONFIG.PUKU_VERSION}-{CONFIG.OS}_{CONFIG.ARCH}",
     binary = True,
 )
 ```
 
-Then add an alias to your `.plzconfig`, or for personal usage, your `.plzconfig.local`:
+Optionally, add a `puku` alias to `.plzconfig` (or, for personal usage, `.plzconfig.local`):
+
 ```
 [Alias "puku"]
 Cmd = run //third_party/binary:puku --
 PositionalLabels = true
-Desc = A tool to update BUILD files in Go packages 
+Desc = A tool to update BUILD files in Go packages
 ```
 
-Then you can use `plz puku` in place of `puku`. 
+This enables you to use `plz puku` in place of `plz run //third_party/binary:puku`.
 
 ## Usage
 
