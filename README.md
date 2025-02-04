@@ -13,20 +13,17 @@ $ go install github.com/please-build/puku/cmd/puku
 Then make sure `$GOPATH/bin` is in `$PATH`. This can be done by adding `export PATH=$PATH:$GOROOT/bin:$GOPATH/bin` to 
 your `~/.bashrc`, or similar. 
 
-### Running puku with Please
+### Running Puku with Please
 
-Add a `BuildConfig` and `Alias` to your `.plzconfig`, or for personal usage, your `.plzconfig.local`:
+Define a valid Puku version number as a build configuration string in `.plzconfig`:
+
 ```
 [BuildConfig]
-Puku-Version = "9.9.9"
-
-[Alias "puku"]
-Cmd = run //third_party/binary:puku --
-PositionalLabels = true
-Desc = A tool to update BUILD files in Go packages 
+puku-version = "9.9.9"
 ```
 
-Then add a remote file to your repo under `third_party/binary/BUILD`
+Then download that version of Puku in `third_party/binary/BUILD`:
+
 ```python
 remote_file(
     name = "puku",
@@ -35,7 +32,16 @@ remote_file(
 )
 ```
 
-This enables you to use `plz puku` in place of `puku`. 
+Optionally, add a `puku` alias to `.plzconfig` (or, for personal usage, `.plzconfig.local`):
+
+```
+[Alias "puku"]
+Cmd = run //third_party/binary:puku --
+PositionalLabels = true
+Desc = A tool to update BUILD files in Go packages
+```
+
+This enables you to use `plz puku` in place of `plz run //third_party/binary:puku`.
 
 ## Usage
 
