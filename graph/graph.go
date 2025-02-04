@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/please-build/buildtools/build"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/please-build/puku/config"
 	"github.com/please-build/puku/edit"
-	"github.com/please-build/puku/fs"
 	"github.com/please-build/puku/logging"
 	"github.com/please-build/puku/options"
 )
@@ -213,11 +213,19 @@ func checkVisibility(target labels.Label, visibilities []string) bool {
 			return true
 		}
 
+		// We're cheating slightly by using buildtools' labels.Parse function to parse visibility
+		// identifiers, because "..." is permitted in a visibility identifier but not in build target
+		// names, but it'll work fine provided we handle the "..." case differently.
 		visibility := labels.Parse(v)
 
 		if filepath.Base(visibility.Package) == "..." {
 			pkg := filepath.Dir(visibility.Package)
-			if fs.IsSubdir(pkg, target.Package) {
+			// filepath.Dir returns "." if visibility.Package contains no package name component (i.e., if
+			// the visibility identifier is "//...") - translate this into the empty package name.
+			if pkg == "." {
+				pkg = ""
+			}
+			if isSubpackage(pkg, target.Package) {
 				return true
 			}
 			continue
@@ -232,6 +240,20 @@ func checkVisibility(target labels.Label, visibilities []string) bool {
 		}
 	}
 	return false
+}
+
+// isSubpackage returns true if pkg is the name of a package whose BUILD file would exist within the
+// directory tree belonging to the package basePkg, or false otherwise.
+//
+// A basePkg consisting of the empty string denotes the top-level package; given the definition of
+// "sub-package" above, it follows that all packages are sub-packages of the top-level package.
+func isSubpackage(basePkg, pkg string) bool {
+	if basePkg == "" {
+		return true
+	}
+	basePkgParts := strings.Split(basePkg, "/")
+	pkgParts := strings.Split(pkg, "/")
+	return slices.Equal(basePkgParts, pkgParts[:len(basePkgParts)])
 }
 
 type nopCloser struct {

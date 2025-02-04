@@ -163,26 +163,71 @@ go_library(
 }
 
 func TestCheckVisibility(t *testing.T) {
-	label := labels.Parse("//foo/bar:baz")
-	t.Run("matches exactly", func(t *testing.T) {
-		assert.True(t, checkVisibility(label, []string{"//foo/bar:baz"}))
-	})
-	t.Run("matches all psudo-label", func(t *testing.T) {
-		assert.True(t, checkVisibility(label, []string{"//foo/bar:all"}))
-	})
-	t.Run("matches PUBLIC", func(t *testing.T) {
-		assert.True(t, checkVisibility(label, []string{"PUBLIC"}))
-	})
-	t.Run("matches package wildcard", func(t *testing.T) {
-		assert.True(t, checkVisibility(label, []string{"//foo/..."}))
-	})
-
-	t.Run("doesnt match a different package wildcard", func(t *testing.T) {
-		assert.False(t, checkVisibility(label, []string{"//bar/..."}))
-	})
-	t.Run("doesnt match a different package", func(t *testing.T) {
-		assert.False(t, checkVisibility(label, []string{"//bar:all"}))
-	})
+	assert := assert.New(t)
+	for _, test := range []struct {
+		description string
+		label       string
+		visibility  []string
+		expected    bool
+	}{
+		{
+			description: "Exact match",
+			label:       "//foo/bar:baz",
+			visibility:  []string{"//foo/bar:baz"},
+			expected:    true,
+		},
+		{
+			description: "Matches :all pseudo-label for same package",
+			label:       "//foo/bar:baz",
+			visibility:  []string{"//foo/bar:all"},
+			expected:    true,
+		},
+		{
+			description: "Doesn't match :all pseudo-label for different package",
+			label:       "//foo/bar:baz",
+			visibility:  []string{"//foo/baz:all"},
+			expected:    false,
+		},
+		{
+			description: "Matches PUBLIC pseudo-label",
+			label:       "//foo/bar:baz",
+			visibility:  []string{"PUBLIC"},
+			expected:    true,
+		},
+		{
+			description: "Matches top-level package's wildcard",
+			label:       "//foo/bar:baz",
+			visibility:  []string{"//..."},
+			expected:    true,
+		},
+		{
+			description: "Matches top-level package's wildcard for top-level label",
+			label:       "//:baz",
+			visibility:  []string{"//..."},
+			expected:    true,
+		},
+		{
+			description: "Matches parent package's wildcard",
+			label:       "//foo/bar:baz",
+			visibility:  []string{"//foo/..."},
+			expected:    true,
+		},
+		{
+			description: "Matches same package's wildcard",
+			label:       "//foo/bar:baz",
+			visibility:  []string{"//foo/bar/..."},
+			expected:    true,
+		},
+		{
+			description: "Doesn't match wildcard of a package with different parent",
+			label:       "//foo/bar:baz",
+			visibility:  []string{"//bar/..."},
+			expected:    false,
+		},
+	} {
+		label := labels.Parse(test.label)
+		assert.Equal(test.expected, checkVisibility(label, test.visibility), test.description)
+	}
 }
 
 func TestGetDefaultVisibilityFromFile(t *testing.T) {
