@@ -1,3 +1,8 @@
+Version 1.15.0
+--------------
+    * Simplify process of identifying Go standard library package names (#134)
+    * Correctly handle `//...` as a visibility identifier when reformatting `BUILD` files (#139)
+
 Version 1.14.0
 --------------
     * Add support for targets which provide multiple Go targets
