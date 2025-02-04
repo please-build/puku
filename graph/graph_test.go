@@ -173,10 +173,12 @@ func TestCheckVisibility(t *testing.T) {
 	t.Run("matches PUBLIC", func(t *testing.T) {
 		assert.True(t, checkVisibility(label, []string{"PUBLIC"}))
 	})
+	t.Run("matches root package wildcard", func(t *testing.T) {
+		assert.True(t, checkVisibility(label, []string{"//..."}))
+	})
 	t.Run("matches package wildcard", func(t *testing.T) {
 		assert.True(t, checkVisibility(label, []string{"//foo/..."}))
 	})
-
 	t.Run("doesnt match a different package wildcard", func(t *testing.T) {
 		assert.False(t, checkVisibility(label, []string{"//bar/..."}))
 	})
