@@ -1,3 +1,7 @@
+Version 1.15.1
+--------------
+    * Correctly compute visibility of target given a child package wildcard (#141)
+
 Version 1.15.0
 --------------
     * Simplify process of identifying Go standard library package names (#134)
