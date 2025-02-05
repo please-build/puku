@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/please-build/buildtools/build"
@@ -253,7 +252,15 @@ func isSubpackage(basePkg, pkg string) bool {
 	}
 	basePkgParts := strings.Split(basePkg, "/")
 	pkgParts := strings.Split(pkg, "/")
-	return slices.Equal(basePkgParts, pkgParts[:len(basePkgParts)])
+	if len(basePkgParts) > len(pkgParts) {
+		return false
+	}
+	for i := range basePkgParts {
+		if basePkgParts[i] != pkgParts[i] {
+			return false
+		}
+	}
+	return true
 }
 
 type nopCloser struct {

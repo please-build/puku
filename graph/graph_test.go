@@ -219,6 +219,12 @@ func TestCheckVisibility(t *testing.T) {
 			expected:    true,
 		},
 		{
+			description: "Doesn't match child package's wildcard",
+			label:       "//foo/bar:baz",
+			visibility:  []string{"//foo/bar/buh/..."},
+			expected:    false,
+		},
+		{
 			description: "Doesn't match wildcard of a package with different parent",
 			label:       "//foo/bar:baz",
 			visibility:  []string{"//bar/..."},
