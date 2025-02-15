@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/please-build/buildtools/build"
@@ -101,6 +102,127 @@ func (u *updater) reallyResolveImport(conf *config.Config, i string) (string, er
 	return "", fmt.Errorf("module not found")
 }
 
+// resolveTSImport resolves an import path to a build target. It will return an
+// empty string if the import is for a third party package. Otherwise, it will
+// return the build target for that dependency, or an error if it can't be resolved.
+func (u *updater) resolveTSImport(conf *config.Config, tsConfig *config.TSConfig, f *SourceFile, importPath string, currentRule *edit.Rule) (string, error) {
+	var t string
+	var err error
+
+	var importPaths []string
+	type tsAlias struct {
+		alias   string
+		targets []string
+	}
+	var matchedAlias *tsAlias
+
+	tsPaths := make(map[string][]string)
+	if tsConfig != nil {
+		tsPaths = tsConfig.CompilerOptions.Paths
+	}
+
+	for alias, targets := range tsPaths {
+		re := regexp.MustCompile(wildCardToRegexp(alias))
+		matched := re.FindString(importPath)
+		if err != nil {
+			return t, err
+		}
+
+		if matched != "" {
+			matchedAlias = &tsAlias{
+				alias:   alias,
+				targets: targets,
+			}
+		}
+	}
+
+	// Ignore all imports that aren't relative
+	if !strings.HasPrefix(importPath, ".") && matchedAlias == nil {
+		log.Debugf("Skipping TS import (not relative): %s", importPath)
+		return t, nil
+	}
+
+	if matchedAlias != nil {
+		// TODO: at the moment we only support the first target and we only support
+		// aliases that are simple prefix replacements
+		target := matchedAlias.targets[0]
+		alias := matchedAlias.alias
+		origImportPath := importPath
+
+		aliasPrefix := alias[0:strings.Index(alias, "*")]
+		targetPrefix := target[0:strings.Index(target, "*")]
+
+		importPath = strings.Replace(importPath, aliasPrefix, targetPrefix, 1)
+		importPath = filepath.Join(tsConfig.Dir, importPath)
+		log.Debugf("alias matched %s %s; newImportPath: %s", alias, origImportPath, importPath)
+	}
+
+	// If importPath is a folder then append `index.{ts,tsx}`
+	if filepath.Ext(importPath) == "" {
+		// filepath.Join removes the './' at the beginning of the import so we can't
+		// use it
+		importPaths = append(importPaths, importPath+".ts")
+		importPaths = append(importPaths, importPath+".tsx")
+		importPaths = append(importPaths, importPath+string(filepath.Separator)+"index.ts")
+		importPaths = append(importPaths, importPath+string(filepath.Separator)+"index.tsx")
+		log.Debugf("adding file extensions and index paths: %s", importPaths)
+	} else {
+		importPaths = append(importPaths, importPath)
+	}
+
+	// Try every possible import path
+	for _, path := range importPaths {
+		fullPath := path
+		if strings.HasPrefix(path, ".") {
+			fullPath = filepath.Join(f.Dir(), path)
+		}
+		log.Debugf("fullPath: %s", fullPath)
+
+		if t, ok := u.resolvedImports[fullPath]; ok {
+			return t, nil
+		}
+
+		// TODO
+		if t := conf.GetKnownTarget(fullPath); t != "" {
+			return t, nil
+		}
+
+		// Check to see if the target exists in the current repo
+		t, err = u.localTSDep(fullPath, currentRule)
+		if err != nil {
+			return "", err
+		}
+
+		if t != "" {
+			u.resolvedImports[fullPath] = t
+			return t, nil
+		}
+	}
+
+	return "", nil
+}
+
+func wildCardToRegexp(pattern string) string {
+	components := strings.Split(pattern, "*")
+	if len(components) == 1 {
+		// if len is 1, there are no *'s, return exact match pattern
+		return "^" + pattern + "$"
+	}
+	var result strings.Builder
+	for i, literal := range components {
+
+		// Replace * with .*
+		if i > 0 {
+			result.WriteString("(.*)")
+		}
+
+		// Quote any regular expression meta characters in the
+		// literal text.
+		result.WriteString(regexp.QuoteMeta(literal))
+	}
+	return "^" + result.String() + "$"
+}
+
 // isInScope returns true when the given path is in scope of the current run i.e. if we are going to format the BUILD
 // file there.
 func (u *updater) isInScope(path string) bool {
@@ -167,6 +289,82 @@ func (u *updater) localDep(importPath string) (string, error) {
 			return edit.BuildTarget(filepath.Base(importPath), path, ""), nil
 		}
 	}
+	return "", nil
+}
+
+// localTSDep finds a dependency local to this repository, checking the BUILD
+// file for a js_library target. Returns an empty string when no target is found.
+func (u *updater) localTSDep(importPath string, currentRule *edit.Rule) (string, error) {
+	path := filepath.Dir(importPath)
+	// Check the directory exists. If it doesn't it's not a local import.
+	if _, err := os.Lstat(path); os.IsNotExist(err) {
+		log.Debugf("dir doesn't exist %s", path)
+		return "", nil
+	}
+	file, err := u.graph.LoadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse BUILD files in %v: %v", path, err)
+	}
+
+	conf, err := config.ReadConfig(path)
+	if err != nil {
+		return "", err
+	}
+
+	// TODO allow other rule names?
+	for _, rule := range file.Rules("js_library") {
+		kind := conf.GetKind(rule.Kind())
+		if kind == nil {
+			continue
+		}
+
+		// Skip rules that are the same as the current rule to prevent circular
+		// imports
+		if currentRule.Dir == path && rule.Name() == currentRule.Name() {
+			continue
+		}
+
+		if kind.Type == kinds.Lib {
+			ruleSrcs, err := u.eval.EvalGlobs(path, rule, kind.SrcsAttr)
+			if err != nil {
+				return "", err
+			}
+
+			// TODO if rule is the same as the current rule then skip
+
+			// Check if import file matches any of the srcs
+			for _, src := range ruleSrcs {
+				fileName := filepath.Base(importPath)
+				// Files don't have to have an extension. If they don't then they could
+				// map with .ts or .tsx files.
+				if src == fileName || src == fileName+".ts" || src == fileName+".tsx" {
+					log.Debugf("found rule for import %s: %s:%s", importPath, path, rule.Name())
+					return edit.BuildTarget(rule.Name(), path, ""), nil
+				}
+			}
+		}
+	}
+
+	// if !u.isInScope(importPath) {
+	// 	return "", fmt.Errorf("resolved %v to a local package, but no library target was found and it's not in scope to generate the target", importPath)
+	// }
+
+	// files, err := ImportDir(path)
+	// if err != nil {
+	// 	if os.IsNotExist(err) {
+	// 		return "", nil
+	// 	}
+	// 	return "", fmt.Errorf("failed to import %v: %v", path, err)
+	// }
+
+	// If there are any non-test sources, then we will generate a js_library here later on. Return that target name.
+	// for _, f := range files {
+	// 	if !f.IsTest() {
+	// 		return BuildTarget(filepath.Base(importPath), path, ""), nil
+	// 	}
+	// }
+
+	log.Debugf("failed to find rule for import: %s", importPath)
 	return "", nil
 }
 

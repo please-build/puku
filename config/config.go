@@ -7,8 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/muhammadmuzzammil1998/jsonc"
 	"github.com/please-build/puku/kinds"
+	"github.com/please-build/puku/logging"
 )
+
+var log = logging.GetLogger()
 
 // KindConfig represents the configuration for a custom kind. See kinds.Kind for more information on how kinds work.
 type KindConfig struct {
@@ -208,4 +212,54 @@ func (c *Config) GetKind(kind string) *kinds.Kind {
 		}
 	}
 	return nil
+}
+
+// TSConfig represents a tsconfig.json file discovered in the repo.
+type TSConfig struct {
+	Dir             string
+	CompilerOptions struct {
+		Paths map[string][]string `json:"paths"`
+	} `json:"compilerOptions"`
+}
+
+var tsconfigs = map[string]*TSConfig{}
+
+// ReadTSConfig finds the closest tsconfig by walking up the directory tree.
+// Note: we don't try and resolve the full config inheritance, it just resolves
+// to the first tsconfig.json file that we find.
+func ReadTSConfig(dir string) (*TSConfig, error) {
+	origDir := dir
+	dir = filepath.Clean(dir)
+
+	for true {
+		if c, ok := tsconfigs[dir]; ok {
+			return c, nil
+		}
+
+		f, err := os.ReadFile(filepath.Join(dir, "tsconfig.json"))
+		if err != nil {
+			if os.IsNotExist(err) {
+				if dir == "." {
+					break
+				}
+
+				// try parent directory
+				dir = filepath.Dir(dir)
+				continue
+			}
+			return nil, err
+		}
+
+		c := new(TSConfig)
+		c.Dir = dir
+		// tsconfig files are jsonc: https://code.visualstudio.com/docs/languages/json#_json-with-comments
+		if err := jsonc.Unmarshal(f, c); err != nil {
+			return nil, fmt.Errorf("in %s: %w", dir, err)
+		}
+		tsconfigs[dir] = c
+		return c, nil
+	}
+
+	log.Debugf("Can't find tsconfig for dir: %s", origDir)
+	return nil, nil
 }
