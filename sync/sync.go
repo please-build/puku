@@ -122,8 +122,17 @@ func (s *syncer) syncModFile(conf *config.Config, file *build.File, existingRule
 		}
 	}
 
+	ignoredModules := map[string]bool{}
+	for _, mod := range conf.GetIgnoreModulesForSync() {
+		ignoredModules[mod] = true
+	}
+
 	// Check all modules listed in go.mod
 	for _, req := range f.Require {
+		if ignoredModules[req.Mod.Path] {
+			continue
+		}
+
 		// Find any matching replace directive
 		var matchingReplace *modfile.Replace
 		for _, replace := range f.Replace {

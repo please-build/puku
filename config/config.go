@@ -43,6 +43,9 @@ type Config struct {
 	Stop                *bool                  `json:"stop"`
 	EnsureSubincludes   *bool                  `json:"ensureSubincludes"`
 	ExcludeBuiltinKinds []string               `json:"excludeBuiltinKinds"`
+	// This field allows skipping syncing certain packages into the BUILD file as go_repo targets,
+	// Which can help deal with transitive dependencies that are not actually needed.
+	IgnoreModulesForSync []string `json:"ignoreModulesForSync"`
 }
 
 // TODO we should reload this during plz watch so this probably needs to become a member of Update
@@ -208,4 +211,11 @@ func (c *Config) GetKind(kind string) *kinds.Kind {
 		}
 	}
 	return nil
+}
+
+func (c *Config) GetIgnoreModulesForSync() []string {
+	if c.base != nil {
+		return append(c.IgnoreModulesForSync, c.base.GetIgnoreModulesForSync()...)
+	}
+	return c.IgnoreModulesForSync
 }
