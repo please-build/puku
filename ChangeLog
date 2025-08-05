@@ -1,3 +1,7 @@
+Version 1.16.0
+--------------
+    * Add support for ignoring modules when syncing (#143)
+
 Version 1.15.1
 --------------
     * Correctly compute visibility of target given a child package wildcard (#141)
