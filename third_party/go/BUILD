@@ -2,8 +2,8 @@ subinclude("///go//build_defs:go")
 
 go_toolchain(
     name = "toolchain",
-    version = CONFIG.GO_VERSION,
     install_std = False,
+    version = CONFIG.GO_VERSION,
 )
 
 go_stdlib(
@@ -53,7 +53,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/term",
-    version = "v0.16.0",
+    version = "v0.36.0",
 )
 
 go_repo(
@@ -89,7 +89,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/mod",
-    version = "v0.14.0",
+    version = "v0.29.0",
 )
 
 go_repo(
@@ -146,7 +146,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/sys",
-    version = "v0.16.0",
+    version = "v0.37.0",
 )
 
 go_repo(
@@ -164,7 +164,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/net",
-    version = "v0.20.0",
+    version = "v0.46.0",
 )
 
 go_repo(
@@ -225,7 +225,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/tools",
-    version = "v0.17.0",
+    version = "v0.38.0",
 )
 
 go_repo(
@@ -237,7 +237,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/sync",
-    version = "v0.6.0",
+    version = "v0.17.0",
 )
 
 go_repo(
