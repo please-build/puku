@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v5
       - name: Run tests
         run: ./pleasew test -p -v notice --log_file plz-out/log/test.log
       - name: Archive logs
@@ -20,7 +20,7 @@ jobs:
     if: github.ref == 'refs/heads/master'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v5
       - name: Build puku
         run: ./pleasew build -p -v notice //package:release_files
       - name: Release
