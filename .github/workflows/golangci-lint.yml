@@ -19,6 +19,6 @@ jobs:
         # This makes sure the knownimports/go_root_packages file exists as a real file for golangci-lint
         run: ./pleasew build //knownimports:go_root_packages && mv $(readlink knownimports/go_root_packages) knownimports/go_root_packages
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v8
         with:
           version: v2.5.0
