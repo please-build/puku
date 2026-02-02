@@ -1,3 +1,8 @@
+Version 1.17.1
+--------------
+    * Correctly handle addition of an external test to a package that already contains an
+      internal test (#145)
+
 Version 1.17.0
 --------------
     * Build with Go 1.25.2 to support the new `ignore` directive in `go.mod` files (#144)
