@@ -68,6 +68,7 @@ func (d *debouncer) wait() {
 
 func Watch(config *please.Config, opts options.Options, paths ...string) error {
 	if len(paths) < 1 {
+		log.Warningf("no paths to watch")
 		return nil
 	}
 	watcher, err := fsnotify.NewWatcher()

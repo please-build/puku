@@ -7,7 +7,7 @@ go_library(
     ],
     visibility = [
         "//e2e/codegen:all",
-        "//e2e/tests/codegen:all",
+        "//e2e/tests/...",
         "//eval:all",
         "//generate:all",
         "//generate/integration/syncmod:all",

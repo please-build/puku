@@ -59,6 +59,8 @@ func SyncToStdout(format string, plzConf *please.Config, g *graph.Graph) error {
 
 func (s *syncer) sync() error {
 	if s.plzConf.ModFile() == "" {
+		log.Warningf("no go.mod target is configured, so there's nothing to sync against. Expose your go.mod " +
+			"as a build target, and set it as Modfile under [Plugin \"go\"] in your .plzconfig.")
 		return nil
 	}
 
