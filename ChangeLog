@@ -1,3 +1,10 @@
+Version 1.17.2
+--------------
+    * Don't stop processing the remaining paths when one of them has `stop` set
+    * Warn instead of silently doing nothing when there's no `Modfile` configured to sync against
+    * Warn, rather than abandoning the whole update, when a module's licence can't be downloaded
+    * Warn when `puku watch` is given nothing to watch
+
 Version 1.17.1
 --------------
     * Correctly handle addition of an external test to a package that already contains an

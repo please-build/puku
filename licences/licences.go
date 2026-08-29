@@ -9,8 +9,11 @@ import (
 
 	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/graph"
+	"github.com/please-build/puku/logging"
 	"github.com/please-build/puku/proxy"
 )
+
+var log = logging.GetLogger()
 
 var modCacheDir = "plz-out/puku/modcache"
 
@@ -112,7 +115,8 @@ func (l *Licenses) update(paths []string) error {
 				return err
 			}
 			if downloadPath == "" {
-				return nil
+				log.Warningf("no download path for %v@%v; skipping its licence", mod, ver)
+				continue
 			}
 			rules[downloadPath] = r
 			mods = append(mods, downloadPath)

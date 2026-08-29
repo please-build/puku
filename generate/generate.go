@@ -161,9 +161,11 @@ func (u *updater) update(paths ...string) error {
 		}
 
 		if conf.GetStop() {
-			return nil
+			log.Warningf("not updating %v: stop is set in its puku.json", path)
+			continue
 		}
 
+		log.Debugf("updating %v", path)
 		if err := u.updateOne(conf, path); err != nil {
 			return fmt.Errorf("failed to update %v: %v", path, err)
 		}

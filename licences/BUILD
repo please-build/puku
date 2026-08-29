@@ -14,6 +14,7 @@ go_library(
         "///third_party/go/github.com_please-build_buildtools//build",
         "//edit",
         "//graph",
+        "//logging",
         "//proxy",
     ],
 )
