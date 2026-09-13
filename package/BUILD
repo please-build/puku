@@ -6,6 +6,9 @@ architectures = [
     "freebsd_amd64",
     "linux_amd64",
     "linux_arm64",
+    # Published only from the PeterNeiss fork, for Please's Windows port: the Puku codelab
+    # downloads puku-<version>-<os>_<arch>, and upstream publishes no Windows build.
+    "windows_amd64",
 ]
 
 def cross_compile(version, arch):

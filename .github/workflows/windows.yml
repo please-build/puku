@@ -1,0 +1,20 @@
+# Puku cross-compiles for Windows without change, but nothing had run its tests there. Paths it
+# writes into BUILD files and the go.mod edits it makes are where Windows would differ.
+name: Windows
+
+on:
+  push:
+    branches:
+      - windows
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test
+        run: go test ./...
