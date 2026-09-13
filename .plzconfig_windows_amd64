@@ -1,0 +1,7 @@
+; Layered on .plzconfig for windows_amd64 builds.
+
+[Plugin "go"]
+; go-flags treats a leading / as an option on Windows, so `plz puku fmt //src/hello` failed with
+; "unknown flag `/src/hello'". forceposix turns that off, as Please itself does for the same
+; reason: every build label starts with //.
+BuildTags = forceposix
