@@ -59,14 +59,14 @@ func FindTargetByName(file *build.File, name string) *build.Rule {
 
 // RemoveTarget removes the target with the given name from the build file
 func RemoveTarget(file *build.File, rule *build.Rule) bool {
-	for i, r := range file.Rules("") {
+	// Search file.Stmt directly: the index into file.Rules() does not line up with it when the file contains
+	// statements that aren't rules (e.g. standalone comment blocks or assignments).
+	for i, stmt := range file.Stmt {
 		// Compare by the call expression as the rule created in Rules will not match
-		if r.Call != rule.Call {
-			continue
+		if stmt == build.Expr(rule.Call) {
+			file.Stmt = append(file.Stmt[:i], file.Stmt[(i+1):]...)
+			return true
 		}
-
-		file.Stmt = append(file.Stmt[:i], file.Stmt[(i+1):]...)
-		return true
 	}
 	return false
 }

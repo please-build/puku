@@ -11,6 +11,7 @@ go_test(
         "///third_party/go/github.com_stretchr_testify//require",
         "///third_party/go/golang.org_x_mod//modfile",
         "//config",
+        "//edit",
         "//graph",
         "//please",
         "//sync",

@@ -62,3 +62,47 @@ func TestEnsureSubinclude(t *testing.T) {
 		assert.Equal(t, file.Stmt[0], subinc)
 	})
 }
+
+// TestRemoveTarget checks that exactly the requested rule is removed, even when the file contains statements that
+// aren't rules (such as comment blocks and assignments) ahead of it. Previously the rule's index among the file's rules
+// was used as an index into file.Stmt, which removed the wrong statement in these cases.
+func TestRemoveTarget(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		src       string
+		remove    string
+		wantRules []string
+	}{
+		{
+			name:      "only rules",
+			src:       "go_repo(name = \"a\")\ngo_repo(name = \"b\")\ngo_repo(name = \"c\")\n",
+			remove:    "b",
+			wantRules: []string{"a", "c"},
+		},
+		{
+			name:      "standalone comment block before the rules",
+			src:       "# header\n\ngo_repo(name = \"a\")\ngo_repo(name = \"b\")\ngo_repo(name = \"c\")\n",
+			remove:    "b",
+			wantRules: []string{"a", "c"},
+		},
+		{
+			name:      "assignment and comment blocks before the rules",
+			src:       "# header\n\nVERSION = \"1\"\n\ngo_repo(name = \"a\")\n\n# comment\n\ngo_repo(name = \"b\")\ngo_repo(name = \"c\")\n",
+			remove:    "c",
+			wantRules: []string{"a", "b"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			file, err := build.Parse("BUILD", []byte(tc.src))
+			require.NoError(t, err)
+
+			assert.True(t, RemoveTarget(file, FindTargetByName(file, tc.remove)))
+
+			var got []string
+			for _, r := range file.Rules("") {
+				got = append(got, r.Name())
+			}
+			assert.Equal(t, tc.wantRules, got)
+		})
+	}
+}
