@@ -31,16 +31,16 @@ type syncer struct {
 const ReplaceLabel = "go_replace_directive"
 
 // KeepLabel can be added to a go_mod_download to stop it being removed when it's not referenced by any go_repo.
+// This is cheaper than making `puku sync` do a `plz query` to identify if things are used.
 const KeepLabel = "puku_keep"
 
 func newSyncer(plzConf *please.Config, g *graph.Graph, removeStale bool) *syncer {
 	p := proxy.New(proxy.DefaultURL)
 	l := licences.New(p, g)
 	return &syncer{
-		plzConf:  plzConf,
-		graph:    g,
-		licences: l,
-
+		plzConf:     plzConf,
+		graph:       g,
+		licences:    l,
 		removeStale: removeStale,
 	}
 }
