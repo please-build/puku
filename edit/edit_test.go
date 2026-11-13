@@ -98,8 +98,9 @@ func TestRemoveTarget(t *testing.T) {
 
 			assert.True(t, RemoveTarget(file, FindTargetByName(file, tc.remove)))
 
-			var got []string
-			for _, r := range file.Rules("") {
+			rules := file.Rules("")
+			got := make([]string, 0, len(rules))
+			for _, r := range rules {
 				got = append(got, r.Name())
 			}
 			assert.Equal(t, tc.wantRules, got)
