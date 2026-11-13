@@ -35,3 +35,32 @@ go_repo(
     module = "gopkg.in/yaml.v3",
     version = "v0.0.1",
 )
+
+go_repo(
+    module = "github.com/example/no-longer-required",
+    version = "v0.0.1",
+)
+
+go_mod_download(
+    name = "github.com_example_replaced_dl",
+    module = "github.com/example/replacement",
+    version = "v0.0.1",
+)
+
+go_repo(
+    download = ":github.com_example_replaced_dl",
+    module = "github.com/example/no-longer-required-with-download",
+)
+
+go_mod_download(
+    name = "github.com_example_orphan_dl",
+    module = "github.com/example/orphan",
+    version = "v0.0.1",
+)
+
+go_mod_download(
+    name = "github.com_example_kept_dl",
+    labels = ["puku_keep"],
+    module = "github.com/example/kept",
+    version = "v0.0.1",
+)

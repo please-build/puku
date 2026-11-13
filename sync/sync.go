@@ -3,6 +3,7 @@ package sync
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/please-build/buildtools/build"
 	"github.com/please-build/buildtools/labels"
@@ -23,25 +24,32 @@ type syncer struct {
 	plzConf  *please.Config
 	graph    *graph.Graph
 	licences *licences.Licenses
+	// removeStale controls whether rules for modules no longer in the go.mod are removed.
+	removeStale bool
 }
 
 const ReplaceLabel = "go_replace_directive"
 
-func newSyncer(plzConf *please.Config, g *graph.Graph) *syncer {
+// KeepLabel can be added to a go_mod_download to stop it being removed when it's not referenced by any go_repo.
+// This is cheaper than making `puku sync` do a `plz query` to identify if things are used.
+const KeepLabel = "puku_keep"
+
+func newSyncer(plzConf *please.Config, g *graph.Graph, removeStale bool) *syncer {
 	p := proxy.New(proxy.DefaultURL)
 	l := licences.New(p, g)
 	return &syncer{
-		plzConf:  plzConf,
-		graph:    g,
-		licences: l,
+		plzConf:     plzConf,
+		graph:       g,
+		licences:    l,
+		removeStale: removeStale,
 	}
 }
 
 // Sync constructs the syncer struct and initiates the sync.
 // NB. the Graph is to be constructed in the calling code because it's useful
 // for it to be available outside the package for testing.
-func Sync(plzConf *please.Config, g *graph.Graph) error {
-	s := newSyncer(plzConf, g)
+func Sync(plzConf *please.Config, g *graph.Graph, removeStale bool) error {
+	s := newSyncer(plzConf, g, removeStale)
 	if err := s.sync(); err != nil {
 		return err
 	}
@@ -49,8 +57,8 @@ func Sync(plzConf *please.Config, g *graph.Graph) error {
 }
 
 // SyncToStdout constructs the syncer and outputs the synced build file to stdout.
-func SyncToStdout(format string, plzConf *please.Config, g *graph.Graph) error { //nolint
-	s := newSyncer(plzConf, g)
+func SyncToStdout(format string, plzConf *please.Config, g *graph.Graph, removeStale bool) error { //nolint
+	s := newSyncer(plzConf, g, removeStale)
 	if err := s.sync(); err != nil {
 		return err
 	}
@@ -127,6 +135,11 @@ func (s *syncer) syncModFile(conf *config.Config, file *build.File, existingRule
 		ignoredModules[mod] = true
 	}
 
+	requiredModules := map[string]bool{}
+	for _, req := range f.Require {
+		requiredModules[req.Mod.Path] = true
+	}
+
 	// Check all modules listed in go.mod
 	for _, req := range f.Require {
 		if ignoredModules[req.Mod.Path] {
@@ -161,7 +174,29 @@ func (s *syncer) syncModFile(conf *config.Config, file *build.File, existingRule
 		}
 	}
 
+	if s.removeStale {
+		removeStaleRules(file, requiredModules, ignoredModules)
+	}
 	return nil
+}
+
+// removeStaleRules removes any go_repos for modules that are no longer required by the go.mod, along with any
+// go_mod_downloads that are not referenced by a go_repo, unless they're labelled with KeepLabel.
+func removeStaleRules(file *build.File, requiredModules, ignoredModules map[string]bool) {
+	usedDownloads := map[string]bool{}
+	for _, rule := range append(file.Rules("go_repo"), file.Rules("go_module")...) {
+		if module := rule.AttrString("module"); !requiredModules[module] && !ignoredModules[module] {
+			edit.RemoveTarget(file, rule)
+		} else if download := rule.AttrString("download"); download != "" {
+			usedDownloads[labels.ParseRelative(download, file.Pkg).Target] = true
+		}
+	}
+
+	for _, rule := range file.Rules("go_mod_download") {
+		if !usedDownloads[rule.Name()] && !slices.Contains(rule.AttrStrings("labels"), KeepLabel) {
+			edit.RemoveTarget(file, rule)
+		}
+	}
 }
 
 func (s *syncer) syncExistingRule(rule *build.Rule, requireDirective *modfile.Require, replaceDirective *modfile.Replace) {

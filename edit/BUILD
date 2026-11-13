@@ -9,6 +9,7 @@ go_library(
         "//e2e/codegen:all",
         "//e2e/tests/codegen:all",
         "//eval:all",
+        "//sync/integration/syncmod:all",
         "//generate:all",
         "//generate/integration/syncmod:all",
         "//graph:all",

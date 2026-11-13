@@ -11,6 +11,7 @@ import (
 	"golang.org/x/mod/modfile"
 
 	"github.com/please-build/puku/config"
+	"github.com/please-build/puku/edit"
 	"github.com/please-build/puku/graph"
 	"github.com/please-build/puku/options"
 	"github.com/please-build/puku/please"
@@ -33,7 +34,7 @@ func TestModSync(t *testing.T) {
 
 	// Parse the puku graph of test repo build files
 	g := graph.New(plzConf.BuildFileNames(), options.TestOptions)
-	err = sync.SyncToStdout("text", plzConf, g)
+	err = sync.SyncToStdout("text", plzConf, g, true)
 	require.NoError(t, err)
 
 	// Fetch the generated third_party/go build file
@@ -61,6 +62,20 @@ func TestModSync(t *testing.T) {
 	//   version = "v1.3.0",
 	//   labels = ["go_replace_directive"],
 	// )
+
+	// The go_repo for a module that is no longer in the go.mod should have been removed.
+	for _, repoRule := range thirdPartyBuildFile.Rules("go_repo") {
+		require.NotEqual(t, "github.com/example/no-longer-required", repoRule.AttrString("module"))
+		require.NotEqual(t, "github.com/example/no-longer-required-with-download", repoRule.AttrString("module"))
+	}
+
+	// Removing the go_repo above leaves its go_mod_download orphaned, so that should be removed too. The download used
+	// by the buildtools replace directive is still referenced so must remain.
+	for _, dlRule := range thirdPartyBuildFile.Rules("go_mod_download") {
+		require.NotEqual(t, "github.com_example_replaced_dl", dlRule.Name())
+		// This download was already orphaned before the sync, with no go_repo ever referencing it.
+		require.NotEqual(t, "github.com_example_orphan_dl", dlRule.Name())
+	}
 
 	for _, repoRule := range thirdPartyBuildFile.Rules("go_repo") {
 		t.Run(repoRule.AttrString("module"), func(t *testing.T) {
@@ -93,10 +108,16 @@ func TestModSync(t *testing.T) {
 		})
 	}
 
+	// An orphaned go_mod_download labelled puku_keep must be preserved, and is the only one besides the buildtools
+	// download that should remain.
 	dlRules := thirdPartyBuildFile.Rules("go_mod_download")
-	require.Len(t, dlRules, 1)
+	require.Len(t, dlRules, 2)
+	keptRule := edit.FindTargetByName(thirdPartyBuildFile, "github.com_example_kept_dl")
+	require.NotNil(t, keptRule)
+	assert.Equal(t, []string{"puku_keep"}, listLabels(keptRule))
 
-	dlRule := dlRules[0]
+	dlRule := edit.FindTargetByName(thirdPartyBuildFile, "github.com_peterebden_buildtools_dl")
+	require.NotNil(t, dlRule)
 	assert.Equal(t, "github.com_peterebden_buildtools_dl", dlRule.Name())
 	assert.Equal(t, "github.com/peterebden/buildtools", dlRule.AttrString("module"))
 	assert.Equal(t, expectedVers[dlRule.AttrString("module")], dlRule.AttrString("version"))
