@@ -178,7 +178,7 @@ func (m *migrator) replaceRulesForModules(updateGoMod bool, modules []string) er
 	// If we're not migrating specific modules, do all of them
 	if len(modules) == 0 {
 		if updateGoMod {
-			var modules []string
+			modules := make([]string, 0, len(m.moduleRules))
 			for _, parts := range m.moduleRules {
 				modules = append(modules, parts.module)
 			}
