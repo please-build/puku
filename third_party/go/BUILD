@@ -47,13 +47,13 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "github.com/golang/protobuf",
-    version = "v1.5.3",
+    version = "v1.5.4",
 )
 
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/term",
-    version = "v0.36.0",
+    version = "v0.48.0",
 )
 
 go_repo(
@@ -65,7 +65,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "google.golang.org/protobuf",
-    version = "v1.32.0",
+    version = "v1.36.12",
 )
 
 go_repo(
@@ -89,13 +89,13 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/mod",
-    version = "v0.29.0",
+    version = "v0.43.0",
 )
 
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "github.com/thought-machine/go-flags",
-    version = "v1.6.3",
+    version = "v1.7.0",
 )
 
 go_repo(
@@ -146,7 +146,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/sys",
-    version = "v0.37.0",
+    version = "v0.50.0",
 )
 
 go_repo(
@@ -164,7 +164,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/net",
-    version = "v0.46.0",
+    version = "v0.62.0",
 )
 
 go_repo(
@@ -225,7 +225,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/tools",
-    version = "v0.38.0",
+    version = "v0.52.0",
 )
 
 go_repo(
@@ -237,7 +237,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "golang.org/x/sync",
-    version = "v0.17.0",
+    version = "v0.25.0",
 )
 
 go_repo(
@@ -267,7 +267,7 @@ go_repo(
 go_repo(
     licences = ["MIT"],
     module = "github.com/dustin/go-humanize",
-    version = "v1.0.1",
+    version = "v1.1.0",
 )
 
 go_repo(
@@ -279,7 +279,7 @@ go_repo(
 go_repo(
     licences = ["BSD-3-Clause"],
     module = "github.com/fsnotify/fsnotify",
-    version = "v1.7.0",
+    version = "v1.10.1",
 )
 
 go_repo(
@@ -291,13 +291,13 @@ go_repo(
 go_repo(
     licences = ["Apache-2.0"],
     module = "github.com/go-logr/logr",
-    version = "v1.4.1",
+    version = "v1.4.4",
 )
 
 go_repo(
     licences = ["Apache-2.0"],
     module = "github.com/golang/groupcache",
-    version = "v0.0.0-20210331224755-41bb18bfe9da",
+    version = "v0.0.0-20241129210726-2c02b8208cf8",
 )
 
 go_repo(
@@ -309,7 +309,7 @@ go_repo(
 go_repo(
     licences = ["MIT"],
     module = "github.com/sergi/go-diff",
-    version = "v1.3.1",
+    version = "v1.4.5",
 )
 
 go_repo(
@@ -321,5 +321,5 @@ go_repo(
 go_repo(
     licences = ["Apache-2.0"],
     module = "k8s.io/klog/v2",
-    version = "v2.120.1",
+    version = "v2.140.0",
 )

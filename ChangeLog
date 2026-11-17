@@ -1,3 +1,8 @@
+Version 1.18.0
+--------------
+    * Build with Go 1.27.4 and upgrade all modules
+    * Add support for puku to remove stale `go_repo` targets (#153)
+
 Version 1.17.1
 --------------
     * Correctly handle addition of an external test to a package that already contains an
